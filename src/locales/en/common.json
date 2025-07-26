@@ -1,0 +1,108 @@
+{
+  "nav": {
+    "services": "Our Products",
+    "about": "About Us",
+    "faq": "FAQ",
+    "contact": "Contact"
+  },
+  "hero": {
+    "headline": "Shop by Category",
+    "subtext": "Find what you need quickly",
+    "quote": "Request a Free Quote",
+    "view": "View Our Products"
+  },
+  "about": {
+  "title": "About Us",
+  "description": "Welcome to ",
+  "description2": "CTEnvios Online",
+  "description3": ", your digital store for sending packages to Cuba easily, quickly, and securely. We created this platform so you can manage your shipments from the comfort of your home, with full transparency, real-time tracking, and convenient payment options. Our goal is to help you stay connected with your loved ones by offering a reliable and accessible service from anywhere in the United States. At CTEnvios Online, making your delivery experience simple is our top priority.",
+  "stats": [
+    { "name": "Registered Users", "value": "5,000+" },
+    { "name": "Orders Processed", "value": "20,000+" },
+    { "name": "On-Time Delivery Rate", "value": "98%" },
+    { "name": "24/7 Support", "value": "Yes" }
+  ]
+  },
+"faq": {
+  "label": "F.A.Q",
+  "title1": "Frequently Asked",
+  "title2": "Questions",
+  "questions": [
+    {
+      "q": "How can I place an order?",
+      "a": "You can place an order directly through our website by selecting the desired product or service, filling out the shipment details, and completing the payment online."
+    },
+    {
+      "q": "What types of shipments do you offer?",
+      "a": "We offer both air and sea shipments to Cuba, depending on the type of package and delivery urgency."
+    },
+    {
+      "q": "How can I track my shipment?",
+      "a": "Once your order is processed, you will receive a tracking number that you can use to monitor your shipment's progress in real time."
+    },
+    {
+      "q": "What payment methods do you accept?",
+      "a": "We accept credit/debit cards and other secure online payment options."
+    },
+    {
+      "q": "Can I send packages to any province in Cuba?",
+      "a": "Yes, we deliver to all provinces in Cuba. Some remote areas may have extended delivery times."
+    },
+    {
+      "q": "How long does delivery take?",
+      "a": "Delivery time depends on the shipping method. Air shipments usually take 7–15 business days, while sea shipments may take 4–6 weeks."
+    },
+    {
+      "q": "Is my personal information secure?",
+      "a": "Yes, your data is protected with secure encryption protocols and is never shared with third parties."
+    }
+  ]
+},
+
+"footer": {
+  "subheading": "Shop quality products and have them delivered right to your door.",
+  "quickLinksTitle": "Quick Links",
+  "addressLabel": "Address",
+  "hoursLabel": "Hours",
+  "emailLabel": "Email",
+  "phoneLabel": "Phone",
+  "contactTitle": "Contact Us",
+  "copyright": "All rights reserved."
+},
+"checkout": {
+    "title": "Checkout Now",
+    "description": "Review your order before completing the payment.",
+    "product": "Product",
+    "quantity": "Quantity",
+    "total": "Total",
+    "pay": "Proceed to Payment"
+  },
+  "success": {
+    "title": "Payment Successful",
+    "message": "Thank you for your purchase. Your payment has been received.",
+    "continue": "Return to Home"
+  },
+  "error": {
+    "title": "Payment Error",
+    "message": "There was a problem processing your payment. Please try again.",
+    "retry": "Try Again",
+    "home": "Home"
+  },
+  "categories": {
+  "title": "Shop by Category",
+  "subtitle": "Find what you need quickly",
+  "noProducts": "There are no products in this category yet.",
+  "list": {
+    "food": "Food",
+    "clothing": "Clothing",
+    "medicine": "Medicine",
+    "appliances": "Appliances",
+    "hygiene": "Hygiene",
+    "technology": "Technology"
+  }
+},
+"cart": {
+  "addToCart": "Agregar al carrito",
+  "added": "fue agregado al carrito"
+}
+}

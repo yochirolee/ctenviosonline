@@ -1,0 +1,107 @@
+{
+  "nav": {
+    "services": "Nuestros Productos",
+    "about": "Acerca de Nosotros",
+    "faq": "Preguntas Frecuentes",
+    "contact": "Contáctanos"
+  },
+  "hero": {
+    "headline": "Compra por Categoría",
+    "subtext": "Encuentra lo que necesitas rápidamente",
+    "quote": "Solicita una cotización gratis",
+    "view": "Ver Nuestros Productos"
+  },
+  "about": {
+    "title": "Sobre Nosotros",
+    "description": "Bienvenido a ",
+    "description2": "CTEnvios Online",
+    "description3": ", tu tienda digital para enviar paquetes a Cuba de forma fácil, rápida y segura. Hemos creado esta plataforma para que puedas gestionar tus envíos desde la comodidad de tu hogar, con total transparencia, seguimiento en tiempo real y opciones de pago convenientes. Nuestro objetivo es facilitar la conexión con tus seres queridos, brindando un servicio confiable y accesible desde cualquier lugar de Estados Unidos. En CTEnvios Online, convertir tu envío en una experiencia simple es nuestra prioridad.",
+    "stats": [
+      { "name": "Usuarios Registrados", "value": "5,000+" },
+      { "name": "Pedidos Procesados", "value": "20,000+" },
+      { "name": "Tasa de Entrega Puntual", "value": "98%" },
+      { "name": "Soporte 24/7", "value": "Sí" }
+    ]
+    },
+  "faq": {
+    "label": "F.A.Q",
+    "title1": "Preguntas",
+    "title2": "Frecuentes",
+    "questions": [
+      {
+        "q": "¿Cómo puedo hacer un pedido?",
+        "a": "Puedes hacer tu pedido directamente en nuestro sitio web seleccionando el producto o servicio, llenando los datos del envío y completando el pago en línea."
+      },
+      {
+        "q": "¿Qué tipos de envíos ofrecen?",
+        "a": "Ofrecemos envíos aéreos y marítimos a Cuba, según el tipo de paquete y la urgencia de entrega."
+      },
+      {
+        "q": "¿Cómo puedo rastrear mi envío?",
+        "a": "Una vez que tu pedido sea procesado, recibirás un número de rastreo para monitorear el estado del envío en tiempo real."
+      },
+      {
+        "q": "¿Qué métodos de pago aceptan?",
+        "a": "Aceptamos tarjetas de crédito/débito y otras opciones de pago en línea seguras."
+      },
+      {
+        "q": "¿Puedo enviar paquetes a cualquier provincia de Cuba?",
+        "a": "Sí, realizamos entregas en todas las provincias de Cuba. Algunas zonas remotas pueden tener tiempos de entrega extendidos."
+      },
+      {
+        "q": "¿Cuánto tarda la entrega?",
+        "a": "El tiempo de entrega depende del método de envío. Los envíos aéreos suelen tardar entre 7 y 15 días hábiles, mientras que los marítimos pueden demorar entre 4 y 6 semanas."
+      },
+      {
+        "q": "¿Mi información personal está segura?",
+        "a": "Sí, tus datos están protegidos con protocolos de encriptación segura y nunca se comparten con terceros."
+      }
+    ]
+  },
+"footer": {
+  "subheading": " Compra productos de calidad y recíbelos directamente en casa.",
+  "quickLinksTitle": "Enlaces Rápidos",
+  "addressLabel": "Dirección",
+  "hoursLabel": "Horario",
+  "emailLabel": "Correo",
+  "phoneLabel": "Teléfono",
+  "contactTitle": "Contáctanos",
+  "copyright": "Todos los derechos reservados."
+},
+"checkout": {
+  "title": "Pagar ahora",
+  "description": "Revisa tu orden antes de completar el pago.",
+  "product": "Producto",
+  "quantity": "Cantidad",
+  "total": "Total",
+  "pay": "Proceder al pago"
+},
+"success": {
+  "title": "Pago exitoso",
+  "message": "Gracias por tu compra. Se ha recibido tu pago correctamente.",
+  "continue": "Volver al inicio"
+},
+"error": {
+  "title": "Error en el pago",
+  "message": "Hubo un problema al procesar tu pago. Inténtalo nuevamente.",
+  "retry": "Reintentar",
+  "home": "Inicio"
+},
+"categories": {
+  "title": "Compra por categoria",
+  "subtitle": "Encuentra lo que necesitas con un clic",
+  "noProducts": "Aún no hay productos en esta categoría.",
+  "list": {
+    "food": "Comida",
+    "clothing": "Ropa",
+    "medicine": "Medicinas",
+    "appliances": "Electrodomesticos",
+    "hygiene": "Higiene",
+    "technology": "Tecnologia"
+  }
+},
+"cart": {
+  "addToCart": "Agregar al carrito",
+  "added": "fue agregado al carrito"
+}
+}
