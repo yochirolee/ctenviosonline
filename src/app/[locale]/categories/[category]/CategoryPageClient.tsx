@@ -13,7 +13,7 @@ type Product = {
   quantity?: number
 }
 type Dict = {
-  cart: {
+  cart?: {
     addToCart: string
     added: string
   }
@@ -37,7 +37,7 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
 
   const handleAddToCart = (product: Product) => {
     addToCart({ ...product, quantity: 1 })
-    toast.success(`${product.name} ${dict.cart.added || 'added to cart'}`)
+    toast.success(`${product.name} ${dict.cart?.added || 'added to cart'}`)
   }
 
   return (
