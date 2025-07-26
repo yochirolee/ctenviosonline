@@ -15,18 +15,17 @@ type Product = {
 
 type Props = {
   params: { locale: string; category: string }
-  dict: any
+  dict: Record<string, any>
   products: Product[]
 }
 
 export default function CategoryPageClient({ params, dict, products }: Props) {
-  const { addToCart, setIsCartOpen } = useCart()
+  const { addToCart } = useCart()
   const router = useRouter()
 
   const handleAddToCart = (product: Product) => {
     addToCart({ ...product, quantity: 1 })
     toast.success(`${product.name} ${dict.cart.added || 'added to cart'}`)
-    //setIsCartOpen(true)
   }
 
   return (
