@@ -12,10 +12,22 @@ type Product = {
   imageSrc: string
   quantity?: number
 }
-
+type Dict = {
+  cart: {
+    addToCart: string
+    added: string
+  }
+  common?: {
+    back: string
+  }
+  categories: {
+    list: Record<string, string>
+    noProducts: string
+  }
+}
 type Props = {
   params: { locale: string; category: string }
-  dict: Record<string, any>
+  dict: Dict
   products: Product[]
 }
 
