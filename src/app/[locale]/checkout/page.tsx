@@ -1,150 +1,164 @@
 "use client";
 
 import { useCart } from "@/context/CartContext";
-import { CreditCard } from 'lucide-react';
+import { CreditCard } from "lucide-react";
+import { useState } from "react";
 
+const provinciasCuba = {
+  "Pinar del Río": ["Pinar del Río", "Consolación del Sur", "San Juan y Martínez", "Guane", "San Luis"],
+  "La Habana": ["Playa", "Plaza de la Revolución", "Centro Habana", "Habana Vieja", "10 de Octubre"],
+  "Villa Clara": ["Santa Clara", "Camajuaní", "Caibarien", "Remedios"],
+  "Santiago de Cuba": ["Santiago de Cuba", "Contramaestre", "San Luis"],
+};
 
 export default function CheckoutPage() {
   const { cartItems } = useCart();
   const total = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
+  const [formData, setFormData] = useState({
+    nombre: "",
+    apellidos: "",
+    ci: "",
+    telefono: "",
+    email: "",
+    provincia: "",
+    municipio: "",
+    instrucciones: "",
+  });
+
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  const validate = () => {
+    const newErrors: { [key: string]: string } = {};
+    if (!formData.nombre) newErrors.nombre = "El nombre es requerido";
+    if (!formData.apellidos) newErrors.apellidos = "Los apellidos son requeridos";
+    if (!/^[0-9]{11}$/.test(formData.ci)) newErrors.ci = "CI debe tener 11 dígitos";
+    if (!/^\+53[0-9]{8}$/.test(formData.telefono)) newErrors.telefono = "Teléfono debe comenzar con +53 y tener 8 dígitos";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = "Email inválido";
+    if (!formData.provincia) newErrors.provincia = "Provincia requerida";
+    if (!formData.municipio) newErrors.municipio = "Municipio requerido";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === "provincia") {
+      setFormData(prev => ({ ...prev, municipio: "" }));
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (!validate()) return;
+  
+    try {
+      // Guardar info de envío en localStorage
+      localStorage.setItem("shippingInfo", JSON.stringify(formData));
+  
+      const response = await fetch("/api/checkout_sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: cartItems, formData }),
+      });
+  
+      const data = await response.json();
+      if (data.url) {
+        localStorage.setItem('formData', JSON.stringify(formData))
+        window.location.href = data.url;
+      } else {
+        alert("Algo salió mal. Intenta de nuevo.");
+      }
+    } catch (error) {
+      alert("Error en el checkout.");
+    }
+  };
+
   return (
-    <div className="py-16 px-4 md:px-6 2xl:px-0 flex justify-center items-center 2xl:mx-auto 2xl:container">
-      <div className="flex flex-col justify-start items-start w-full space-y-9 max-w-5xl">
-        <div className="flex justify-start flex-col items-start space-y-2">
-          <button
-            onClick={() => window.history.back()}
-            className="flex flex-row items-center text-gray-600 dark:text-white hover:text-gray-500 space-x-1"
-          >
-            <svg
-              className="fill-stroke"
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M2.91681 7H11.0835"
-                stroke="currentColor"
-                strokeWidth="0.666667"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M2.91681 7L5.25014 9.33333"
-                stroke="currentColor"
-                strokeWidth="0.666667"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M2.91681 7.00002L5.25014 4.66669"
-                stroke="currentColor"
-                strokeWidth="0.666667"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <p className="text-sm leading-none">Back</p>
-          </button>
-          <p className="text-3xl lg:text-4xl font-semibold leading-7 lg:leading-9 text-gray-800 dark:text-gray-50">Checkout</p>
-          
-        </div>
-
-        <div className="flex flex-col xl:flex-row justify-center xl:justify-between space-y-6 xl:space-y-0 xl:space-x-6 w-full">
-          {/* Product summary */}
-          <div className="xl:w-3/5 flex flex-col sm:flex-row xl:flex-col justify-center items-center bg-gray-100 dark:bg-gray-800 py-7 sm:py-0 xl:py-10 px-10 xl:w-full rounded-lg">
-            <div className="flex flex-col justify-start items-start w-full space-y-4">
-            
-              {cartItems.length > 0 ? (
-                <>
-                  {cartItems.map((item) => (
-                    
-                    <div key={item.id} className="flex items-center space-x-4">
-                        <img
-                        src={item.imageSrc || "/pasto.jpg"}
-                        alt={item.name}
-                        className="w-24 h-24 object-cover rounded-md"
-                        />
-                        <div>
-                        <p className="text-xl md:text-2xl leading-normal text-gray-800 dark:text-gray-50">
-                            {item.name} x{item.quantity}
-                        </p>
-                        <p className="text-base font-semibold leading-none text-gray-600 dark:text-white">
-                            ${(item.price * item.quantity).toFixed(2)}
-                        </p>
-                        </div>
-                    </div>
-                    ))}
-                </>
-              ) : (
-                <p className="text-gray-500">No hay productos en el carrito.</p>
-              )}
+    <div className="py-10 px-4 max-w-4xl mx-auto space-y-8">
+      <h1 className="text-2xl font-bold">Resumen de Productos</h1>
+      <div className="bg-gray-100 p-4 rounded-lg space-y-4 shadow:md">
+        {cartItems.length > 0 ? (
+          cartItems.map((item) => (
+            <div key={item.id} className="flex items-center space-x-4">
+              <img src={item.imageSrc || "/pasto.jpg"} alt={item.name} className="w-20 h-20 object-cover rounded-md" />
+              <div>
+                <p className="text-lg font-medium">{item.name} x{item.quantity}</p>
+                <p className="text-gray-700">${(item.price * item.quantity).toFixed(2)}</p>
+              </div>
             </div>
-          </div>
+          ))
+        ) : (
+          <p className="text-gray-500">Tu carrito está vacío.</p>
+        )}
+        <div className="text-right font-semibold">Subtotal: ${total.toFixed(2)}</div>
+      </div>
 
-          {/* Checkout form */}
-          <div className="p-8 bg-gray-100 dark:bg-gray-800 flex flex-col lg:w-full xl:w-3/5 rounded-lg">
-            <button
-              onClick={async () => {
-                if (cartItems.length === 0) {
-                  alert('Your cart is empty.');
-                  return;
-                }
-
-                try {
-                  const response = await fetch('/api/checkout_sessions', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ items: cartItems }),
-                  });
-
-                  const data = await response.json();
-                  if (data.url) {
-                    window.location.href = data.url;
-                  } else {
-                    alert('Something went wrong. Please try again.');
-                  }
-                } catch (error) {
-                  console.error(error);
-                  alert('Checkout failed. Please try again.');
-                }
-              }}
-              className="border border-transparent hover:border-gray-300 bg-gray-900 dark:bg-white dark:hover:bg-gray-900 dark:hover:border-gray-900 dark:text-gray-900 dark:hover:text-white hover:bg-white text-white hover:text-gray-900 flex flex-row justify-center items-center space-x-2 py-4 rounded w-full mb-4"
-            >
-              <CreditCard size={16} className="text-current" />
-              <p className="text-base leading-4">Pay with Card ${total.toFixed(2)}</p>
-            </button> 
-
-            <button
-              className="border border-transparent hover:border-gray-300 bg-gray-900 dark:bg-white dark:hover:bg-gray-900 dark:hover:border-gray-900 dark:text-gray-900 dark:hover:text-white hover:bg-white text-white hover:text-gray-900 flex flex-row justify-center items-center space-x-2 py-4 rounded w-full mb-6"
-              onClick={() => alert("Pago con PayPal no implementado")}
-            >
-              <svg
-                className="fill-current"
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M10.9099 4.27692C9.6499 4.27692 9.1174 4.87817 8.2399 4.87817C7.34021 4.87817 6.65396 4.28129 5.56208 4.28129C4.49333 4.28129 3.35365 4.93379 2.6299 6.04535C1.61365 7.61285 1.78615 10.565 3.43208 13.08C4.02083 13.9804 4.80708 14.99 5.83833 15.001H5.85708C6.75333 15.001 7.01958 14.4141 8.25302 14.4072H8.27177C9.48677 14.4072 9.73052 14.9975 10.623 14.9975H10.6418C11.673 14.9866 12.5015 13.8679 13.0902 12.971C13.514 12.326 13.6715 12.0022 13.9965 11.2725C11.6155 10.3688 11.233 6.99348 13.5877 5.69942C12.869 4.79942 11.859 4.27817 10.9068 4.27817L10.9099 4.27692Z"
-                  fill="currentColor"
-                />
-                <path
-                  d="M10.6338 1C9.88379 1.05094 9.00879 1.52844 8.49629 2.15188C8.03129 2.71688 7.64879 3.555 7.79879 4.36781H7.85879C8.65754 4.36781 9.47504 3.88688 9.95254 3.27063C10.4125 2.68406 10.7613 1.85281 10.6338 1V1Z"
-                  fill="currentColor"
-                />
-              </svg>
-              <p className="text-base leading-4">Pay ${total.toFixed(2)}</p>
-            </button>           
-          </div>
+      <h2 className="text-2xl font-bold">Información de Envío</h2>
+      <div className="bg-gray-100 p-4 rounded-lg space-y-4 shadow:md">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block">Nombre</label>
+          <input name="nombre" value={formData.nombre} onChange={handleChange} className="input" />
+          {errors.nombre && <p className="text-red-500 text-sm">{errors.nombre}</p>}
+        </div>
+        <div>
+          <label className="block">Apellidos</label>
+          <input name="apellidos" value={formData.apellidos} onChange={handleChange} className="input" />
+          {errors.apellidos && <p className="text-red-500 text-sm">{errors.apellidos}</p>}
+        </div>
+        <div>
+          <label className="block">Carné de Identidad</label>
+          <input name="ci" value={formData.ci} onChange={handleChange} className="input" />
+          {errors.ci && <p className="text-red-500 text-sm">{errors.ci}</p>}
+        </div>
+        <div>
+          <label className="block">Teléfono (+53)</label>
+          <input name="telefono" value={formData.telefono} onChange={handleChange} className="input" />
+          {errors.telefono && <p className="text-red-500 text-sm">{errors.telefono}</p>}
+        </div>
+        <div>
+          <label className="block">Correo Electrónico</label>
+          <input name="email" value={formData.email} onChange={handleChange} className="input" />
+          {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+        </div>
+        <div>
+          <label className="block">Provincia</label>
+          <select name="provincia" value={formData.provincia} onChange={handleChange} className="input">
+            <option value="">Seleccione</option>
+            {Object.keys(provinciasCuba).map((prov) => (
+              <option key={prov} value={prov}>{prov}</option>
+            ))}
+          </select>
+          {errors.provincia && <p className="text-red-500 text-sm">{errors.provincia}</p>}
+        </div>
+        <div>
+          <label className="block">Municipio</label>
+          <select name="municipio" value={formData.municipio} onChange={handleChange} className="input">
+            <option value="">Seleccione</option>
+            {Object.keys(provinciasCuba).includes(formData.provincia) &&
+              provinciasCuba[formData.provincia as keyof typeof provinciasCuba].map((mun) => (
+                <option key={mun} value={mun}>{mun}</option>
+              ))
+            }
+          </select>
+          {errors.municipio && <p className="text-red-500 text-sm">{errors.municipio}</p>}
+        </div>
+        <div className="md:col-span-2">
+          <label className="block">Instrucciones para la entrega (opcional)</label>
+          <textarea name="instrucciones" value={formData.instrucciones} onChange={handleChange} className="input"></textarea>
+        </div>
         </div>
       </div>
+
+      <h2 className="text-2xl font-bold">Método de Pago</h2>
+      <button
+        onClick={handleCheckout}
+        className="w-full bg-green-600 text-white py-3 rounded hover:bg-green-700 flex justify-center items-center space-x-2"
+      >
+        <CreditCard size={18} />
+        <span>Pagar ${total.toFixed(2)}</span>
+      </button>
     </div>
   );
 }

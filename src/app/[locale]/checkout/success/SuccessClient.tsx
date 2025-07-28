@@ -1,19 +1,30 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import type { Dict } from '../../page' 
+import { useEffect } from 'react';
+import type { Dict } from '../../page';
 
 export default function SuccessClient({
   dict,
   locale,
 }: {
-  dict: Dict
-  locale: string
+  dict: Dict;
+  locale: string;
 }) {
   useEffect(() => {
-    // Borra el carrito solo después de que se muestre esta página exitosa
-    localStorage.removeItem('cart')
-  }, [])
+    const formData = JSON.parse(localStorage.getItem('formData') || '{}');
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+
+    if (formData && cart.length > 0) {
+      fetch('/api/checkout_success', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formData, cartItems: cart }),
+      }).catch(err => console.error('Error enviando correo:', err));
+    }
+
+    localStorage.removeItem('cart');
+    localStorage.removeItem('formData');
+  }, []);
 
   return (
     <div className="p-6 text-center">
@@ -26,5 +37,5 @@ export default function SuccessClient({
         {dict.success.continue}
       </a>
     </div>
-  )
+  );
 }

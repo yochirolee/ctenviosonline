@@ -1,13 +1,13 @@
-// app/[locale]/checkout/success/page.tsx
-import { getDictionary } from '@/lib/dictionaries'
-import SuccessClient from './SuccessClient'  
+import { getDictionary } from '@/lib/dictionaries';
+import SuccessWrapper from './successWrapper';
 
-type Props = {
-  params: Promise<{ locale: string }>
-}
-
-export default async function SuccessPage({ params }: Props) {
+export default async function SuccessPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
   const { locale } = await params;
-  const dict = await getDictionary(locale)
-  return <SuccessClient dict={dict} locale={locale} />
+  const dict = await getDictionary(locale);
+
+  return <SuccessWrapper dict={dict} locale={locale} />;
 }
