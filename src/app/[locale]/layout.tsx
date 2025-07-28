@@ -100,24 +100,8 @@ export default async function LocaleLayout({
   children,
   params,
 }: {
-  children: React.ReactNode;
-  params: Promise<{ locale: string }>;  // params es una promesa
+  children: React.ReactNode
+  params: Promise<{ locale: string }>
 }) {
-  const { locale } = await params;  // espera la promesa
-
-  return (
-    <html lang={locale}>
-      <head>
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicons/favicon-32x32.png" />
-        <meta name="msapplication-TileColor" content="#ffffff" />
-        <meta name="theme-color" content="#ffffff" />
-      </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <CartProvider>
-          {children}
-          <Toaster position="top-right" />
-        </CartProvider>
-      </body>
-    </html>
-  );
+  return <>{children}</>
 }
