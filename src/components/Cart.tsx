@@ -10,7 +10,6 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useCart } from '../context/CartContext';
 import { usePathname } from 'next/navigation';
-import { useEffect } from 'react';
 
 export default function CartDrawer() {
   const {
@@ -30,26 +29,16 @@ export default function CartDrawer() {
   const pathname = usePathname();
   const locale = pathname?.split('/')[1] || 'es';
 
-  useEffect(() => {
-    if (isCartOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isCartOpen]);
-
   return (
     <Dialog open={isCartOpen} onClose={() => setIsCartOpen(false)} className="relative z-50">
       <DialogBackdrop className="fixed inset-0 bg-gray-500/75" />
       <div className="fixed inset-0 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
-          <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10 sm:pl-16">
+          {/* 🔧 CAMBIO: fixed -> absolute */}
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex max-w-full pl-10 sm:pl-16">
             <DialogPanel
               className="pointer-events-auto w-screen max-w-md bg-white shadow-xl overflow-y-auto"
-              style={{ WebkitOverflowScrolling: 'touch' }} // iPhone support
+              style={{ WebkitOverflowScrolling: 'touch' }}
             >
               <div className="px-4 py-6 sm:px-6">
                 {/* Header */}
@@ -116,7 +105,7 @@ export default function CartDrawer() {
                   </ul>
                 )}
 
-                {/* Footer con botón pagar */}
+                {/* Footer */}
                 {cartItems.length > 0 && (
                   <>
                     <div className="mt-8 border-t border-gray-200 pt-6">
