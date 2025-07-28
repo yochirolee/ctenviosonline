@@ -1,14 +1,10 @@
 import { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "../globals.css";
 import { CartProvider } from "../../context/CartContext"; 
 import { Toaster } from "sonner";
 import Navbar from '@/components/Navbar';
 import CartDrawer from '@/components/Cart';
 
-
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export async function generateMetadata(props: {
   params: Promise<{ locale: string }>;
