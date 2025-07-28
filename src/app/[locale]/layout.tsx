@@ -116,8 +116,6 @@ export default async function LocaleLayout({
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <CartProvider>
-        <Navbar />
-        <CartDrawer />
           {children}
           <Toaster position="top-right" />
         </CartProvider>
