@@ -2,6 +2,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendEmail } from '@/lib/sendEmail'
 
+type CartItem = {
+    name: string;
+    quantity: number;
+    price: number;
+  };
+  
 export async function POST(req: NextRequest) {
   try {
     const { formData, cartItems } = await req.json()
@@ -18,7 +24,7 @@ export async function POST(req: NextRequest) {
       Instrucciones: ${formData.instrucciones || 'N/A'}
 
       Productos:
-      ${cartItems.map((item: any) =>
+      ${(cartItems as CartItem[]).map((item) =>
         `- ${item.name} x${item.quantity} - $${(item.price * item.quantity).toFixed(2)}`
       ).join('\n')}
     `

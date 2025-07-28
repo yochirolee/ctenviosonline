@@ -70,6 +70,7 @@ export default function CheckoutPage() {
         alert("Algo salió mal. Intenta de nuevo.");
       }
     } catch (error) {
+      console.error("Checkout error:", error);
       alert("Error en el checkout.");
     }
   };

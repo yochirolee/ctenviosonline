@@ -22,7 +22,15 @@ type FormData = {
 };
 
 // Simulación de almacenamiento temporal (puedes reemplazar esto con DB luego)
-let fakeDatabase: any[] = [];
+type Order = {
+    id: string;
+    date: string;
+    formData: FormData;
+    items: CartItem[];
+    total: number;
+  };
+  
+const fakeDatabase: Order[] = [];
 
 export async function POST(req: NextRequest) {
   try {
