@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import {
   Dialog,
   DialogBackdrop,
@@ -21,6 +22,19 @@ export default function CartDrawer() {
     setIsCartOpen,
   } = useCart();
 
+  // Prevent body scroll when cart is open (iOS fix)
+  React.useEffect(() => {
+    if (isCartOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isCartOpen]);
+
   const subtotal = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
@@ -33,33 +47,32 @@ export default function CartDrawer() {
     <Dialog open={isCartOpen} onClose={() => setIsCartOpen(false)} className="relative z-50">
       <DialogBackdrop className="fixed inset-0 bg-gray-500/75" />
       <div className="fixed inset-0 overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden">
-          {/* 🔧 CAMBIO: fixed -> absolute */}
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex max-w-full pl-10 sm:pl-16">
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex max-w-full pl-10 sm:pl-16">
           <DialogPanel
-              className="pointer-events-auto w-screen max-w-md bg-white shadow-xl"
-              style={{
-                WebkitOverflowScrolling: 'touch',
-                overflowY: 'auto',
-                maxHeight: '100dvh', // importante para iOS scroll
-                overscrollBehavior: 'contain', // mejora para scroll dentro del drawer
-              }}
-            >
-              <div className="px-4 py-6 sm:px-6">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-6">
-                  <DialogTitle className="text-lg font-medium text-gray-900">
-                    Carrito de compras
-                  </DialogTitle>
-                  <button
-                    onClick={() => setIsCartOpen(false)}
-                    className="text-gray-400 hover:text-gray-500"
-                    aria-label="Cerrar panel"
-                  >
-                    <XMarkIcon className="w-6 h-6" />
-                  </button>
-                </div>
+            className="pointer-events-auto w-screen max-w-md bg-white shadow-xl"
+            style={{
+              WebkitOverflowScrolling: 'touch',
+              maxHeight: '100vh',
+              overflowY: 'auto',
+            }}
+          >
+            <div className="flex h-full flex-col">
+              {/* Header */}
+              <div className="flex items-start justify-between p-6 border-b border-gray-200">
+                <DialogTitle className="text-lg font-medium text-gray-900">
+                  Carrito de compras
+                </DialogTitle>
+                <button
+                  onClick={() => setIsCartOpen(false)}
+                  className="text-gray-400 hover:text-gray-500"
+                  aria-label="Cerrar panel"
+                >
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
+              </div>
 
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto p-6">
                 {/* Lista de productos */}
                 {cartItems.length === 0 ? (
                   <p className="text-gray-500">Tu carrito está vacío.</p>
@@ -109,41 +122,39 @@ export default function CartDrawer() {
                     ))}
                   </ul>
                 )}
-
-                {/* Footer */}
-                {cartItems.length > 0 && (
-                  <>
-                    <div className="mt-8 border-t border-gray-200 pt-6">
-                      <div className="flex justify-between text-base font-medium text-gray-900">
-                        <p>Subtotal</p>
-                        <p>${subtotal.toFixed(2)}</p>
-                      </div>
-                      <p className="mt-0.5 text-sm text-gray-500">
-                        Envío e impuestos calculados al pagar.
-                      </p>
-                      <div className="mt-6">
-                        <Link
-                          href={`/${locale}/checkout`}
-                          onClick={() => setIsCartOpen(false)}
-                          className="flex items-center justify-center rounded-md bg-green-600 px-6 py-3 text-base font-medium text-white hover:bg-green-700 w-full"
-                        >
-                          Checkout
-                        </Link>
-                      </div>
-                    </div>
-                    <div className="mt-6 flex justify-center text-sm text-gray-500">
-                      <button
-                        onClick={() => setIsCartOpen(false)}
-                        className="font-medium text-green-600 hover:text-green-500"
-                      >
-                        Continuar comprando →
-                      </button>
-                    </div>
-                  </>
-                )}
               </div>
-            </DialogPanel>
-          </div>
+
+              {/* Footer */}
+              {cartItems.length > 0 && (
+                <div className="border-t border-gray-200 p-6">
+                  <div className="flex justify-between text-base font-medium text-gray-900">
+                    <p>Subtotal</p>
+                    <p>${subtotal.toFixed(2)}</p>
+                  </div>
+                  <p className="mt-0.5 text-sm text-gray-500">
+                    Envío e impuestos calculados al pagar.
+                  </p>
+                  <div className="mt-6">
+                    <Link
+                      href={`/${locale}/checkout`}
+                      onClick={() => setIsCartOpen(false)}
+                      className="flex items-center justify-center rounded-md bg-green-600 px-6 py-3 text-base font-medium text-white hover:bg-green-700 w-full"
+                    >
+                      Checkout
+                    </Link>
+                  </div>
+                  <div className="mt-6 flex justify-center text-sm text-gray-500">
+                    <button
+                      onClick={() => setIsCartOpen(false)}
+                      className="font-medium text-green-600 hover:text-green-500"
+                    >
+                      Continuar comprando →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogPanel>
         </div>
       </div>
     </Dialog>
