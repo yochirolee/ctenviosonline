@@ -26,12 +26,21 @@ export default function CartDrawer() {
   React.useEffect(() => {
     if (isCartOpen) {
       document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.top = '0';
     } else {
       document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.top = '';
     }
 
     return () => {
       document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.top = '';
     };
   }, [isCartOpen]);
 
@@ -49,12 +58,7 @@ export default function CartDrawer() {
       <div className="fixed inset-0 overflow-hidden">
         <div className="pointer-events-none absolute inset-y-0 right-0 flex max-w-full pl-10 sm:pl-16">
           <DialogPanel
-            className="pointer-events-auto w-screen max-w-md bg-white shadow-xl"
-            style={{
-              WebkitOverflowScrolling: 'touch',
-              maxHeight: '100vh',
-              overflowY: 'auto',
-            }}
+            className="pointer-events-auto w-screen max-w-md bg-white shadow-xl ios-scroll-container"
           >
             <div className="flex h-full flex-col">
               {/* Header */}
@@ -72,7 +76,7 @@ export default function CartDrawer() {
               </div>
 
               {/* Scrollable content */}
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 overflow-y-auto p-6 ios-scroll-fix">
                 {/* Lista de productos */}
                 {cartItems.length === 0 ? (
                   <p className="text-gray-500">Tu carrito está vacío.</p>

@@ -120,3 +120,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* iOS Scroll Fixes */
+.ios-scroll-fix {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.ios-scroll-container {
+  height: 100vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+}
