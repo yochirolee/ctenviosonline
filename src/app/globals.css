@@ -120,11 +120,3 @@
     @apply bg-background text-foreground;
   }
 }
-
-html,
-body {
-  height: 100%;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: none;
-  touch-action: manipulation;
-}
