@@ -30,15 +30,18 @@ export default function CartDrawer() {
   const pathname = usePathname();
   const locale = pathname?.split('/')[1] || 'es';
 
-  // 🛡️ Asegura que el body no quede bloqueado después
+  // Evita bloqueo de scroll residual
   useEffect(() => {
     if (isCartOpen) {
       document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'manipulation'; // clave para iOS
     } else {
       document.body.style.overflow = '';
+      document.body.style.touchAction = '';
     }
     return () => {
       document.body.style.overflow = '';
+      document.body.style.touchAction = '';
     };
   }, [isCartOpen]);
 
@@ -63,8 +66,8 @@ export default function CartDrawer() {
                 </button>
               </div>
 
-              {/* Lista de productos con scroll */}
-              <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
+              {/* Lista de productos con scroll en iPhone también */}
+              <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 touch-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {cartItems.length === 0 ? (
                   <p className="text-gray-500">Tu carrito está vacío.</p>
                 ) : (
