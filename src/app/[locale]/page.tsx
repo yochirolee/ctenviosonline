@@ -3,7 +3,6 @@ import HeroSection from "../../components/HeroSection";
 import AboutSection from "../../components/AboutSection";
 import FAQSection from "../../components/FAQSection";
 import Footer from "../../components/Footer";
-import Cart from "../../components/Cart";
 
 export type Dict = {
   nav: {services: string; about: string; faq: string; contact: string; }
@@ -64,7 +63,6 @@ export default async function Home({
   return (
     <div className="flex flex-col min-h-screen">
       <HeroSection dict={dict} />
-      <Cart />
       <AboutSection dict={dict} />
       <FAQSection dict={dict} />
       <Footer dict={dict} />
