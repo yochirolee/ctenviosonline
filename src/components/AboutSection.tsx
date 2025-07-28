@@ -28,7 +28,7 @@ export default function AboutWithStats({ dict }: Props) {
   const stats = about.stats
 
   return (
-    <div id="about" className="relative isolate overflow-hidden bg-green-900 py-24 sm:py-32">
+    <div id="about" className="relative isolate overflow-visible bg-green-900 py-24 sm:py-32">
       {/* Fondos decorativos (sin cambios) */}
       
       <motion.div

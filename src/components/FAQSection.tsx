@@ -32,7 +32,7 @@ export default function FAQSection({ dict }: Props) {
   const faqs = dict.faq.questions
 
   return (
-    <section id="faq" className="relative isolate overflow-hidden bg-green-50 py-24 px-6 font-sans">
+    <section id="faq" className="relative isolate overflow-visible bg-green-50 py-24 px-6 font-sans">
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row gap-12">
         <div className="flex flex-col text-left basis-1/2">
           <p className="inline-block font-semibold text-gray-800 mb-4">{dict.faq.label}</p>
