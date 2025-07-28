@@ -1,6 +1,11 @@
 import { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
 import "../globals.css";
+import { CartProvider } from "../../context/CartContext"; 
+import { Toaster } from "sonner";
 
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export async function generateMetadata(props: {
   params: Promise<{ locale: string }>;
@@ -92,10 +97,27 @@ export async function generateMetadata(props: {
 }
 
 export default async function LocaleLayout({
-  children,  
+  children,
+  params,
 }: {
-  children: React.ReactNode
-  params: Promise<{ locale: string }>
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;  // params es una promesa
 }) {
-  return <>{children}</>
+  const { locale } = await params;  // espera la promesa
+
+  return (
+    <html lang={locale}>
+      <head>
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicons/favicon-32x32.png" />
+        <meta name="msapplication-TileColor" content="#ffffff" />
+        <meta name="theme-color" content="#ffffff" />
+      </head>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <CartProvider>
+          {children}
+          <Toaster position="top-right" />
+        </CartProvider>
+      </body>
+    </html>
+  );
 }
