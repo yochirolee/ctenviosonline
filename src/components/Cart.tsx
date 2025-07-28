@@ -34,13 +34,13 @@ export default function CartDrawer() {
       <DialogBackdrop className="fixed inset-0 bg-gray-500/75" />
       <div className="fixed inset-0 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
-          {/* 🔧 CAMBIO: fixed -> absolute */}
           <div className="pointer-events-none absolute inset-y-0 right-0 flex max-w-full pl-10 sm:pl-16">
             <DialogPanel
-              className="pointer-events-auto w-screen max-w-md bg-white shadow-xl overflow-y-auto"
+              className="pointer-events-auto w-screen max-w-md bg-white shadow-xl flex flex-col max-h-screen"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
-              <div className="px-4 py-6 sm:px-6">
+              {/* Contenido scrollable */}
+              <div className="px-4 py-6 sm:px-6 overflow-y-auto flex-grow">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-6">
                   <DialogTitle className="text-lg font-medium text-gray-900">
