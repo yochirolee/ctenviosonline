@@ -1,6 +1,6 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import type { Dict } from '../../page' 
+import type { Dict } from '@/types/Dict'
 
 export default function CancelClient({ dict,
   locale,
