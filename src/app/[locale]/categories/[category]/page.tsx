@@ -9,7 +9,7 @@ type Props = {
 export default async function CategoryPage({ params }: Props) {
   const { locale, category } = await params;
   const dict = await getDictionary(locale);
-  const products = getProductsByCategory(category);
+  const products = await getProductsByCategory(category);
 
   return <CategoryPageClient params={{ locale, category }} dict={dict} products={products} />
 }

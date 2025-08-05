@@ -1,138 +1,178 @@
-"use client"
+'use client'
 
 import React, {
   createContext,
   useContext,
-  useState,
   useEffect,
-  useRef,
+  useState,
   ReactNode,
-} from "react"
+} from 'react'
+import { getOrCreateCart } from '@/lib/medusa/cart'
+import { useCustomer } from './CustomerContext'
 
-interface Product {
+const API_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL
+
+type LineItem = {
   id: string
-  name: string
-  price: number
+  title: string
   quantity: number
-  imageSrc?: string
+  unit_price: number
+  thumbnail?: string
 }
 
 interface CartContextType {
-  cartItems: Product[]
-  addToCart: (product: Product) => void
-  removeFromCart: (id: string) => void
-  increaseQuantity: (id: string) => void
-  decreaseQuantity: (id: string) => void
+  cartId: string | null
+  items: LineItem[]
   isCartOpen: boolean
   setIsCartOpen: React.Dispatch<React.SetStateAction<boolean>>
-  clearCart: () => void
+  addItem: (variantId: string, quantity: number) => Promise<void>
+  removeItem: (itemId: string) => Promise<void>
+  clearCart: () => Promise<void>
+  loading: boolean
 }
 
-// Creamos un valor inicial vacío pero válido
-const defaultContext: CartContextType = {
-  cartItems: [],
-  addToCart: () => {},
-  removeFromCart: () => {},
-  increaseQuantity: () => {},
-  decreaseQuantity: () => {},
+const CartContext = createContext<CartContextType>({
+  cartId: null,
+  items: [],
   isCartOpen: false,
   setIsCartOpen: () => {},
-  clearCart: () => {},
-}
+  addItem: async () => {},
+  removeItem: async () => {},
+  clearCart: async () => {},
+  loading: true,
+})
 
-const CartContext = createContext<CartContextType>(defaultContext)
+export const useCart = () => useContext(CartContext)
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [cart, setCart] = useState<Product[]>([])
+  const [cartId, setCartId] = useState<string | null>(null)
+  const [items, setItems] = useState<LineItem[]>([])
   const [isCartOpen, setIsCartOpen] = useState(false)
-  const isMounted = useRef(false)
+  const [loading, setLoading] = useState(true)
+  const { customer, loading: customerLoading } = useCustomer()
 
-  // Hidratar carrito desde localStorage solo una vez
-  useEffect(() => {
+  const fetchCart = async () => {
     try {
-      const saved = localStorage.getItem("cart")
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed)) {
-          setCart(parsed)
-        } else {
-          localStorage.removeItem("cart")
-        }
-      }
-    } catch (err) {
-      console.error("Error loading cart:", err)
-      localStorage.removeItem("cart")
-    }
-  }, [])
+      setLoading(true)
 
-  // Guardar carrito en localStorage después de la carga inicial
-  useEffect(() => {
-    if (isMounted.current) {
-      localStorage.setItem("cart", JSON.stringify(cart))
-    } else {
-      isMounted.current = true
-    }
-  }, [cart])
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const { id } = await getOrCreateCart(customer?.id || undefined)
+      setCartId(id)
 
-  const addToCart = (product: Product) => {
-    setCart((prevCart) => {
-      const existing = prevCart.find((item) => item.id === product.id)
-      if (existing) {
-        return prevCart.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + product.quantity }
-            : item
-        )
+      const headers: Record<string, string> = {
+        'x-publishable-api-key': process.env.NEXT_PUBLIC_MEDUSA_API_KEY || '',
       }
-      return [...prevCart, product]
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const res = await fetch(`${API_URL}/store/carts/${id}`, { headers })
+
+      if (!res.ok) {
+        throw new Error('No se pudo cargar el carrito')
+      }
+
+      const data = await res.json()
+      setItems(data.cart.items || [])
+    } catch {
+      setItems([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const addItem = async (variantId: string, quantity = 1) => {
+    if (!cartId) return
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-publishable-api-key': process.env.NEXT_PUBLIC_MEDUSA_API_KEY || '',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const res = await fetch(`${API_URL}/store/carts/${cartId}/line-items`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ variant_id: variantId, quantity }),
     })
+
+    if (!res.ok) {
+      throw new Error('No se pudo agregar al carrito')
+    }
+
+    const data = await res.json()
+    setItems(data.cart.items)
   }
 
-  const removeFromCart = (id: string) => {
-    setCart((prev) => prev.filter((item) => item.id !== id))
+  const removeItem = async (itemId: string) => {
+    if (!cartId) return
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    const headers: Record<string, string> = {
+      'x-publishable-api-key': process.env.NEXT_PUBLIC_MEDUSA_API_KEY || '',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    await fetch(`${API_URL}/store/carts/${cartId}/line-items/${itemId}`, {
+      method: 'DELETE',
+      headers,
+    })
+
+    await fetchCart()
   }
 
-  const increaseQuantity = (id: string) => {
-    setCart((items) =>
-      items.map((item) =>
-        item.id === id ? { ...item, quantity: item.quantity + 1 } : item
+  const clearCart = async () => {
+    if (!cartId) return
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    const headers: Record<string, string> = {
+      'x-publishable-api-key': process.env.NEXT_PUBLIC_MEDUSA_API_KEY || '',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const res = await fetch(`${API_URL}/store/carts/${cartId}`, { headers })
+    const data = await res.json()
+    const lineItems = data.cart.items
+
+    await Promise.all(
+      lineItems.map((item: LineItem) =>
+        fetch(`${API_URL}/store/carts/${cartId}/line-items/${item.id}`, {
+          method: 'DELETE',
+          headers,
+        })
       )
     )
+
+    await fetchCart()
   }
 
-  const decreaseQuantity = (id: string) => {
-    setCart((items) =>
-      items
-        .map((item) =>
-          item.id === id ? { ...item, quantity: item.quantity - 1 } : item
-        )
-        .filter((item) => item.quantity > 0)
-    )
-  }
-
-  const clearCart = () => {
-    setCart([])
-    localStorage.removeItem("cart")
-  }
+  useEffect(() => {
+    if (!customerLoading && typeof window !== 'undefined') {
+      fetchCart()
+    }
+  }, [customerLoading, customer])
 
   return (
     <CartContext.Provider
       value={{
-        cartItems: cart,
-        addToCart,
-        removeFromCart,
-        increaseQuantity,
-        decreaseQuantity,
+        cartId,
+        items,
         isCartOpen,
         setIsCartOpen,
+        addItem,
+        removeItem,
         clearCart,
+        loading,
       }}
     >
       {children}
     </CartContext.Provider>
   )
-}
-
-export function useCart(): CartContextType {
-  return useContext(CartContext)
 }

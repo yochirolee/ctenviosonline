@@ -1,52 +1,64 @@
-// lib/products.ts
+'use server'
 
-export const allProducts = [
-    {
-      id: '1',
-      name: 'Cafe La Llave',
-      price: 5,
-      imageSrc: '/products/cafeLaLlave.jpg',
-      category: 'food',
-    },
-    {
-      id: '2',
-      name: 'Blusa Casual',
-      price: 49.99,
-      imageSrc: '/products/blusa.jpg',
-      category: 'clothing',
-    },
-    {
-      id: '3',
-      name: 'TV',
-      price: 299.99,
-      imageSrc: '/products/tv.jpg',
-      category: 'appliances',
-    },
-    {
-        id: '4',
-        name: 'Cafe Bustelo',
-        price: 5,
-        imageSrc: '/products/cafeBustelo.jpg',
-        category: 'food',
-      },
-      {
-        id: '5',
-        name: 'Pantalon Blanco',
-        price: 30,
-        imageSrc: '/products/pantalon.webp',
-        category: 'clothing',
-      },
-      {
-        id: '6',
-        name: 'TV',
-        price: 350,
-        imageSrc: '/products/lavadora.jpg',
-        category: 'appliances',
-      },
-    // Agrega más productos de prueba
-  ]
-  
-  export function getProductsByCategory(category: string) {
-    return allProducts.filter((product) => product.category === category)
+type Variant = {
+  id: string
+  calculated_price?: {
+    calculated_amount: number
   }
-  
+}
+
+type ProductResponse = {
+  id: string
+  title: string
+  thumbnail?: string
+  variants?: Variant[]
+}
+
+type SimplifiedProduct = {
+  id: string
+  name: string
+  price: number
+  imageSrc: string
+  variant_id: string
+}
+
+export async function getProductsByCategory(category: string): Promise<SimplifiedProduct[]> {
+  const collectionMap: Record<string, string> = {
+    food: 'pcol_01K1BKFHYAGSD8SZT6J3ZRJ7EH',
+    clothing: 'pcol_01K1BKEVX8V52QJM7HX4PSEHA0',
+  }
+
+  const collectionId = collectionMap[category]
+  if (!collectionId) return []
+
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/store/products?collection_id=${collectionId}&region_id=reg_01K1BHAFZTHFHPNZ2YZJ5501H7`,
+    {
+      headers: {
+        'x-publishable-api-key': process.env.NEXT_PUBLIC_MEDUSA_API_KEY!,
+      },
+      cache: 'no-store',
+    }
+  )
+
+  const data = await res.json()
+
+  const products = Array.isArray(data.products)
+    ? data.products
+        .filter((p: ProductResponse) => p.variants?.[0])
+        .map((p: ProductResponse) => {
+          const variant = p.variants![0]
+          const price = variant.calculated_price?.calculated_amount ?? 0
+
+          return {
+            id: p.id,
+            name: p.title,
+            price,
+            imageSrc: p.thumbnail ?? '/product.webp',
+            variant_id: variant.id,
+          }
+        })
+    : []
+
+  return products
+}

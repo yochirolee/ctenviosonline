@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { useParams } from 'next/navigation'
 
 type Dict = {
   categories: {
@@ -18,17 +19,18 @@ type Dict = {
   }
 }
 
-const categories = [
-  { slug: 'food', image: '/food.jpg' },
-  { slug: 'clothing', image: '/clothing.jpg' },
-  { slug: 'medicine', image: '/medicine.jpg' },
-  { slug: 'appliances', image: '/appliances.jpg' },
-  { slug: 'hygiene', image: '/higiene.webp' },
-  { slug: 'technology', image: '/tecnology.jpg' },
-]
+type Category = {
+  slug: string
+  image: string
+}
 
-export default function HeroCategories({ dict }: { dict: Dict }) {
-  const locale = 'es' // O recíbelo como prop, o usa usePathname para sacar el locale
+type Props = {
+  dict: Dict
+  categories: Category[]
+}
+
+export default function HeroCategories({ dict, categories }: Props) {
+  const { locale } = useParams() as { locale: string }
 
   return (
     <section className="py-8 px-4 md:px-12 lg:px-20 bg-white">
@@ -48,6 +50,7 @@ export default function HeroCategories({ dict }: { dict: Dict }) {
                 src={cat.image}
                 alt={dict.categories.list[cat.slug as keyof typeof dict.categories.list]}
                 fill
+                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
             </div>

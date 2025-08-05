@@ -1,6 +1,6 @@
 'use client';
 import SuccessClient from './SuccessClient';
-import type { Dict } from '../../page';
+import type { Dict } from '@/types/Dict'
 
 export default function SuccessWrapper({
   dict,

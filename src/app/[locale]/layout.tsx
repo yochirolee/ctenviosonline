@@ -4,7 +4,10 @@ import { CartProvider } from "../../context/CartContext";
 import { Toaster } from "sonner";
 import Navbar from '@/components/Navbar';
 import CartDrawer from '@/components/Cart';
-
+import { CustomerProvider } from '../../context/CustomerContext'
+import { getDictionary } from '@/lib/dictionaries'
+import type { Dict } from '@/types/Dict'
+import StripeElementsWrapper from '@/components/StripeElementsWrapper';
 
 export async function generateMetadata(props: {
   params: Promise<{ locale: string }>;
@@ -95,17 +98,26 @@ export async function generateMetadata(props: {
   return metadataByLocale[locale as "es" | "en"];
 }
 
-export default function LocaleLayout({
+export default async function LocaleLayout({
   children,
+  params,
 }: {
   children: React.ReactNode
+  params: Promise<{ locale: string }>
 }) {
+  const { locale } = await params
+  const dict = await getDictionary(locale) as Dict
+
   return (
+    <CustomerProvider>        
     <CartProvider>
-      <Navbar />
-      <CartDrawer />
+    <StripeElementsWrapper>
+      <Navbar dict={dict} />
+      <CartDrawer dict={dict} />
       {children}
-      <Toaster position="top-right" />
+      <Toaster position="top-center" />
+      </StripeElementsWrapper>
     </CartProvider>
+    </CustomerProvider>
   )
 }

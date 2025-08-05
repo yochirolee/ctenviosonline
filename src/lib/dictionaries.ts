@@ -1,10 +1,10 @@
 // lib/dictionaries.ts
 import 'server-only'
-import type { Dict } from '@/app/[locale]/page'  // Importa el tipo Dict desde donde lo defines
+import type { Dict } from '@/types/Dict'
 
 const dictionaries = {
-  en: () => import('@/locales/en/common.json').then((mod) => mod.default as unknown as Dict),
-  es: () => import('@/locales/es/common.json').then((mod) => mod.default as unknown as Dict),
+  en: () => import('@/locales/en/common.json').then((mod) => mod.default as Dict),
+  es: () => import('@/locales/es/common.json').then((mod) => mod.default as Dict),
 }
 
 export const getDictionary = async (locale: string): Promise<Dict> => {

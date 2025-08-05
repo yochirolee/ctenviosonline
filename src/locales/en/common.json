@@ -70,13 +70,38 @@
   "copyright": "All rights reserved."
 },
 "checkout": {
-    "title": "Checkout Now",
-    "description": "Review your order before completing the payment.",
-    "product": "Product",
-    "quantity": "Quantity",
-    "total": "Total",
-    "pay": "Proceed to Payment"
-  },
+  "description": "Review your order before completing the payment.",
+  "product": "Product",
+  "quantity": "Quantity",
+  "total": "Total",
+  "back": "Back",
+  "title": "Order Summary",
+  "shipping": "Shipping Information",
+  "payment": "Payment Method",
+  "subtotal": "Subtotal",
+  "empty": "Your cart is empty.",
+  "first_name": "First Name",
+  "last_name": "Last Name",
+  "ci": "ID Number",
+  "phone": "Phone (the +53 is already included)",
+  "email": "Email",
+  "province": "Province",
+  "municipality": "Municipality",
+  "address": "Exact Address",
+  "instructions": "Delivery instructions (optional)",
+  "pay": "Pay",
+  "review": "Review your order before completing the payment.",
+  "errors": {
+    "nombre": "First name is required",
+    "apellidos": "Last name is required",
+    "ci": "ID must have 11 digits",
+    "telefono": "Must have exactly 8 digits",
+    "email": "Invalid email",
+    "provincia": "Province is required",
+    "municipio": "Municipality is required",
+    "address": "Exact address is required"
+  }
+},
   "success": {
     "title": "Payment Successful",
     "message": "Thank you for your purchase. Your payment has been received.",
@@ -102,7 +127,39 @@
   }
 },
 "cart": {
-  "addToCart": "Agregar al carrito",
-  "added": "fue agregado al carrito"
+  "addToCart": "Add to Cart",
+  "added": "added to the cart",
+  "search": "Search product...",
+  "login_required": "You must be logged in to add products to your cart.",
+  "title": "Shopping Cart",
+  "delete": "Remove",
+  "subtotal": "Subtotal",
+  "subtotaldetails": "Shipping and taxes calculated at checkout",
+  "checkout": "Checkout",
+  "continue": "Continue shopping",
+  "empty": "Your cart is empty."
+},
+"login": {
+  "title": "Log In",
+  "email": "Email",
+  "password": "Password",
+  "submit": "Sign In",
+  "success": "You have successfully logged in.",
+  "error": "Invalid email or password."
+},
+"register": {
+  "title": "Register",
+  "first_name": "First Name",
+  "last_name": "Last Name",
+  "submit": "Create Account",
+  "error": "Registration failed. Please check your information."
+},
+"common": {
+  "loading": "Loading...",  
+  "required_fields": "All fields are required",
+  "greeting": "Hello,",
+  "login": "Log In",
+  "logout": "Log out",
+  "back": "Back"
 }
 }

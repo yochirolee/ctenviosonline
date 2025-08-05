@@ -69,12 +69,37 @@
   "copyright": "Todos los derechos reservados."
 },
 "checkout": {
-  "title": "Pagar ahora",
   "description": "Revisa tu orden antes de completar el pago.",
   "product": "Producto",
   "quantity": "Cantidad",
   "total": "Total",
-  "pay": "Proceder al pago"
+  "back": "Atrás",
+  "title": "Resumen de Orden",
+  "shipping": "Información de Envío",
+  "payment": "Método de Pago",
+  "subtotal": "Subtotal",
+  "empty": "Tu carrito está vacío.",
+  "first_name": "Nombre",
+  "last_name": "Apellidos",
+  "ci": "Carné de Identidad",
+  "phone": "Teléfono (el +53 ya está incluido)",
+  "email": "Correo Electrónico",
+  "province": "Provincia",
+  "municipality": "Municipio",
+  "address": "Dirección Exacta",
+  "instructions": "Instrucciones para la entrega (opcional)",
+  "pay": "Pagar",
+  "review": "Revisa tu orden antes de completar el pago.",
+  "errors": {
+    "nombre": "El nombre es requerido",
+    "apellidos": "Los apellidos son requeridos",
+    "ci": "CI debe tener 11 dígitos",
+    "telefono": "Debe tener exactamente 8 dígitos",
+    "email": "Email inválido",
+    "provincia": "Provincia requerida",
+    "municipio": "Municipio requerido",    
+    "address": "Dirección exacta requerida"
+  }
 },
 "success": {
   "title": "Pago exitoso",
@@ -102,6 +127,38 @@
 },
 "cart": {
   "addToCart": "Agregar al carrito",
-  "added": "fue agregado al carrito"
+  "added": "agregado al carrito",
+  "search": "Buscar producto...",
+  "login_required": "Debes iniciar sesión para agregar productos al carrito.",
+  "title": "Carrito de Compras",
+  "delete": "Eliminar",
+  "subtotal": "Subtotal",
+  "subtotaldetails": "Envío e impuestos calculados al pagar",
+  "checkout": "Finalizar compra",
+  "continue": "Continuar comprando",
+  "empty": "Tu carrito está vacío."
+},
+"login": {
+  "title": "Iniciar sesión",
+  "email": "Correo electrónico",
+  "password": "Contraseña",
+  "submit": "Entrar",
+  "success": "Has iniciado sesión correctamente.",
+  "error": "Correo o contraseña incorrectos."
+},
+"register": {
+  "title": "Crear cuenta",
+  "first_name": "Nombre",
+  "last_name": "Apellido",
+  "submit": "Registrarse",
+  "error": "No se pudo crear la cuenta. Revisa la información ingresada."
+},
+"common": {
+  "loading": "Cargando...",  
+  "required_fields": "Todos los campos son requeridos.",
+  "greeting": "Hola,",
+  "login": "Iniciar ssion",
+  "logout": "Salir de sesion",
+  "back": "Atras"
 }
 }

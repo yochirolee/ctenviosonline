@@ -42,7 +42,7 @@ export default function FAQSection({ dict }: Props) {
         </div>
 
         <ul className="basis-1/2">
-          {faqs.map((faq: FAQ, index: number) => (
+          {faqs.map((faq, index) => (
             <li key={index} className="group border-t border-green-300">
               <button
                 onClick={() => toggleFAQ(index)}
