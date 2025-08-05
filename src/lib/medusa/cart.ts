@@ -10,7 +10,7 @@ export async function getOrCreateCart(customerId?: string, forceNew = false): Pr
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  let cartId = typeof window !== 'undefined' ? localStorage.getItem(key) : null
+  const cartId = typeof window !== 'undefined' ? localStorage.getItem(key) : null
 
   if (!forceNew && cartId) {
     const res = await fetch(`${API_URL}/store/carts/${cartId}`, { headers })

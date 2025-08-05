@@ -16,6 +16,7 @@ export async function checkCustomerAuth(): Promise<boolean> {
     const data = await res.json()
     return !!data.id // Aquí puedes verificar `id` directamente o ajustar según tu backend
   } catch (err) {
+    console.error('Error checking auth:', err)
     return false
   }
 }

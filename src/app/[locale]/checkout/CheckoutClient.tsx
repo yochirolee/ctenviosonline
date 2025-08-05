@@ -141,6 +141,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
       setClientSecret(clientSecret)
     } catch (error) {
+      console.error(error)
       alert("Error en el proceso de checkout.")
     }
   }
