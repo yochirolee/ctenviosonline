@@ -13,6 +13,15 @@ type Dict = {
   common: { loading: string; required_fields?: string }
 }
 
+type LoginResponse = { token: string } | { message?: string; error?: string }
+type RegisterResponse = { customer?: unknown; error?: string }
+
+function getErrorMessage(err: unknown, fallback: string) {
+  if (err instanceof Error) return err.message
+  if (typeof err === 'string') return err
+  return fallback
+}
+
 export default function LoginRegisterPage({ dict, locale }: { dict: Dict; locale: string }) {
   const router = useRouter()
   const { refreshCustomer } = useCustomer()
@@ -40,16 +49,16 @@ export default function LoginRegisterPage({ dict, locale }: { dict: Dict; locale
       })
 
       const text = await res.text()
-      const data = text ? JSON.parse(text) : {}
+      const data: LoginResponse = text ? JSON.parse(text) : {}
 
-      if (!res.ok || !data?.token) throw new Error(data?.message || 'Login failed')
+      if (!res.ok || !('token' in data)) throw new Error(('message' in data && data.message) || 'Login failed')
 
       localStorage.setItem('token', data.token)
       await refreshCustomer()
       toast.success(dict.login.success)
       router.push(`/${locale}`)
-    } catch (err: any) {
-      toast.error(err?.message || dict.login.error)
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, dict.login.error))
     } finally {
       setLoading(false)
     }
@@ -64,38 +73,38 @@ export default function LoginRegisterPage({ dict, locale }: { dict: Dict; locale
     }
 
     try {
-      // Tu backend /register acepta { email, password, address? }
       const regRes = await fetch(`${API_URL}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: form.email,
           password: form.password,
-          address: '',                // si lo dejaste obligatorio
+          address: '',
           first_name: form.first_name,
           last_name: form.last_name,
         }),
       })
       const regText = await regRes.text()
-      const regData = regText ? JSON.parse(regText) : {}
-      if (!regRes.ok) throw new Error(regData?.error || 'Register failed')
+      const regData: RegisterResponse = regText ? JSON.parse(regText) : {}
+      if (!regRes.ok) throw new Error((regData as { error?: string })?.error || 'Register failed')
 
-      // Luego login directo
       const loginRes = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.email, password: form.password }),
       })
       const loginText = await loginRes.text()
-      const loginData = loginText ? JSON.parse(loginText) : {}
-      if (!loginRes.ok || !loginData?.token) throw new Error(loginData?.message || 'Login failed after register')
+      const loginData: LoginResponse = loginText ? JSON.parse(loginText) : {}
+      if (!loginRes.ok || !('token' in loginData)) {
+        throw new Error(('message' in loginData && loginData.message) || 'Login failed after register')
+      }
 
       localStorage.setItem('token', loginData.token)
       await refreshCustomer()
       toast.success(dict.login.success)
       router.push(`/${locale}`)
-    } catch (err: any) {
-      toast.error(err?.message || dict.register.error)
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, dict.register.error))
     } finally {
       setLoading(false)
     }

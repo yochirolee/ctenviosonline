@@ -80,6 +80,14 @@ const provinciasCuba = {
   "Isla de la Juventud": [
     "Nueva Gerona", "La Demajagua"
   ]
+} as const
+
+type CheckoutResponse = { orderId?: number; message?: string }
+
+function getErrorMessage(err: unknown, fallback = "Error en el proceso de checkout.") {
+  if (err instanceof Error) return err.message
+  if (typeof err === 'string') return err
+  return fallback
 }
 
 export default function CheckoutPage({ dict }: { dict: Dict }) {
@@ -124,16 +132,16 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
   const handleCheckout = async () => {
     if (!validate()) return
-  
+
     try {
       if (!cartId) throw new Error("Carrito no encontrado")
-  
+
       const token = localStorage.getItem("token")
       if (!token) {
         toast.error("Inicia sesión para continuar")
         return
       }
-  
+
       const res = await fetch(`${API_URL}/checkout/${cartId}`, {
         method: "POST",
         headers: {
@@ -157,15 +165,20 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
           }
         }),
       })
-  
-      const data: { orderId?: number; message?: string } = await res.json().catch(() => ({} as any))
-  
+
+      let data: CheckoutResponse = {}
+      try {
+        data = (await res.json()) as CheckoutResponse
+      } catch {
+        data = {}
+      }
+
       if (!res.ok || !data?.orderId) {
         toast.error(data?.message || "No se pudo completar el checkout.")
         router.push(`/${locale}/fail`)
         return
       }
-  
+
       // éxito
       localStorage.setItem('shippingInfo', JSON.stringify(formData))
       localStorage.setItem('cart', JSON.stringify(
@@ -176,13 +189,13 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
           thumbnail: item.thumbnail,
         }))
       ))
-  
+
       await clearCart()
       toast.success("¡Orden creada! 🎉")
       router.push(`/${locale}/success?orderId=${data.orderId}`)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      toast.error(err?.message || "Error en el proceso de checkout.")
+      toast.error(getErrorMessage(err))
       router.push(`/${locale}/fail`)
     }
   }
@@ -229,8 +242,6 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       <h2 className="text-2xl font-bold">{dict.checkout.shipping}</h2>
       <div className="bg-gray-100 p-4 rounded-lg space-y-4 shadow:md">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Inputs idénticos a los tuyos */}
-          {/* ... deja tus inputs tal cual ... */}
           {/* nombre */}
           <div>
             <label className="block">{dict.checkout.first_name}</label>
@@ -276,12 +287,11 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
           <div>
             <label className="block">{dict.checkout.municipality}</label>
             <select name="municipio" value={formData.municipio} onChange={handleChange} className="input">
-              <option value="">Seleccione</option>
-              {Object.keys(provinciasCuba).includes(formData.provincia) &&
-                provinciasCuba[formData.provincia as keyof typeof provinciasCuba].map((mun) => (
-                  <option key={mun} value={mun}>{mun}</option>
-                ))}
-            </select>
+            <option value="">Seleccione</option>
+            {(provinciasCuba[formData.provincia as keyof typeof provinciasCuba] ?? []).map((mun) => (
+              <option key={mun} value={mun}>{mun}</option>
+            ))}
+          </select>
             {errors.municipio && <p className="text-red-500 text-sm">{errors.municipio}</p>}
           </div>
           {/* direccion */}

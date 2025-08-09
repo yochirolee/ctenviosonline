@@ -14,6 +14,27 @@ type OrderItem = {
   image_url?: string
 }
 
+type ShippingMeta = {
+  first_name?: string
+  last_name?: string
+  address?: string
+  municipality?: string
+  province?: string
+  phone?: string
+  ci?: string
+}
+
+type Order = {
+  id: number | string
+  created_at?: string
+  metadata?: {
+    shipping?: ShippingMeta
+    [k: string]: unknown
+  }
+  items?: OrderItem[]
+  [k: string]: unknown
+}
+
 export default function SuccessClient({
   dict,
   locale,
@@ -24,7 +45,7 @@ export default function SuccessClient({
   const router = useRouter()
   const search = useSearchParams()
   const orderId = useMemo(() => search.get('orderId'), [search])
-  const [order, setOrder] = useState<any>(null)
+  const [order, setOrder] = useState<Order | null>(null)              // 👈 sin any
   const [items, setItems] = useState<OrderItem[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -49,7 +70,7 @@ export default function SuccessClient({
       try {
         // 1) Traer la orden
         const res = await fetch(`${API_URL}/orders/${orderId}`)
-        const data = await res.json().catch(() => null)
+        const data: Order | null = await res.json().catch(() => null)
         if (!res.ok || !data) {
           setErrorMsg('No se pudo cargar la orden.')
           setLoading(false)
@@ -57,23 +78,14 @@ export default function SuccessClient({
         }
         setOrder(data)
 
-        // 2) Si tu backend devuelve items embebidos, úsalo.
-        //    Si no, y tienes un endpoint como /orders/:id/items, podrías descomentar lo siguiente:
-        // const itemsRes = await fetch(`${API_URL}/orders/${orderId}/items`)
-        // if (itemsRes.ok) {
-        //   const itemsData = await itemsRes.json()
-        //   setItems(itemsData.items || itemsData)
-        // } else {
-        //   setItems(null)
-        // }
-
-        // En muchos casos tu /orders/:id (si lo ajustas) podría devolver items así:
+        // 2) Items embebidos (si vienen)
         if (Array.isArray(data.items)) {
           setItems(data.items)
         } else {
           setItems(null)
         }
-      } catch (e) {
+      } catch (err) {                                                // 👈 usamos err para evitar no-unused-vars
+        console.error('load order error:', err)
         setErrorMsg('Error de red al cargar la orden.')
       } finally {
         setLoading(false)
@@ -98,13 +110,13 @@ export default function SuccessClient({
   if (errorMsg) {
     return (
       <div className="p-6 text-center">
-        <h1 className="text-3xl font-bold text-red-600">{dict.error?.title || 'Error'}</h1>
+        <h1 className="text-3xl font-bold text-red-600">{(dict as any).error?.title || 'Error'}</h1>
         <p className="mt-4">{errorMsg}</p>
         <button
           onClick={() => router.push(`/${locale}`)}
           className="mt-6 inline-block px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
         >
-          {dict.success?.continue || 'Volver al inicio'}
+          {(dict as any).success?.continue || 'Volver al inicio'}
         </button>
       </div>
     )
@@ -112,8 +124,8 @@ export default function SuccessClient({
 
   return (
     <div className="p-6 text-center">
-      <h1 className="text-3xl font-bold">{dict.success.title}</h1>
-      <p className="mt-4">{dict.success.message}</p>
+      <h1 className="text-3xl font-bold">{(dict as any).success.title}</h1>
+      <p className="mt-4">{(dict as any).success.message}</p>
 
       {order && (
         <div className="max-w-xl mx-auto text-left bg-gray-50 border rounded p-4 mt-6 space-y-4">
@@ -131,19 +143,19 @@ export default function SuccessClient({
             <div className="text-sm text-gray-700 space-y-1">
               <div>
                 <strong>Destinatario:</strong>{' '}
-                {order.metadata.shipping.first_name} {order.metadata.shipping.last_name}
+                {order.metadata.shipping?.first_name} {order.metadata.shipping?.last_name}
               </div>
               <div>
-                <strong>Dirección:</strong> {order.metadata.shipping.address}
+                <strong>Dirección:</strong> {order.metadata.shipping?.address}
               </div>
               <div>
                 <strong>Municipio/Provincia:</strong>{' '}
-                {order.metadata.shipping.municipality}, {order.metadata.shipping.province}
+                {order.metadata.shipping?.municipality}, {order.metadata.shipping?.province}
               </div>
               <div>
-                <strong>Teléfono:</strong> {order.metadata.shipping.phone}
+                <strong>Teléfono:</strong> {order.metadata.shipping?.phone}
               </div>
-              {order.metadata.shipping.ci && (
+              {order.metadata.shipping?.ci && (
                 <div>
                   <strong>CI:</strong> {order.metadata.shipping.ci}
                 </div>
@@ -193,7 +205,7 @@ export default function SuccessClient({
         href={`/${locale}`}
         className="mt-6 inline-block px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
       >
-        {dict.success.continue}
+        {(dict as any).success.continue}
       </a>
     </div>
   )

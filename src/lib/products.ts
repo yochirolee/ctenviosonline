@@ -1,18 +1,18 @@
 'use server'
 
-type Variant = {
-  id: string
-  calculated_price?: {
-    calculated_amount: number
-  }
-}
-
 type SimplifiedProduct = {
   id: string
   name: string
   price: number
   imageSrc: string
   variant_id: string
+}
+
+type ProductFromAPI = {
+  id: number | string
+  title: string
+  price: string | number
+  image_url?: string
 }
 
 export async function getProductsByCategory(category: string): Promise<SimplifiedProduct[]> {
@@ -34,16 +34,13 @@ export async function getProductsByCategory(category: string): Promise<Simplifie
 
   if (!res.ok) return []
 
-  const data = await res.json()
+  const data: ProductFromAPI[] = await res.json()
 
-  return data.map((p: any) => ({
-    id: p.id,
+  return data.map((p) => ({
+    id: String(p.id),
     name: p.title,
-    price: parseFloat(p.price) * 100, // como tenías en el front
+    price: Number(p.price) * 100,
     imageSrc: p.image_url || '/product.webp',
-    variant_id: p.id.toString(), // simulando variant_id con id
+    variant_id: String(p.id),
   }))
 }
-
-
-

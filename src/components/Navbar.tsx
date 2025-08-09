@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation'
 import LanguageSwitcher from './LanguageSwitcher'
 import CartIcon from '@/components/CartIcon'
 import { useCustomer } from '@/context/CustomerContext'
-import { LogOut } from 'lucide-react'
 import type { Dict } from '@/types/Dict'
 import ConfirmLogoutButton from '@/components/ConfirmLogoutButton'
 
