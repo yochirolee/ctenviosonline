@@ -1,16 +1,17 @@
 'use server'
 
 type SimplifiedProduct = {
-  id: string
+  id: number                 // 👈 ahora number
   name: string
-  price: number
+  price: number              // en centavos (multiplicamos x100)
   imageSrc: string
   variant_id: string
 }
 
 type ProductFromAPI = {
   id: number | string
-  title: string
+  name?: string              // tu backend usa "name"
+  title?: string             // por si en algún lado viene "title"
   price: string | number
   image_url?: string
 }
@@ -37,9 +38,9 @@ export async function getProductsByCategory(category: string): Promise<Simplifie
   const data: ProductFromAPI[] = await res.json()
 
   return data.map((p) => ({
-    id: String(p.id),
-    name: p.title,
-    price: Number(p.price) * 100,
+    id: Number(p.id),                           // 👈 número
+    name: p.name ?? p.title ?? '',              // usa name (backend) o title si llega así
+    price: Math.round(Number(p.price) * 100),   // 👈 a centavos
     imageSrc: p.image_url || '/product.webp',
     variant_id: String(p.id),
   }))
