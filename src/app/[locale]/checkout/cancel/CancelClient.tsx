@@ -1,16 +1,28 @@
 'use client'
+
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Dict } from '@/types/Dict'
 
-export default function CancelClient({ dict,
+export default function CancelClient({
+  dict,
   locale,
 }: {
   dict: Dict
-  locale: string }) {
+  locale: string
+}) {
   const router = useRouter()
 
+  useEffect(() => {
+    // Limpieza de datos temporales
+    localStorage.removeItem('cart')
+    localStorage.removeItem('formData')
+    localStorage.removeItem('shippingInfo')
+    localStorage.removeItem('cart_completed')
+  }, [])
+
   const handleRetry = () => {
-    router.replace(`/${locale}/checkout`)
+    router.push(`/${locale}/checkout`)
   }
 
   const handleHome = () => {

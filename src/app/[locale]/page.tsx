@@ -3,10 +3,9 @@ import HeroSection from '../../components/HeroSection'
 import AboutSection from '../../components/AboutSection'
 import FAQSection from '../../components/FAQSection'
 import Footer from '../../components/Footer'
-import { getCollections, type Collection } from '@/lib/collections'
 import type { Dict } from '@/types/Dict'
 
-const IMAGE_MAP: Record<string, string> = {
+const IMAGE_MAP = {
   food: '/food.jpg',
   clothing: '/clothing.jpg',
   medicine: '/medicine.jpg',
@@ -15,6 +14,11 @@ const IMAGE_MAP: Record<string, string> = {
   technology: '/tecnology.jpg',
 }
 
+const CATEGORIES = Object.keys(IMAGE_MAP).map((key) => ({
+  slug: key,
+  image: IMAGE_MAP[key as keyof typeof IMAGE_MAP],
+}))
+
 export default async function Home({
   params,
 }: {
@@ -22,18 +26,10 @@ export default async function Home({
 }) {
   const { locale } = await params
   const dict = (await getDictionary(locale)) as Dict
-  const collections: Collection[] = await getCollections()
-
-  const categories = collections
-  .filter((c) => IMAGE_MAP[c.handle])
-  .map((c) => ({
-    slug: c.handle,
-    image: IMAGE_MAP[c.handle],
-  }))
 
   return (
     <div className="flex flex-col min-h-screen">
-      <HeroSection dict={dict} categories={categories} />
+      <HeroSection dict={dict} categories={CATEGORIES} />
       <AboutSection dict={dict} />
       <FAQSection dict={dict} />
       <Footer dict={dict} />

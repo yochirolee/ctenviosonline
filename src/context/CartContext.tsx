@@ -7,26 +7,26 @@ import React, {
   useState,
   ReactNode,
 } from 'react'
-import { getOrCreateCart } from '@/lib/medusa/cart'
 import { useCustomer } from './CustomerContext'
 
-const API_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
 
 type LineItem = {
-  id: string
-  title: string
+  id: number
+  product_id: number
   quantity: number
   unit_price: number
+  title?: string
   thumbnail?: string
 }
 
 interface CartContextType {
-  cartId: string | null
+  cartId: number | null
   items: LineItem[]
   isCartOpen: boolean
   setIsCartOpen: React.Dispatch<React.SetStateAction<boolean>>
-  addItem: (variantId: string, quantity: number) => Promise<void>
-  removeItem: (itemId: string) => Promise<void>
+  addItem: (productId: number, quantity?: number, unitPrice?: number) => Promise<void>
+  removeItem: (itemId: number) => Promise<void>
   clearCart: () => Promise<void>
   loading: boolean
 }
@@ -45,118 +45,91 @@ const CartContext = createContext<CartContextType>({
 export const useCart = () => useContext(CartContext)
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [cartId, setCartId] = useState<string | null>(null)
+  const [cartId, setCartId] = useState<number | null>(null)
   const [items, setItems] = useState<LineItem[]>([])
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const { customer, loading: customerLoading } = useCustomer()
 
+  const authHeaders = () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    }
+  }
+
   const fetchCart = async () => {
     try {
       setLoading(true)
-
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-      const { id } = await getOrCreateCart(customer?.id || undefined)
-      setCartId(id)
-
-      const headers: Record<string, string> = {
-        'x-publishable-api-key': process.env.NEXT_PUBLIC_MEDUSA_API_KEY || '',
-      }
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-
-      const res = await fetch(`${API_URL}/store/carts/${id}`, { headers })
-
+      const res = await fetch(`${API_URL}/cart`, { headers: authHeaders() })
       if (!res.ok) {
-        throw new Error('No se pudo cargar el carrito')
+        setCartId(null)
+        setItems([])
+        return
       }
-
-      const data = await res.json()
-      setItems(data.cart.items || [])
+      const data = await res.json() as { cart: { id: number } | null; items: LineItem[] }
+      setCartId(data.cart ? data.cart.id : null)
+      setItems(data.items || [])
     } catch {
+      setCartId(null)
       setItems([])
     } finally {
       setLoading(false)
     }
   }
 
-  const addItem = async (variantId: string, quantity = 1) => {
-    if (!cartId) return
-
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'x-publishable-api-key': process.env.NEXT_PUBLIC_MEDUSA_API_KEY || '',
-    }
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+  const addItem = async (productId: number, quantity = 1, unitPrice?: number) => {
+    // Si no mandas unitPrice, lo buscamos del producto
+    let price = unitPrice
+    if (price == null) {
+      const p = await fetch(`${API_URL}/products/${productId}`).then(r => r.json())
+      price = Number(p.price)
     }
 
-    const res = await fetch(`${API_URL}/store/carts/${cartId}/line-items`, {
+    const res = await fetch(`${API_URL}/cart/add`, {
       method: 'POST',
-      headers,
-      body: JSON.stringify({ variant_id: variantId, quantity }),
+      headers: authHeaders(),
+      body: JSON.stringify({ product_id: productId, quantity, unit_price: price }),
     })
-
-    if (!res.ok) {
-      throw new Error('No se pudo agregar al carrito')
-    }
-
-    const data = await res.json()
-    setItems(data.cart.items)
+    if (!res.ok) throw new Error('No se pudo agregar al carrito')
+    await fetchCart()
   }
 
-  const removeItem = async (itemId: string) => {
-    if (!cartId) return
-
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-    const headers: Record<string, string> = {
-      'x-publishable-api-key': process.env.NEXT_PUBLIC_MEDUSA_API_KEY || '',
-    }
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-
-    await fetch(`${API_URL}/store/carts/${cartId}/line-items/${itemId}`, {
+  const removeItem = async (itemId: number) => {
+    const res = await fetch(`${API_URL}/cart/remove/${itemId}`, {
       method: 'DELETE',
-      headers,
+      headers: authHeaders(),
     })
-
+    if (!res.ok) throw new Error('No se pudo eliminar del carrito')
     await fetchCart()
   }
 
   const clearCart = async () => {
-    if (!cartId) return
-
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-    const headers: Record<string, string> = {
-      'x-publishable-api-key': process.env.NEXT_PUBLIC_MEDUSA_API_KEY || '',
-    }
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-
-    const res = await fetch(`${API_URL}/store/carts/${cartId}`, { headers })
-    const data = await res.json()
-    const lineItems = data.cart.items
-
+    if (!items.length) return
     await Promise.all(
-      lineItems.map((item: LineItem) =>
-        fetch(`${API_URL}/store/carts/${cartId}/line-items/${item.id}`, {
+      items.map((it) =>
+        fetch(`${API_URL}/cart/remove/${it.id}`, {
           method: 'DELETE',
-          headers,
+          headers: authHeaders(),
         })
       )
     )
-
     await fetchCart()
   }
 
   useEffect(() => {
-    if (!customerLoading && typeof window !== 'undefined') {
+    if (!customerLoading) {
+      // Si no hay usuario autenticado, dejamos el carrito vacío (tu backend exige token para /cart)
+      if (!customer) {
+        setCartId(null)
+        setItems([])
+        setLoading(false)
+        return
+      }
       fetchCart()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerLoading, customer])
 
   return (

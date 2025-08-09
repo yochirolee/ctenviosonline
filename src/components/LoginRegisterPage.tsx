@@ -5,41 +5,19 @@ import { useRouter } from 'next/navigation'
 import { useCustomer } from '@/context/CustomerContext'
 import { toast } from 'sonner'
 
-const API_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'http://localhost:9000'
-const API_KEY = process.env.NEXT_PUBLIC_MEDUSA_API_KEY!
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
 
 type Dict = {
-  login: {
-    title: string
-    email: string
-    password: string
-    submit: string
-    success: string
-    error: string
-  }
-  register: {
-    title: string
-    first_name: string
-    last_name: string
-    submit: string
-    error: string
-  }
-  common: {
-    loading: string
-    required_fields?: string
-  }
+  login: { title: string; email: string; password: string; submit: string; success: string; error: string }
+  register: { title: string; first_name: string; last_name: string; submit: string; error: string }
+  common: { loading: string; required_fields?: string }
 }
 
 export default function LoginRegisterPage({ dict, locale }: { dict: Dict; locale: string }) {
   const router = useRouter()
   const { refreshCustomer } = useCustomer()
   const [tab, setTab] = useState<'login' | 'register'>('login')
-  const [form, setForm] = useState({
-    email: '',
-    password: '',
-    first_name: '',
-    last_name: '',
-  })
+  const [form, setForm] = useState({ email: '', password: '', first_name: '', last_name: '' })
   const [loading, setLoading] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,26 +33,23 @@ export default function LoginRegisterPage({ dict, locale }: { dict: Dict; locale
     }
 
     try {
-      const res = await fetch(`${API_URL}/auth/customer/emailpass`, {
+      const res = await fetch(`${API_URL}/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.email, password: form.password }),
       })
 
-      const raw = await res.text()
-      const data = JSON.parse(raw)
+      const text = await res.text()
+      const data = text ? JSON.parse(text) : {}
 
-      if (!res.ok) throw new Error(data.message || 'Login failed')
+      if (!res.ok || !data?.token) throw new Error(data?.message || 'Login failed')
 
       localStorage.setItem('token', data.token)
       await refreshCustomer()
       toast.success(dict.login.success)
       router.push(`/${locale}`)
-    } catch (err: unknown) {
-      const error = err as Error
-      toast.error(error.message || dict.login.error)
+    } catch (err: any) {
+      toast.error(err?.message || dict.login.error)
     } finally {
       setLoading(false)
     }
@@ -82,84 +57,45 @@ export default function LoginRegisterPage({ dict, locale }: { dict: Dict; locale
 
   const handleRegister = async () => {
     setLoading(true)
-    if (!form.email || !form.password || !form.first_name || !form.last_name) {
+    if (!form.email || !form.password) {
       toast.error(dict.common.required_fields || 'Please fill in all fields')
       setLoading(false)
       return
     }
 
     try {
-      const regRes = await fetch(`${API_URL}/auth/customer/emailpass/register`, {
+      // Tu backend /register acepta { email, password, address? }
+      const regRes = await fetch(`${API_URL}/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-publishable-api-key': API_KEY,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: form.email,
           password: form.password,
+          address: '',                // si lo dejaste obligatorio
           first_name: form.first_name,
           last_name: form.last_name,
         }),
       })
-
       const regText = await regRes.text()
-      const regData = JSON.parse(regText)
+      const regData = regText ? JSON.parse(regText) : {}
+      if (!regRes.ok) throw new Error(regData?.error || 'Register failed')
 
-      if (!regRes.ok) throw new Error(regData.message || 'Register failed')
-
-      const registerToken = regData.token
-
-      const createRes = await fetch(`${API_URL}/store/customers`, {
+      // Luego login directo
+      const loginRes = await fetch(`${API_URL}/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-publishable-api-key': API_KEY,
-          Authorization: `Bearer ${registerToken}`,
-        },
-        body: JSON.stringify({
-          first_name: form.first_name,
-          last_name: form.last_name,
-          email: form.email,
-        }),
-      })
-
-      const createText = await createRes.text()
-      const createData = JSON.parse(createText)
-
-      if (!createRes.ok) throw new Error(createData.message || 'Customer creation failed')
-
-      await fetch(`${API_URL}/auth/customer/emailpass`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${registerToken}`,
-        },
-        body: JSON.stringify({
-          customer_id: createData.id,
-        }),
-      })
-
-      const loginRes = await fetch(`${API_URL}/auth/customer/emailpass`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.email, password: form.password }),
       })
-
       const loginText = await loginRes.text()
-      const loginData = JSON.parse(loginText)
-
-      if (!loginRes.ok) throw new Error(loginData.message || 'Login failed after register')
+      const loginData = loginText ? JSON.parse(loginText) : {}
+      if (!loginRes.ok || !loginData?.token) throw new Error(loginData?.message || 'Login failed after register')
 
       localStorage.setItem('token', loginData.token)
       await refreshCustomer()
       toast.success(dict.login.success)
       router.push(`/${locale}`)
-    } catch (err: unknown) {
-      const error = err as Error
-      toast.error(error.message || dict.register.error)
+    } catch (err: any) {
+      toast.error(err?.message || dict.register.error)
     } finally {
       setLoading(false)
     }
@@ -185,41 +121,12 @@ export default function LoginRegisterPage({ dict, locale }: { dict: Dict; locale
       <div className="space-y-4">
         {tab === 'register' && (
           <>
-            <input
-              type="text"
-              name="first_name"
-              value={form.first_name}
-              onChange={handleChange}
-              placeholder={dict.register.first_name}
-              className="w-full border rounded px-3 py-2"
-            />
-            <input
-              type="text"
-              name="last_name"
-              value={form.last_name}
-              onChange={handleChange}
-              placeholder={dict.register.last_name}
-              className="w-full border rounded px-3 py-2"
-            />
+            <input type="text" name="first_name" value={form.first_name} onChange={handleChange} placeholder={dict.register.first_name} className="w-full border rounded px-3 py-2" />
+            <input type="text" name="last_name" value={form.last_name} onChange={handleChange} placeholder={dict.register.last_name} className="w-full border rounded px-3 py-2" />
           </>
         )}
-        <input
-          type="email"
-          name="email"
-          value={form.email}
-          onChange={handleChange}
-          placeholder={dict.login.email}
-          className="w-full border rounded px-3 py-2"
-        />
-        <input
-          type="password"
-          name="password"
-          value={form.password}
-          onChange={handleChange}
-          placeholder={dict.login.password}
-          className="w-full border rounded px-3 py-2"
-        />
-
+        <input type="email" name="email" value={form.email} onChange={handleChange} placeholder={dict.login.email} className="w-full border rounded px-3 py-2" />
+        <input type="password" name="password" value={form.password} onChange={handleChange} placeholder={dict.login.password} className="w-full border rounded px-3 py-2" />
         <button
           onClick={tab === 'login' ? handleLogin : handleRegister}
           disabled={loading}

@@ -8,6 +8,7 @@ import CartIcon from '@/components/CartIcon'
 import { useCustomer } from '@/context/CustomerContext'
 import { LogOut } from 'lucide-react'
 import type { Dict } from '@/types/Dict'
+import ConfirmLogoutButton from '@/components/ConfirmLogoutButton'
 
 type Props = {
   dict: Dict
@@ -24,7 +25,7 @@ export default function Navbar({ dict }: Props) {
       className="sticky top-0 z-50 flex items-center justify-between px-4 md:px-12 lg:px-20 py-4 bg-white shadow"
     >
       <div className="flex items-center gap-2">
-        <Link href={`/${locale}`}>
+        <Link href={`/${locale}`} aria-label="Ir al inicio">
           <Image
             src="/ctelogo.png"
             alt="CTEnvios Logo"
@@ -48,13 +49,7 @@ export default function Navbar({ dict }: Props) {
             <span className="text-sm font-semibold text-green-700">
               {dict.common.greeting} {customer.first_name || customer.email}
             </span>
-            <button
-              onClick={logout}
-              className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-red-600 transition"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">{dict.common.logout}</span>
-            </button>
+           <ConfirmLogoutButton logout={logout} dict={dict} />
           </div>
         ) : (
           <Link

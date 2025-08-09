@@ -1,25 +1,91 @@
 "use client"
 
 import { useCart } from "@/context/CartContext"
-import { CreditCard } from "lucide-react"
 import { useState } from "react"
-import dynamic from "next/dynamic"
-import { useRouter } from 'next/navigation'
-import { ArrowLeft } from "lucide-react"
+import { useRouter, useParams } from 'next/navigation'
+import { ArrowLeft, CreditCard } from "lucide-react"
 import type { Dict } from '@/types/Dict'
+import { toast } from "sonner"
 
-const StripePaymentForm = dynamic(() => import("@/components/StripePaymentForm"), { ssr: false })
+const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
 
 const provinciasCuba = {
-  "Pinar del Río": ["Pinar del Río", "Consolación del Sur", "San Juan y Martínez", "Guane", "San Luis"],
-  "La Habana": ["Playa", "Plaza de la Revolución", "Centro Habana", "Habana Vieja", "10 de Octubre"],
-  "Villa Clara": ["Santa Clara", "Camajuaní", "Caibarien", "Remedios"],
-  "Santiago de Cuba": ["Santiago de Cuba", "Contramaestre", "San Luis"],
+  "Pinar del Río": [
+    "Pinar del Río", "Consolación del Sur", "Guane", "La Palma", "Los Palacios",
+    "Mantua", "Minas de Matahambre", "San Juan y Martínez", "San Luis", "Sandino",
+    "Viñales"
+  ],
+  "Artemisa": [
+    "Artemisa", "Alquízar", "Bauta", "Caimito", "Guanajay", "Güira de Melena",
+    "Mariel", "San Antonio de los Baños", "Bahía Honda"
+  ],
+  "La Habana": [
+    "Playa", "Plaza de la Revolución", "Centro Habana", "Habana Vieja",
+    "Regla", "Habana del Este", "Guanabacoa", "San Miguel del Padrón",
+    "Diez de Octubre", "Cerro", "Marianao", "La Lisa", "Boyeros", "Arroyo Naranjo",
+    "Cotorro"
+  ],
+  "Mayabeque": [
+    "San José de las Lajas", "Batabanó", "Bejucal", "Güines", "Jaruco", "Madruga",
+    "Melena del Sur", "Nueva Paz", "Quivicán", "San Nicolás de Bari", "Santa Cruz del Norte"
+  ],
+  "Matanzas": [
+    "Matanzas", "Cárdenas", "Varadero", "Colón", "Jagüey Grande", "Jovellanos",
+    "Limonar", "Los Arabos", "Martí", "Pedro Betancourt", "Perico", "Unión de Reyes"
+  ],
+  "Cienfuegos": [
+    "Cienfuegos", "Abreus", "Aguada de Pasajeros", "Cruces", "Cumanayagua",
+    "Lajas", "Palmira", "Rodas"
+  ],
+  "Villa Clara": [
+    "Santa Clara", "Caibarién", "Camajuaní", "Cifuentes", "Corralillo",
+    "Encrucijada", "Manicaragua", "Placetas", "Quemado de Güines", "Ranchuelo",
+    "Remedios", "Sagua la Grande", "Santo Domingo"
+  ],
+  "Sancti Spíritus": [
+    "Sancti Spíritus", "Cabaiguán", "Fomento", "Jatibonico", "La Sierpe",
+    "Taguasco", "Trinidad", "Yaguajay"
+  ],
+  "Ciego de Ávila": [
+    "Ciego de Ávila", "Baraguá", "Bolivia", "Chambas", "Ciro Redondo", "Florencia",
+    "Majagua", "Morón", "Primero de Enero", "Venezuela"
+  ],
+  "Camagüey": [
+    "Camagüey", "Carlos Manuel de Céspedes", "Esmeralda", "Florida", "Guaimaro",
+    "Jimaguayú", "Minas", "Najasa", "Nuevitas", "Santa Cruz del Sur",
+    "Sibanicú", "Sierra de Cubitas", "Vertientes"
+  ],
+  "Las Tunas": [
+    "Las Tunas", "Amancio", "Colombia", "Jesús Menéndez", "Jobabo",
+    "Majibacoa", "Manatí", "Puerto Padre"
+  ],
+  "Holguín": [
+    "Holguín", "Antilla", "Báguanos", "Banes", "Cacocum", "Calixto García",
+    "Cueto", "Frank País", "Gibara", "Mayarí", "Moa", "Rafael Freyre",
+    "Sagua de Tánamo", "Urbano Noris"
+  ],
+  "Granma": [
+    "Bayamo", "Bartolomé Masó", "Buey Arriba", "Campechuela", "Cauto Cristo",
+    "Guisa", "Jiguaní", "Manzanillo", "Media Luna", "Niquero", "Pilón",
+    "Río Cauto", "Yara"
+  ],
+  "Santiago de Cuba": [
+    "Santiago de Cuba", "Contramaestre", "Guamá", "Mella", "Palma Soriano",
+    "San Luis", "Segundo Frente", "Songo-La Maya", "Tercer Frente"
+  ],
+  "Guantánamo": [
+    "Guantánamo", "Baracoa", "Caimanera", "El Salvador", "Imías", "Maisí",
+    "Manuel Tames", "Niceto Pérez", "San Antonio del Sur", "Yateras"
+  ],
+  "Isla de la Juventud": [
+    "Nueva Gerona", "La Demajagua"
+  ]
 }
 
 export default function CheckoutPage({ dict }: { dict: Dict }) {
-  const { items, cartId } = useCart()
+  const { items, cartId, clearCart } = useCart()
   const router = useRouter()
+  const { locale } = useParams<{ locale: string }>()
   const total = items.reduce((acc, item) => acc + item.unit_price * item.quantity, 0) / 100
 
   const [formData, setFormData] = useState({
@@ -53,96 +119,71 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-    if (name === "provincia") {
-      setFormData(prev => ({ ...prev, municipio: "" }))
-    }
+    if (name === "provincia") setFormData(prev => ({ ...prev, municipio: "" }))
   }
-
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
 
   const handleCheckout = async () => {
     if (!validate()) return
-
+  
     try {
       if (!cartId) throw new Error("Carrito no encontrado")
-
-      await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/store/carts/${cartId}`, {
+  
+      const token = localStorage.getItem("token")
+      if (!token) {
+        toast.error("Inicia sesión para continuar")
+        return
+      }
+  
+      const res = await fetch(`${API_URL}/checkout/${cartId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_API_KEY || "",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          shipping_address: {
-            first_name: formData.nombre,
-            last_name: formData.apellidos,
-            address_1: formData.instrucciones || "Entrega en Cuba",
-            address_2: formData.direccion || "",
-            city: formData.municipio,
-            province: formData.provincia,
-            country_code: "us",
-            postal_code: "00000",
-            phone:  `+53${formData.telefono}`,
-          },
-          email: formData.email,
+          payment_method: "creditcard",
           metadata: {
-            ci: formData.ci,
-            telefono: formData.telefono,
-            instrucciones: formData.instrucciones,
-            direccion: formData.direccion,
-            provincia: formData.provincia,
-            municipio: formData.municipio,
-          },
+            shipping: {
+              first_name: formData.nombre,
+              last_name: formData.apellidos,
+              ci: formData.ci,
+              phone: `+53${formData.telefono}`,
+              email: formData.email,
+              province: formData.provincia,
+              municipality: formData.municipio,
+              address: formData.direccion,
+              instructions: formData.instrucciones,
+            }
+          }
         }),
       })
-
-      const colRes = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/store/payment-collections`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_API_KEY || "",
-        },
-        body: JSON.stringify({ cart_id: cartId }),
-      })
-
-      if (!colRes.ok) throw new Error("Error creando payment_collection")
-      const colData = await colRes.json()
-      const paymentCollectionId = colData.payment_collection.id
-
-      const paymentSessionRes = await fetch(
-        `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/store/payment-collections/${paymentCollectionId}/payment-sessions`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_API_KEY || "",
-          },
-          body: JSON.stringify({ provider_id: "pp_stripe_stripe" }),
-        }
-      )
-
-      if (!paymentSessionRes.ok) throw new Error("Error creando sesión de pago")
-      const sessionData = await paymentSessionRes.json()
-      const clientSecret = sessionData.payment_collection?.payment_sessions?.[0]?.data?.client_secret
-      if (!clientSecret) throw new Error("No se recibió client_secret")
-
+  
+      const data: { orderId?: number; message?: string } = await res.json().catch(() => ({} as any))
+  
+      if (!res.ok || !data?.orderId) {
+        toast.error(data?.message || "No se pudo completar el checkout.")
+        router.push(`/${locale}/fail`)
+        return
+      }
+  
+      // éxito
       localStorage.setItem('shippingInfo', JSON.stringify(formData))
-      localStorage.setItem(
-        'cart',
-        JSON.stringify(
-          items.map((item) => ({
-            name: item.title,
-            quantity: item.quantity,
-            price: item.unit_price / 100,
-            thumbnail: item.thumbnail,
-          }))
-        )
-      )
-
-      setClientSecret(clientSecret)
-    } catch (error) {
-      console.error(error)
-      alert("Error en el proceso de checkout.")
+      localStorage.setItem('cart', JSON.stringify(
+        items.map((item) => ({
+          name: item.title,
+          quantity: item.quantity,
+          price: item.unit_price / 100,
+          thumbnail: item.thumbnail,
+        }))
+      ))
+  
+      await clearCart()
+      toast.success("¡Orden creada! 🎉")
+      router.push(`/${locale}/success?orderId=${data.orderId}`)
+    } catch (err: any) {
+      console.error(err)
+      toast.error(err?.message || "Error en el proceso de checkout.")
+      router.push(`/${locale}/fail`)
     }
   }
 
@@ -184,34 +225,43 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         </div>
       </div>
 
+      {/* Datos de envío */}
       <h2 className="text-2xl font-bold">{dict.checkout.shipping}</h2>
       <div className="bg-gray-100 p-4 rounded-lg space-y-4 shadow:md">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Inputs idénticos a los tuyos */}
+          {/* ... deja tus inputs tal cual ... */}
+          {/* nombre */}
           <div>
             <label className="block">{dict.checkout.first_name}</label>
             <input name="nombre" value={formData.nombre} onChange={handleChange} className="input" />
             {errors.nombre && <p className="text-red-500 text-sm">{errors.nombre}</p>}
           </div>
+          {/* apellidos */}
           <div>
             <label className="block">{dict.checkout.last_name}</label>
             <input name="apellidos" value={formData.apellidos} onChange={handleChange} className="input" />
             {errors.apellidos && <p className="text-red-500 text-sm">{errors.apellidos}</p>}
           </div>
+          {/* ci */}
           <div>
             <label className="block">{dict.checkout.ci}</label>
             <input name="ci" value={formData.ci} onChange={handleChange} className="input" />
             {errors.ci && <p className="text-red-500 text-sm">{errors.ci}</p>}
           </div>
+          {/* telefono */}
           <div>
             <label className="block">{dict.checkout.phone}</label>
             <input name="telefono" value={formData.telefono} onChange={handleChange} className="input" />
             {errors.telefono && <p className="text-red-500 text-sm">{errors.telefono}</p>}
           </div>
+          {/* email */}
           <div>
             <label className="block">{dict.checkout.email}</label>
             <input name="email" value={formData.email} onChange={handleChange} className="input" />
             {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
           </div>
+          {/* provincia */}
           <div>
             <label className="block">{dict.checkout.province}</label>
             <select name="provincia" value={formData.provincia} onChange={handleChange} className="input">
@@ -222,6 +272,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             </select>
             {errors.provincia && <p className="text-red-500 text-sm">{errors.provincia}</p>}
           </div>
+          {/* municipio */}
           <div>
             <label className="block">{dict.checkout.municipality}</label>
             <select name="municipio" value={formData.municipio} onChange={handleChange} className="input">
@@ -233,11 +284,13 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             </select>
             {errors.municipio && <p className="text-red-500 text-sm">{errors.municipio}</p>}
           </div>
+          {/* direccion */}
           <div className="md:col-span-2">
             <label className="block">{dict.checkout.address}</label>
             <input name="direccion" value={formData.direccion} onChange={handleChange} className="input" />
             {errors.direccion && <p className="text-red-500 text-sm">{errors.direccion}</p>}
-            </div>
+          </div>
+          {/* instrucciones */}
           <div className="md:col-span-2">
             <label className="block">{dict.checkout.instructions}</label>
             <textarea name="instrucciones" value={formData.instrucciones} onChange={handleChange} className="input"></textarea>
@@ -245,18 +298,15 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         </div>
       </div>
 
+      {/* Pago */}
       <h2 className="text-2xl font-bold">{dict.checkout.payment}</h2>
-      {clientSecret ? (
-        <StripePaymentForm clientSecret={clientSecret} />
-      ) : (
-        <button
-          onClick={handleCheckout}
-          className="w-full bg-green-600 text-white py-3 rounded hover:bg-green-700 flex justify-center items-center space-x-2"
-        >
-          <CreditCard size={18} />
-          <span>{dict.checkout.pay} {`$${total.toFixed(2)}`}</span>
-        </button>
-      )}
+      <button
+        onClick={handleCheckout}
+        className="w-full bg-green-600 text-white py-3 rounded hover:bg-green-700 flex justify-center items-center space-x-2"
+      >
+        <CreditCard size={18} />
+        <span>{dict.checkout.pay} {`$${total.toFixed(2)}`}</span>
+      </button>
     </div>
   )
 }

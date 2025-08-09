@@ -160,6 +160,9 @@
   "greeting": "Hello,",
   "login": "Log In",
   "logout": "Log out",
-  "back": "Back"
+  "back": "Back",
+  "confirm_logout_title": "Log out?",
+  "confirm_logout_message": "You will need to log in again to continue shopping.",
+  "cancel": "Cancel"
 }
 }

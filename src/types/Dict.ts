@@ -132,6 +132,9 @@ export type Dict = {
       login: string
       logout: string
       back: string
+      confirm_logout_title: string
+      confirm_logout_message: string
+      cancel: string
     }
   }
   

@@ -8,12 +8,11 @@ import { useState } from 'react'
 import { checkCustomerAuth } from '@/lib/auth'
 
 type Product = {
-  id: string
+  id: number         
   name: string
-  price: number
+  price: number        
   imageSrc: string
   quantity?: number
-  variant_id: string
 }
 
 type Dict = {
@@ -45,23 +44,26 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
 
   const handleAddToCart = async (product: Product) => {
     const isLoggedIn = await checkCustomerAuth()
-
+  
     if (!isLoggedIn) {
       toast.error(dict.cart?.login_required || 'You must be logged in to add products to your cart.')
       router.push(`/${params.locale}/login`)
       return
     }
-
+  
     try {
-      await addItem(product.variant_id, 1)
+      await addItem(Number(product.id), 1, product.price) // 👈 clave
       toast.success(`${product.name} ${dict.cart?.added || 'added to cart'}`)
     } catch {
       toast.error('Error adding product to cart')
     }
   }
+  
 
-  const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredProducts = products.filter(
+    (product) =>
+      typeof product.name === 'string' &&
+      product.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   return (
