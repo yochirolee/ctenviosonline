@@ -9,7 +9,7 @@ import React, {
 } from 'react'
 import { useCustomer } from './CustomerContext'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 type LineItem = {
   id: number

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useCustomer } from '@/context/CustomerContext'
 import { toast } from 'sonner'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 type Dict = {
   login: { title: string; email: string; password: string; submit: string; success: string; error: string }

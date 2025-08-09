@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import type { Dict } from '@/types/Dict'
 
-const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
+const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 type OrderItem = {
   product_id: number

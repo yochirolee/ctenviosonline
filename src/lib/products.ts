@@ -28,7 +28,7 @@ export async function getProductsByCategory(category: string): Promise<Simplifie
   const categoryId = categoryMap[category]
   if (!categoryId) return []
 
-  const res = await fetch(`http://localhost:4000/products?category_id=${categoryId}`, {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/products?category_id=${categoryId}`, {
     cache: 'no-store',
   })
 

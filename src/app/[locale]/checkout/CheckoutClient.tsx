@@ -7,7 +7,7 @@ import { ArrowLeft, CreditCard } from "lucide-react"
 import type { Dict } from '@/types/Dict'
 import { toast } from "sonner"
 
-const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
+const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 const provinciasCuba = {
   "Pinar del Río": [
