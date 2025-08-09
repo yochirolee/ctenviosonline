@@ -1,4 +1,5 @@
 'use client'
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -110,13 +111,13 @@ export default function SuccessClient({
   if (errorMsg) {
     return (
       <div className="p-6 text-center">
-        <h1 className="text-3xl font-bold text-red-600">{(dict as any).error?.title || 'Error'}</h1>
+        <h1 className="text-3xl font-bold text-red-600">{dict.error.title || 'Error'}</h1>
         <p className="mt-4">{errorMsg}</p>
         <button
           onClick={() => router.push(`/${locale}`)}
           className="mt-6 inline-block px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
         >
-          {(dict as any).success?.continue || 'Volver al inicio'}
+          {dict.success.continue || 'Volver al inicio'}
         </button>
       </div>
     )
@@ -124,8 +125,8 @@ export default function SuccessClient({
 
   return (
     <div className="p-6 text-center">
-      <h1 className="text-3xl font-bold">{(dict as any).success.title}</h1>
-      <p className="mt-4">{(dict as any).success.message}</p>
+      <h1 className="text-3xl font-bold">{dict.success.title}</h1>
+      <p className="mt-4">{dict.success.message}</p>
 
       {order && (
         <div className="max-w-xl mx-auto text-left bg-gray-50 border rounded p-4 mt-6 space-y-4">
@@ -205,7 +206,7 @@ export default function SuccessClient({
         href={`/${locale}`}
         className="mt-6 inline-block px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
       >
-        {(dict as any).success.continue}
+        {dict.success.continue}
       </a>
     </div>
   )
