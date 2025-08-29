@@ -1,0 +1,337 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import AdminGuard from '@/components/admin/AdminGuard'
+import AdminTabs from '@/components/admin/AdminTabs'
+import { getAdminOrderDetail } from '@/lib/adminApi'
+import { ArrowLeft, ExternalLink } from 'lucide-react'
+
+export default function AdminOrderDetailPage() {
+  const { locale, id } = useParams<{ locale: string; id: string }>()
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState<string | null>(null)
+  const [data, setData] = useState<Awaited<ReturnType<typeof getAdminOrderDetail>> | null>(null)
+
+  const fmt = useMemo(
+    () => new Intl.NumberFormat(locale || 'es', { style: 'currency', currency: 'USD' }),
+    [locale]
+  )
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const d = await getAdminOrderDetail(Number(id))
+        setData(d)
+      } catch (e) {
+        console.error(e)
+        setErr('No se pudo cargar la orden')
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [id])
+
+  if (loading) {
+    return (
+      <AdminGuard>
+        <div className="max-w-5xl mx-auto p-6">Cargando…</div>
+      </AdminGuard>
+    )
+  }
+  if (err || !data) {
+    return (
+      <AdminGuard>
+        <div className="max-w-5xl mx-auto p-6">
+          <button onClick={() => router.back()} className="inline-flex items-center gap-2 text-sm text-green-700 hover:text-green-800">
+            <ArrowLeft size={18} /><span className="underline underline-offset-2">Atrás</span>
+          </button>
+          <div className="mt-4 text-red-600">{err || 'No encontrado'}</div>
+        </div>
+      </AdminGuard>
+    )
+  }
+
+  const { order, items } = data
+
+  const shipping = (order.metadata?.shipping ?? null) as any
+  const bms = (order.metadata?.bmspay_transaction ?? null) as any
+  const pay = (order.metadata?.payment ?? null) as any
+
+  // Fallbacks robustos (ya existentes)
+  const payInvoice = pay?.invoice || bms?.InvoiceNumber || String(order.metadata?.session_id || '')
+  const payLink = pay?.link || bms?.Link || null
+
+  type DeliveryMeta = {
+    delivered?: boolean
+    delivered_at?: string
+    photo_url?: string
+    notes?: string
+    delivered_by?: string
+  }
+
+  const delivery = (order.metadata?.delivery ?? null) as DeliveryMeta | null
+  const deliveredAt = delivery?.delivered_at
+    ? new Date(delivery.delivered_at).toLocaleString()
+    : null
+
+  // Envío (snapshot)
+  const shippingUsd: number = Number(order?.metadata?.pricing?.shipping ?? 0)
+
+  // Desglose de envío por owner (opcional)
+  const shippingByOwner: Record<string, number> | null =
+    order?.metadata?.shipping_by_owner || order?.metadata?.snapshot?.shipping_by_owner || null
+
+  // Derivados de pago (link/directo)
+  const provider = pay?.provider || (bms ? 'bmspay' : order.payment_method || '—')
+  const mode = pay?.mode || (pay?.AuthorizationNumber || pay?.LastFour ? 'direct' : (payLink ? 'link' : undefined))
+  const authNum = pay?.AuthorizationNumber || null
+  const serviceRef = pay?.ServiceReferenceNumber || bms?.ServiceReferenceNumber || null
+  const utn = pay?.UserTransactionNumber || null
+  const cardMasked = (pay?.CardType || pay?.LastFour) ? `${pay.CardType || 'Card'} •••• ${pay.LastFour || '••••'}` : null
+  const checkoutSessionDisplay =
+    (order.metadata as any)?.checkout_session_id ??
+    (order.metadata as any)?.session_id ??
+    null
+
+  // Estado de aprobación (mostrar si disponible)
+  // - Preferimos verbiage "APPROVED" del pago directo si viene textual
+  // - Si bmspay_transaction.Status === 1 lo consideramos APPROVED
+  // - Si hubiera StatusText lo usamos como texto directo
+  const statusTextRaw =
+    (typeof pay?.verbiage === 'string' ? pay?.verbiage : undefined) ||
+    (typeof (bms as any)?.StatusText === 'string' ? (bms as any)?.StatusText : undefined) ||
+    (typeof (bms as any)?.Status === 'number'
+      ? ((bms as any)?.Status === 1 ? 'APPROVED' : undefined)
+      : undefined)
+
+  const approvedDisplay = statusTextRaw && /approved/i.test(statusTextRaw) ? 'APPROVED' : (statusTextRaw || null)
+
+  return (
+    <AdminGuard>
+      <div className="max-w-5xl mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <button onClick={() => router.back()} className="inline-flex items-center gap-2 text-sm text-green-700 hover:text-green-800">
+            <ArrowLeft size={18} /><span className="underline underline-offset-2">Atrás</span>
+          </button>
+          <div className="text-right">
+            <div className="text-sm text-gray-600">{new Date(order.created_at).toLocaleString()}</div>
+            <div className="mt-1 text-xs px-2 py-1 rounded bg-gray-100 inline-block">{order.status}</div>
+          </div>
+        </div>
+
+        <h1 className="text-2xl font-bold">Orden #{order.id}</h1>
+
+        {/* Cliente (solo datos del cliente; SIN datos de pago aquí) */}
+        <div className="bg-white border rounded">
+          <div className="p-4 border-b font-semibold">Cliente</div>
+          <div className="p-4 text-sm grid md:grid-cols-2 gap-4">
+            <div>
+              <div><span className="text-gray-600">Nombre:</span> <span className="font-medium">{order.customer?.name || '—'}</span></div>
+              <div><span className="text-gray-600">Email:</span> <span className="font-medium">{order.customer?.email || '—'}</span></div>
+              <div><span className="text-gray-600">Teléfono:</span> <span className="font-medium">{order.customer?.phone ?? '—'}</span></div>
+              <div><span className="text-gray-600">Dirección:</span> <span className="font-medium">{order.customer?.address ?? '—'}</span></div>
+            </div>
+            <div>
+              <div><span className="text-gray-600">Método (orden):</span> <span className="font-medium">{order.payment_method || '—'}</span></div>
+            </div>
+          </div>
+        </div>
+
+        {/* PAGO — TODO JUNTO */}
+        <div className="bg-white border rounded">
+          <div className="p-4 border-b font-semibold">Pago</div>
+          <div className="p-4 grid md:grid-cols-2 gap-4 text-sm">
+            {/* Columna 1: metadatos transaccionales */}
+            <div>
+              <div><span className="text-gray-600">Proveedor:</span> <span className="font-medium">{provider}</span></div>
+              {mode && (<div><span className="text-gray-600">Modo:</span> <span className="font-medium">{mode}</span></div>)}
+              <div><span className="text-gray-600">Invoice:</span> <span className="font-medium">{payInvoice || '—'}</span></div>
+              {checkoutSessionDisplay && (
+                <div><span className="text-gray-600">Checkout session:</span> <span className="font-medium">{String(checkoutSessionDisplay)}</span></div>
+              )}
+              {payLink && (
+                <div className="mt-1">
+                  <a href={payLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-green-700 underline">
+                    Ver enlace de pago <ExternalLink size={14} />
+                  </a>
+                </div>
+              )}
+
+              {/* Campos de pago link (BMS) */}
+              {bms?.InvoiceNumber && (<div className="mt-2"><span className="text-gray-600">Invoice (BMS):</span> <span className="font-medium">{bms.InvoiceNumber}</span></div>)}
+              {bms?.Id && (<div><span className="text-gray-600">Tx:</span> <span className="font-medium">{bms.Id}</span></div>)}
+              {bms?.ServiceReferenceNumber && (<div><span className="text-gray-600">Ref. servicio:</span> <span className="font-medium">{bms.ServiceReferenceNumber}</span></div>)}
+              {bms?.PaidOn && (<div><span className="text-gray-600">Pagado el:</span> <span className="font-medium">{new Date(bms.PaidOn).toLocaleString()}</span></div>)}
+
+              {/* Campos de pago directo */}
+              {authNum && (<div className="mt-2"><span className="text-gray-600">Autorización:</span> <span className="font-medium">{authNum}</span></div>)}
+              {serviceRef && !bms?.ServiceReferenceNumber && (
+                <div><span className="text-gray-600">Ref. servicio:</span> <span className="font-medium">{serviceRef}</span></div>
+              )}
+              {utn && (<div><span className="text-gray-600">UTN:</span> <span className="font-medium">{utn}</span></div>)}
+              {cardMasked && (<div><span className="text-gray-600">Tarjeta:</span> <span className="font-medium">{cardMasked}</span></div>)}
+
+              {/* Estado de la transacción, si está disponible */}
+              {approvedDisplay && (
+                <div className="mt-2">
+                  <span className="text-gray-600">Estado:</span>{' '}
+                  <span className="font-semibold">{approvedDisplay}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Columna 2: totales */}
+            <div>
+              <div><span className="text-gray-600">Subtotal:</span> <span className="font-medium">{fmt.format(order.pricing.subtotal)}</span></div>
+              <div><span className="text-gray-600">Impuestos:</span> <span className="font-medium">{fmt.format(order.pricing.tax)}</span></div>
+              <div><span className="text-gray-600">Envío:</span> <span className="font-medium">{fmt.format(shippingUsd)}</span></div>
+              <div><span className="text-gray-600">Total (sin fee):</span> <span className="font-medium">{fmt.format(order.pricing.total)}</span></div>
+              <div><span className="text-gray-600">Cargo tarjeta ({order.card_fee_pct}%):</span> <span className="font-medium">{fmt.format(order.card_fee)}</span></div>
+              <div className="text-base"><span className="text-gray-600">Total con tarjeta:</span> <span className="font-semibold">{fmt.format(order.total_with_fee)}</span></div>
+              <div className="text-xs text-gray-500 mt-1">* El monto reportado por la pasarela normalmente no incluye el cargo por tarjeta.</div>
+            </div>
+          </div>
+
+          {/* (opcional) Desglose de envío por owner si existe */}
+          {shippingByOwner && Object.keys(shippingByOwner).length > 0 && (
+            <div className="px-4 pb-4 text-xs text-gray-700">
+              <div className="font-medium mb-1">Envío por proveedor:</div>
+              <ul className="list-disc ml-5 space-y-0.5">
+                {Object.entries(shippingByOwner).map(([ownerId, usd]) => (
+                  <li key={ownerId}>
+                    Owner #{ownerId}: {fmt.format(Number(usd || 0))}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* Envío (si existe) */}
+        {shipping && (
+          <div className="bg-white border rounded">
+            <div className="p-4 border-b font-semibold">Envío</div>
+            <div className="p-4 text-sm space-y-1">
+              <div><span className="text-gray-600">Destinatario:</span> <span className="font-medium">{shipping.first_name} {shipping.last_name}</span></div>
+              <div><span className="text-gray-600">Tel/Email:</span> <span className="font-medium">{shipping.phone} · {shipping.email}</span></div>
+              {shipping.country === 'US' ? (
+                <>
+                  <div><span className="text-gray-600">Dirección:</span> <span className="font-medium">{shipping.address_line1}{shipping.address_line2 ? `, ${shipping.address_line2}` : ''}</span></div>
+                  <div><span className="text-gray-600">Ciudad/Estado/ZIP:</span> <span className="font-medium">{shipping.city}, {shipping.state} {shipping.zip}</span></div>
+                </>
+              ) : (
+                <>
+                  <div><span className="text-gray-600">Dirección:</span> <span className="font-medium">{shipping.address}</span></div>
+                  <div><span className="text-gray-600">Municipio/Provincia:</span> <span className="font-medium">{shipping.municipality}, {shipping.province}</span></div>
+                  {shipping.ci && <div><span className="text-gray-600">CI:</span> <span className="font-medium">{shipping.ci}</span></div>}
+                </>
+              )}
+              {shipping.instructions && <div className="text-gray-600">Notas: <span className="font-medium">{shipping.instructions}</span></div>}
+            </div>
+          </div>
+        )}
+
+        {/* Entrega */}
+        {delivery?.delivered && (
+          <div className="bg-white border rounded">
+            <div className="p-4 border-b font-semibold">Entrega</div>
+            <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="md:col-span-2 space-y-1">
+                <div>
+                  <span className="text-gray-600">Estado:</span>{' '}
+                  <span className="font-medium text-emerald-700">Entregado</span>
+                </div>
+                {deliveredAt && (
+                  <div>
+                    <span className="text-gray-600">Fecha de entrega:</span>{' '}
+                    <span className="font-medium">{deliveredAt}</span>
+                  </div>
+                )}
+                {delivery?.delivered_by && (
+                  <div>
+                    <span className="text-gray-600">Entregado por:</span>{' '}
+                    <span className="font-medium">{delivery.delivered_by}</span>
+                  </div>
+                )}
+                {delivery?.notes && (
+                  <div>
+                    <span className="text-gray-600">Notas del mensajero:</span>{' '}
+                    <span className="font-medium">{delivery.notes}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Foto de evidencia */}
+              {delivery?.photo_url ? (
+                <div className="md:col-span-1">
+                  <a
+                    href={delivery.photo_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="Ver foto de entrega"
+                    className="block"
+                  >
+                    <img
+                      src={delivery.photo_url}
+                      alt={`Foto de entrega orden #${order.id}`}
+                      className="w-full h-40 object-cover rounded border"
+                    />
+                    <div className="mt-1 text-xs text-gray-600 underline underline-offset-2">
+                      Ver en tamaño completo
+                    </div>
+                  </a>
+                </div>
+              ) : (
+                <div className="md:col-span-1 text-xs text-gray-500">
+                  Sin foto adjunta.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Productos */}
+        <div className="bg-white border rounded">
+          <div className="p-4 border-b font-semibold">Productos</div>
+          {items?.length ? (
+            <>
+              <ul className="divide-y">
+                {items.map((it, idx) => (
+                  <li key={`${it.product_id}-${idx}`} className="p-4 flex items-center gap-3">
+                    {it.image_url ? (
+                      <img src={it.image_url} alt={it.product_name || `Prod ${it.product_id}`} className="w-12 h-12 object-cover rounded border" />
+                    ) : (
+                      <div className="w-12 h-12 rounded border bg-gray-100" />
+                    )}
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">{it.product_name || `Producto #${it.product_id}`}</div>
+                      <div className="text-xs text-gray-600">x{it.quantity}</div>
+                    </div>
+                    <div className="text-sm font-semibold">{fmt.format(Number(it.unit_price) * Number(it.quantity))}</div>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Totales abajo (incluye Envío también) */}
+              <div className="p-4 text-right text-sm space-y-1">
+                <div><span className="font-medium">Subtotal: </span><span>{fmt.format(order.pricing.subtotal)}</span></div>
+                <div><span className="font-medium">Impuestos: </span><span>{fmt.format(order.pricing.tax)}</span></div>
+                <div><span className="font-medium">Envío: </span><span>{fmt.format(shippingUsd)}</span></div>
+                <div><span className="font-medium">Total (sin fee): </span><span>{fmt.format(order.pricing.total)}</span></div>
+                <div><span className="font-medium">Cargo tarjeta ({order.card_fee_pct}%): </span><span>{fmt.format(order.card_fee)}</span></div>
+                <div className="text-base">
+                  <span className="font-semibold">Total con tarjeta: </span>
+                  <span className="font-semibold">{fmt.format(order.total_with_fee)}</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="p-4 text-sm text-gray-600">Esta orden no tiene ítems asociados.</div>
+          )}
+        </div>
+      </div>
+    </AdminGuard>
+  )
+}

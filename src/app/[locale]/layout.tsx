@@ -1,123 +1,130 @@
-import { Metadata } from "next";
-import "../globals.css";
-import { CartProvider } from "../../context/CartContext"; 
-import { Toaster } from "sonner";
-import Navbar from '@/components/Navbar';
-import CartDrawer from '@/components/Cart';
-import { CustomerProvider } from '../../context/CustomerContext'
-import { getDictionary } from '@/lib/dictionaries'
-import type { Dict } from '@/types/Dict'
-import StripeElementsWrapper from '@/components/StripeElementsWrapper';
+// app/[locale]/layout.tsx
+import type { Metadata } from "next"
+import "../globals.css"
 
-export async function generateMetadata(props: {
-  params: Promise<{ locale: string }>;
-}): Promise<Metadata> {
-  const { locale } = await props.params;
-  const metadataByLocale = {
+import { Toaster } from "sonner"
+import Navbar from "@/components/Navbar"
+import CartDrawer from "@/components/Cart"
+import { CartProvider } from "@/context/CartContext"
+import { CustomerProvider } from "@/context/CustomerContext"
+import { LocationProvider } from "@/context/LocationContext"
+import BannerLocationPicker from "@/components/location/BannerLocationPicker"
+import GlobalSearch from "@/components/GlobalSearch"
+import { getDictionary } from "@/lib/dictionaries"
+import type { Dict } from "@/types/Dict"
+
+/** ---- Helper para aceptar params como objeto o como Promise ---- */
+type Params = { locale: string }
+
+async function resolveParams(p: Params | Promise<Params>): Promise<Params> {
+  // Detecta si es promesa sin depender de instanceof
+  return (p as any)?.then ? await (p as Promise<Params>) : (p as Params)
+}
+
+/** ---- Metadata por locale (acepta params como Promise o como objeto) ---- */
+export async function generateMetadata({
+  params,
+}: { params: Params | Promise<Params> }): Promise<Metadata> {
+  const { locale } = await resolveParams(params)
+
+  const metadataByLocale: Record<"es" | "en", Metadata> = {
     es: {
-      title: "Servicios de Jardinería en Sarasota - Wicho Landscaping | Diseño, Césped, Riego",
-      description: "Expertos en jardinería en Sarasota. Diseño de jardines, mulch, césped, iluminación y riego.",
+      title: "CTEnvios Online - Tienda en Miami con envíos a Cuba y Estados Unidos",
+      description:
+        "CTEnvios Online, tu tienda en Miami para enviar productos a Cuba y comprar desde cualquier lugar de Estados Unidos. Variedad, buenos precios y envíos rápidos.",
       keywords: [
-        "jardinería Sarasota",
-        "diseño de jardines Sarasota",
-        "instalación de mulch Sarasota",
-        "mantenimiento de jardines Sarasota",
-        "corte y siembra de césped Sarasota",
-        "iluminación de jardines",
-        "sistema de riego para jardines Sarasota ",
+        "tienda online Miami",
+        "envíos a Cuba",
+        "compras en Miami",
+        "envíos dentro de Estados Unidos",
+        "productos para Cuba",
+        "CTEnvios",
+        "comprar online desde Miami",
+        "envíos rápidos a Cuba",
+        "tienda con envíos internacionales",
       ],
-      alternates: {
-        languages: {
-          en: "/en",
-        },
-      },
+      alternates: { languages: { en: "/en" } },
       openGraph: {
-        title: "Servicios de Jardinería en Sarasota - Wicho Landscaping",
-        description: "Expertos en jardinería en Sarasota. Diseño de jardines, mulch, césped, iluminación y riego.",
-        url: "https://landscapingproy.vercel.app/",
-        siteName: "Wicho Landscaping",
-        images: [
-          {
-            url: "https://landscapingproy.vercel.app/landscaping-garden-design-sarasota.webp",
-            width: 1200,
-            height: 630,
-          },
-        ],
+        title: "CTEnvios Online - Tienda en Miami con envíos a Cuba y Estados Unidos",
+        description:
+          "Compra en CTEnvios Online y recibe en Cuba o en cualquier parte de Estados Unidos. Precios competitivos y servicio confiable.",
+        url: "https://ctenviosonline.com/",
+        siteName: "CTEnvios Online",
+        images: [{ url: "https://ctenviosonline.com/og-image.jpg", width: 1200, height: 630 }],
         locale: "es_ES",
         type: "website",
       },
       twitter: {
         card: "summary_large_image",
-        title: "Servicios de Jardinería en Sarasota - Wicho Landscaping",
-        description: "Expertos en jardinería en Sarasota. Diseño de jardines, mulch, césped, iluminación y riego.",
-        images: ["https://landscapingproy.vercel.app/landscaping-garden-design-sarasota.webp"],
+        title: "CTEnvios Online - Tienda en Miami con envíos a Cuba y Estados Unidos",
+        description:
+          "Compra en CTEnvios Online y recibe en Cuba o en cualquier parte de Estados Unidos. Servicio confiable y rápido.",
+        images: ["https://ctenviosonline.com/og-image.jpg"],
       },
     },
     en: {
-      title: "Landscaping Services in Sarasota - Wicho Landscaping | Garden Design & Irrigation",
-      description: "Landscaping experts in Sarasota. Garden design, mulch installation, lawn care, lighting, and irrigation systems.",
+      title: "CTEnvios Online - Miami Store Shipping to Cuba and the USA",
+      description:
+        "CTEnvios Online, your Miami store to send products to Cuba and shop from anywhere in the USA. Wide selection, great prices, and fast shipping.",
       keywords: [
-        "landscaping Sarasota",
-        "garden design Sarasota",
-        "mulch installation Sarasota",
-        "lawn care and planting Sarasota",
-        "irrigation systems for gardens",
-        "garden lighting sarasota",
-        "garden mainteinance Sarasota",
-        "outdoor garden lighting Sarasota",
+        "online store Miami",
+        "shipping to Cuba",
+        "Miami shopping",
+        "shipping within USA",
+        "products for Cuba",
+        "CTEnvios",
+        "buy online from Miami",
+        "fast shipping to Cuba",
+        "international shipping store",
       ],
-      alternates: {
-        languages: {
-          es: "/",
-        },
-      },
+      alternates: { languages: { es: "/" } },
       openGraph: {
-        title: "Landscaping Services in Sarasota - Wicho Landscaping",
-        description: "Landscaping experts in Sarasota. Garden design, mulch installation, lawn care, lighting, and irrigation systems.",
-        url: "https://landscapingproy.vercel.app/",
-        siteName: "Wicho Landscaping",
-        images: [
-          {
-            url: "https://landscapingproy.vercel.app/landscaping-garden-design-sarasota.webp",
-            width: 1200,
-            height: 630,
-          },
-        ],
+        title: "CTEnvios Online - Miami Store Shipping to Cuba and the USA",
+        description:
+          "Shop at CTEnvios Online and receive in Cuba or anywhere in the USA. Competitive prices and reliable service.",
+        url: "https://ctenviosonline.com/",
+        siteName: "CTEnvios Online",
+        images: [{ url: "https://ctenviosonline.com/og-image.jpg", width: 1200, height: 630 }],
         locale: "en_US",
         type: "website",
       },
       twitter: {
         card: "summary_large_image",
-        title: "Landscaping Services in Sarasota - Wicho Landscaping",
-        description: "Landscaping experts in Sarasota...",
-        images: ["https://landscapingproy.vercel.app/landscaping-garden-design-sarasota.webp"],
+        title: "CTEnvios Online - Miami Store Shipping to Cuba and the USA",
+        description:
+          "Shop at CTEnvios Online and receive in Cuba or anywhere in the USA. Reliable and fast service.",
+        images: ["https://ctenviosonline.com/og-image.jpg"],
       },
     },
-  };
+  }
 
-  return metadataByLocale[locale as "es" | "en"];
+  return metadataByLocale[(locale as "es" | "en") ?? "es"]
 }
 
+/** ---- Layout (acepta params como Promise u objeto) ---- */
 export default async function LocaleLayout({
   children,
   params,
 }: {
   children: React.ReactNode
-  params: Promise<{ locale: string }>
+  params: Params | Promise<Params>
 }) {
-  const { locale } = await params
-  const dict = await getDictionary(locale) as Dict
+  const { locale } = await resolveParams(params)
+  const dict = (await getDictionary(locale)) as Dict
 
   return (
-    <CustomerProvider>        
-    <CartProvider>
-    <StripeElementsWrapper>
-      <Navbar dict={dict} />
-      <CartDrawer dict={dict} />
-      {children}
-      <Toaster position="top-center" />
-      </StripeElementsWrapper>
-    </CartProvider>
-    </CustomerProvider>
+    <LocationProvider>
+      <CustomerProvider>
+        <CartProvider>
+          {/* Si prefieres que el banner vaya arriba del navbar, muévelo aquí */}
+          <Navbar dict={dict} />
+          <CartDrawer dict={dict} />
+          <BannerLocationPicker  dict={dict}/>
+          <GlobalSearch dict={dict} />
+          {children}
+          <Toaster position="top-center" />
+        </CartProvider>
+      </CustomerProvider>
+    </LocationProvider>
   )
 }

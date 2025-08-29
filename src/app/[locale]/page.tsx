@@ -4,8 +4,11 @@ import AboutSection from '../../components/AboutSection'
 import FAQSection from '../../components/FAQSection'
 import Footer from '../../components/Footer'
 import type { Dict } from '@/types/Dict'
+import ProductsSpotlight from '@/components/ProductsSpotlight'
+import BestSellers from '@/components/BestSellers'
 
 const IMAGE_MAP = {
+  h24: '/h24.jpg',
   food: '/food.jpg',
   clothing: '/clothing.jpg',
   medicine: '/medicine.jpg',
@@ -29,7 +32,10 @@ export default async function Home({
 
   return (
     <div className="flex flex-col min-h-screen">
-      <HeroSection dict={dict} categories={CATEGORIES} />
+      <HeroSection dict={dict} />
+      {/* Carrusel de productos (debajo de categorías) */}
+      <ProductsSpotlight dict={dict} />
+      <BestSellers dict={dict} />
       <AboutSection dict={dict} />
       <FAQSection dict={dict} />
       <Footer dict={dict} />

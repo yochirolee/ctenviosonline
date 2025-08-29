@@ -9,6 +9,7 @@ type AuthDict = {
     submit: string
     success: string
     error: string
+    forgot: string
   }
   register: {
     title: string

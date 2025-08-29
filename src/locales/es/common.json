@@ -17,12 +17,24 @@
     "description2": "CTEnvios Online",
     "description3": ", tu tienda digital para enviar paquetes a Cuba de forma fácil, rápida y segura. Hemos creado esta plataforma para que puedas gestionar tus envíos desde la comodidad de tu hogar, con total transparencia, seguimiento en tiempo real y opciones de pago convenientes. Nuestro objetivo es facilitar la conexión con tus seres queridos, brindando un servicio confiable y accesible desde cualquier lugar de Estados Unidos. En CTEnvios Online, convertir tu envío en una experiencia simple es nuestra prioridad.",
     "stats": [
-      { "name": "Usuarios Registrados", "value": "5,000+" },
-      { "name": "Pedidos Procesados", "value": "20,000+" },
-      { "name": "Tasa de Entrega Puntual", "value": "98%" },
-      { "name": "Soporte 24/7", "value": "Sí" }
+      {
+        "name": "Usuarios Registrados",
+        "value": "5,000+"
+      },
+      {
+        "name": "Pedidos Procesados",
+        "value": "20,000+"
+      },
+      {
+        "name": "Tasa de Entrega Puntual",
+        "value": "98%"
+      },
+      {
+        "name": "Soporte 24/7",
+        "value": "Sí"
+      }
     ]
-    },
+  },
   "faq": {
     "label": "F.A.Q",
     "title1": "Preguntas",
@@ -58,110 +70,316 @@
       }
     ]
   },
-"footer": {
-  "subheading": " Compra productos de calidad y recíbelos directamente en casa.",
-  "quickLinksTitle": "Enlaces Rápidos",
-  "addressLabel": "Dirección",
-  "hoursLabel": "Horario",
-  "emailLabel": "Correo",
-  "phoneLabel": "Teléfono",
-  "contactTitle": "Contáctanos",
-  "copyright": "Todos los derechos reservados."
-},
-"checkout": {
-  "description": "Revisa tu orden antes de completar el pago.",
-  "product": "Producto",
-  "quantity": "Cantidad",
-  "total": "Total",
-  "back": "Atrás",
-  "title": "Resumen de Orden",
-  "shipping": "Información de Envío",
-  "payment": "Método de Pago",
-  "subtotal": "Subtotal",
-  "empty": "Tu carrito está vacío.",
-  "first_name": "Nombre",
-  "last_name": "Apellidos",
-  "ci": "Carné de Identidad",
-  "phone": "Teléfono (el +53 ya está incluido)",
-  "email": "Correo Electrónico",
-  "province": "Provincia",
-  "municipality": "Municipio",
-  "address": "Dirección Exacta",
-  "instructions": "Instrucciones para la entrega (opcional)",
-  "pay": "Pagar",
-  "review": "Revisa tu orden antes de completar el pago.",
-  "errors": {
-    "nombre": "El nombre es requerido",
-    "apellidos": "Los apellidos son requeridos",
-    "ci": "CI debe tener 11 dígitos",
-    "telefono": "Debe tener exactamente 8 dígitos",
-    "email": "Email inválido",
-    "provincia": "Provincia requerida",
-    "municipio": "Municipio requerido",    
-    "address": "Dirección exacta requerida"
+  "footer": {
+    "subheading": " Compra productos de calidad y recíbelos directamente en casa.",
+    "quickLinksTitle": "Enlaces Rápidos",
+    "addressLabel": "Dirección",
+    "hoursLabel": "Horario",
+    "emailLabel": "Correo",
+    "phoneLabel": "Teléfono",
+    "contactTitle": "Contáctanos",
+    "copyright": "Todos los derechos reservados."
+  },
+  "checkout": {
+    "description": "Revisa tu orden antes de completar el pago.",
+    "product": "Producto",
+    "quantity": "Cantidad",
+    "total": "Total",
+    "back": "Atrás",
+    "title": "Resumen de Orden",
+    "shipping": "Información de Envío",
+    "shipping1": "Usaremos esta información para calcular envío y entregar tu orden.",
+    "payment": "Método de Pago",
+    "subtotal": "Subtotal",
+    "empty": "Tu carrito está vacío.",
+    "first_name": "Nombre",
+    "last_name": "Apellidos",
+    "ci": "Carné de Identidad",
+    "addressExact": "Dirección exacta",
+    "addressExact_placeholder": "Calle, número, entre calles, apartamento, referencias…",
+    "instructions_label": "Instrucciones de entrega (opcional)",
+    "phone": "Teléfono (el +53 ya está incluido)",
+    "phoneeu": "Teléfono (el +1 ya está incluido)",
+    "email": "Correo Electrónico",
+    "province": "Provincia",
+    "municipality": "Municipio",
+    "address": "Dirección Exacta",
+    "address1eu": "Dirección 1",
+    "address2eu": "Dirección 2",
+    "cityeu": "Ciudad",
+    "stateeu": "Estado",
+    "zipeu": "Còdigo Postal",
+    "instructions": "Instrucciones para la entrega (opcional)",
+    "pay": "Pagar con link enlace externo",
+    "directPay": "Pagar con Tarjeta",
+    "review": "Revisa tu orden antes de completar el pago.",
+    "shippingcuba": "Envìo a Cuba",
+    "shippingeu": "Envìo a Estados Unidos",
+    "tax": "Tax",
+    "shipping_label": "Envío",
+    "card_fee_label": "Cargo por tarjeta",
+    "card_fee_note": "* Total estimado con cargo por tarjeta.",
+    "total_with_card": "Total con tarjeta",
+    "errors": {
+      "nombre": "El nombre es requerido",
+      "apellidos": "Los apellidos son requeridos",
+      "ci": "CI debe tener 11 dígitos",
+      "telefono": "Debe tener exactamente 8 dígitos",
+      "telefonoeu": "Debe tener exactamente 10 dígitos",
+      "email": "Email inválido",
+      "provincia": "Provincia requerida",
+      "municipio": "Municipio requerido",
+      "address": "Dirección exacta requerida",
+      "address1eu": "Direcciòn1 requerida",
+      "cityeu": "Ciudad requerida",
+      "stateeu": "Estado requerido",
+      "zipeu": "Còdigo postal requerido"
+    },
+    "available": "Disponibles: ",
+    "available_message": "Sola quedan",
+    "available_message2": "Reduce la cantidad para continuar",
+    "weight": "Peso: ",
+    "weight_unit": " lb (por unidad)",
+    "provider": "Proveedor: ",
+    "quoting": "Calculando envío…",
+    "quote_not_available": "Envío no disponible para esta dirección.",
+    "quote_estimated": "Envío estimado: ",
+    "provider_unavailable": "Proveedor no disponible: ",
+    "shipping_breakdown_title": "Desglose de envío por proveedor",
+    "shipping_breakdown_weight_pre": "(peso ",
+    "shipping_breakdown_weight_post": " lb)"
+  },
+  "success": {
+    "title": "Pago exitoso",
+    "message": "Gracias por tu compra. Se ha recibido tu pago correctamente.",
+    "continue": "Volver al inicio",
+    "confirmingBody": "Hemos recibido tu pedido y estamos confirmando el pago con el proveedor. Esto puede tardar 1–2 minutos.",
+    "confirmingTitle": "Estamos confirmando tu pago...",
+    "view_orders": "Ver mis pedidos",
+    "view_order": "Ver pedido",
+    "order_number": "Orden #",
+    "orders_created": "Órdenes creadas",
+    "see_details": "Ver detalles",
+    "confirming_message": "Estamos verificando tu transacción. No cierres esta página."
+  },
+  "error": {
+    "title": "Error en el pago",
+    "message": "Hubo un problema al procesar tu pago. Inténtalo nuevamente.",
+    "retry": "Reintentar",
+    "home": "Inicio"
+  },
+  "categories": {
+    "title": "Compra por categoria",
+    "subtitle": "Encuentra lo que necesitas con un clic",
+    "noProducts": "Aún no hay productos en esta categoría.",
+    "list": {
+      "h24": "Entrega en 24 Horas",
+      "food": "Comida",
+      "clothing": "Ropa",
+      "medicine": "Medicinas",
+      "appliances": "Electrodomesticos",
+      "hygiene": "Salud y Belleza",
+      "technology": "Tecnologia"
+    }
+  },
+  "cart": {
+    "addToCart": "Agregar al carrito",
+    "added": "agregado al carrito",
+    "search": "Buscar producto...",
+    "login_required": "Debes iniciar sesión para agregar productos al carrito.",
+    "title": "Carrito de Compras",
+    "delete": "Eliminar",
+    "subtotal": "Subtotal",
+    "subtotaldetails": "El envío y el 3% de cargo por tarjeta se calculan en el checkout.",
+    "checkout": "Proceder al pago",
+    "continue": "Continuar comprando",
+    "empty": "Tu carrito está vacío."
+  },
+  "login": {
+    "title": "Iniciar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "submit": "Entrar",
+    "success": "Has iniciado sesión correctamente.",
+    "error": "Correo o contraseña incorrectos.",
+    "frgot": "¿Olvidaste tu contraseña?"
+  },
+  "register": {
+    "title": "Crear cuenta",
+    "first_name": "Nombre",
+    "last_name": "Apellido",
+    "submit": "Registrarse",
+    "error": "No se pudo crear la cuenta. Revisa la información ingresada."
+  },
+  "common": {
+    "loading": "Cargando...",
+    "required_fields": "Todos los campos son requeridos.",
+    "greeting": "Hola,",
+    "login": "Iniciar sesión",
+    "logout": "Salir de sesión",
+    "back": "Atrás",
+    "confirm_logout_title": "¿Cerrar sesión?",
+    "confirm_logout_message": "Tendrás que iniciar sesión de nuevo para continuar con la compra.",
+    "cancel": "Cancelar"
+  },
+  "spotlight": {
+    "title": "Populares ahora",
+    "subtitle": "Compra directo sin navegar categorías",
+    "addToCart": "Agregar al carrito",
+    "added": "agregado al carrito",
+    "login_required": "Debes iniciar sesión para agregar productos a tu carrito.",
+    "viewAll": "Ver todo"
+  },
+  "bestsellers": {
+    "title": "Más vendidos",
+    "subtitle": "Lo que más compran últimamente"
+  },
+  "location_banner": {
+    "location_selected": "Destino seleccionado",
+    "location_selected_change": "Cambiar destino",
+    "location_select": "Selecciona un destino",
+    "location_select_required": "Selecciona Provincia y Municipio para continuar.",
+    "location_select_required1": "Aún no has seleccionado un destino.",
+    "location_municipality": "Municipio",
+    "location_city": "Ciudad",
+    "where_title": "¿Dónde quieres recibir tus productos?",
+    "where_subtitle": "Selecciona el país y, si es Cuba, la provincia y el municipio.",
+    "country_us": "Estados Unidos",
+    "country_cu": "Cuba",
+    "province_placeholder": "Provincia…",
+    "municipality_placeholder": "Municipio…",
+    "save": "Guardar",
+    "change": "Cambiar"
+  },
+  "orders": {
+    "title": "Mis pedidos",
+    "empty": "No hay pedidos todavía.",
+    "login_needed": "Debes iniciar sesión para ver tus pedidos.",
+    "see_detail": "Ver detalle",
+    "continue_shopping": "Seguir comprando",
+    "order_label": "Orden",
+    "method_label": "Método",
+    "estimated": "estimado",
+    "errors": {
+      "load_failed": "No se pudo cargar el historial.",
+      "network": "Error de red."
+    },
+    "statuses": {
+      "pending": "Pendiente",
+      "paid": "Pagado",
+      "failed": "Fallido",
+      "delivered": "Entregado",
+      "requires_action": "Acción requerida",
+      "canceled": "Cancelado"
+    },
+    "product_fallback": "Producto"
+  },
+  "order_detail": {
+    "error_title": "Error",
+    "not_found": "No encontramos la orden.",
+    "back_to_orders": "Volver a mis pedidos",
+
+    "order_label": "Orden",
+    "payment_title": "Pago",
+    "shipping_title": "Envío",
+    "delivery_title": "Entrega",
+    "products_title": "Productos",
+    "back_to_history": "Volver al historial",
+    "continue_shopping": "Seguir comprando",
+
+    "labels": {
+      "provider": "Proveedor",
+      "mode": "Modo",
+      "state": "Estado",
+      "authorization": "Autorización",
+      "reference": "Referencia",
+      "utn": "UTN",
+      "card": "Tarjeta",
+      "card_generic": "Tarjeta",
+      "invoice": "Factura",
+      "transaction": "Transacción",
+      "checkout_session": "Sesión de checkout",
+      "paid_on": "Pagado el",
+      "view_payment_link": "Ver enlace del pago",
+
+      "recipient": "Destinatario",
+      "email": "Email",
+      "phone": "Teléfono",
+      "address": "Dirección",
+      "city_state_zip": "Ciudad/Estado/ZIP",
+      "municipality_province": "Municipio/Provincia",
+      "ci": "CI",
+
+      "delivery_state": "Estado de entrega",
+      "delivered": "Entregado",
+      "delivery_date": "Fecha de entrega",
+      "notes": "Notas",
+      "view_delivery_photo": "Ver foto de entrega",
+      "view_full_size": "Ver en tamaño completo",
+      "no_photo": "Sin foto adjunta."
+    },
+
+    "totals": {
+      "subtotal": "Subtotal (artículos):",
+      "taxes": "Impuestos:",
+      "shipping": "Envío:",
+      "total_wo_fee": "Total (sin fee):",
+      "card_fee_label": "Cargo por tarjeta",
+      "total_with_card": "Total con tarjeta:"
+    },
+
+    "product_fallback": "Producto",
+
+    "errors": {
+      "load_failed": "No se pudo cargar la orden.",
+      "network": "Error de red."
+    },
+
+    "statuses": {
+      "pending": "Pendiente",
+      "paid": "Pagado",
+      "failed": "Fallido",
+      "delivered": "Entregado",
+      "requires_action": "Requiere acción",
+      "canceled": "Cancelado"
+    }
+  },
+  "card_modal": {
+    "title": "Pagar con tarjeta",
+    "total_label": "Total:",
+    "disclaimer": "No guardamos los datos de tu tarjeta.",
+    "fields": {
+      "card_number": "Número de tarjeta",
+      "month": "Mes",
+      "year": "Año",
+      "cvv": "CVV",
+      "zip": "ZIP",
+      "name_on_card": "Nombre en la tarjeta",
+      "name_on_card_placeholder": "Como aparece en la tarjeta"
+    },
+    "placeholders": {
+      "card_number": "4111 1111 1111 1111",
+      "month": "MM",
+      "year": "YY",
+      "cvv3": "123",
+      "cvv4": "1234",
+      "zip": "33101"
+    },
+    "actions": {
+      "cancel": "Cancelar",
+      "pay_now": "Pagar ahora",
+      "processing": "Procesando…"
+    },
+    "errors": {
+      "card_number_invalid": "Número de tarjeta inválido",
+      "month_invalid": "Mes inválido (01–12)",
+      "year_invalid": "Año inválido (dos dígitos)",
+      "year_expired": "Año vencido",
+      "expired": "Tarjeta vencida",
+      "cvv_len": "CVV debe tener 3–4 dígitos",
+      "cvv_len_amex": "CVV debe tener 4 dígitos",
+      "zip_invalid": "ZIP inválido",
+      "name_required": "Nombre requerido"
+    }
   }
-},
-"success": {
-  "title": "Pago exitoso",
-  "message": "Gracias por tu compra. Se ha recibido tu pago correctamente.",
-  "continue": "Volver al inicio"
-},
-"error": {
-  "title": "Error en el pago",
-  "message": "Hubo un problema al procesar tu pago. Inténtalo nuevamente.",
-  "retry": "Reintentar",
-  "home": "Inicio"
-},
-"categories": {
-  "title": "Compra por categoria",
-  "subtitle": "Encuentra lo que necesitas con un clic",
-  "noProducts": "Aún no hay productos en esta categoría.",
-  "list": {
-    "food": "Comida",
-    "clothing": "Ropa",
-    "medicine": "Medicinas",
-    "appliances": "Electrodomesticos",
-    "hygiene": "Higiene",
-    "technology": "Tecnologia"
-  }
-},
-"cart": {
-  "addToCart": "Agregar al carrito",
-  "added": "agregado al carrito",
-  "search": "Buscar producto...",
-  "login_required": "Debes iniciar sesión para agregar productos al carrito.",
-  "title": "Carrito de Compras",
-  "delete": "Eliminar",
-  "subtotal": "Subtotal",
-  "subtotaldetails": "Envío e impuestos calculados al pagar",
-  "checkout": "Finalizar compra",
-  "continue": "Continuar comprando",
-  "empty": "Tu carrito está vacío."
-},
-"login": {
-  "title": "Iniciar sesión",
-  "email": "Correo electrónico",
-  "password": "Contraseña",
-  "submit": "Entrar",
-  "success": "Has iniciado sesión correctamente.",
-  "error": "Correo o contraseña incorrectos."
-},
-"register": {
-  "title": "Crear cuenta",
-  "first_name": "Nombre",
-  "last_name": "Apellido",
-  "submit": "Registrarse",
-  "error": "No se pudo crear la cuenta. Revisa la información ingresada."
-},
-"common": {
-  "loading": "Cargando...",  
-  "required_fields": "Todos los campos son requeridos.",
-  "greeting": "Hola,",
-  "login": "Iniciar sesión",
-  "logout": "Salir de sesión",
-  "back": "Atrás",
-  "confirm_logout_title": "¿Cerrar sesión?",
-  "confirm_logout_message": "Tendrás que iniciar sesión de nuevo para continuar con la compra.",
-  "cancel": "Cancelar"
-}
 }

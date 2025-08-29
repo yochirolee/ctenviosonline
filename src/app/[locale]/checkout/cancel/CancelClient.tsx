@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { Dict } from '@/types/Dict'
 
 export default function CancelClient({
@@ -12,27 +12,39 @@ export default function CancelClient({
   locale: string
 }) {
   const router = useRouter()
+  const search = useSearchParams()
+
+  // opcionalmente muestra info si la pasas en la URL:
+  // /fail?orderId=123&msg=Tarjeta%20rechazada
+  const orderId = search.get('orderId') || ''
+  const msg = search.get('msg') || ''
 
   useEffect(() => {
-    // Limpieza de datos temporales
-    localStorage.removeItem('cart')
-    localStorage.removeItem('formData')
-    localStorage.removeItem('shippingInfo')
+    // No borres carrito ni shipping para que el usuario pueda reintentar.
+    // Solo limpia flags temporales si tu flujo los usa.
     localStorage.removeItem('cart_completed')
   }, [])
 
-  const handleRetry = () => {
-    router.push(`/${locale}/checkout`)
-  }
-
-  const handleHome = () => {
-    router.push(`/${locale}`)
-  }
+  const handleRetry = () => router.push(`/${locale}/checkout`)
+  const handleHome = () => router.push(`/${locale}`)
 
   return (
     <div className="p-6 text-center">
       <h1 className="text-3xl font-bold text-red-600">{dict.error.title}</h1>
+
       <p className="mt-4">{dict.error.message}</p>
+
+      {/* Mensaje detallado opcional */}
+      {orderId && (
+        <p className="mt-2 text-sm text-gray-600">
+          #{orderId}
+        </p>
+      )}
+      {msg && (
+        <p className="mt-2 text-sm text-gray-600">
+          {msg}
+        </p>
+      )}
 
       <div className="mt-6 flex flex-col sm:flex-row justify-center gap-4">
         <button
@@ -49,6 +61,13 @@ export default function CancelClient({
           {dict.error.home}
         </button>
       </div>
+
+      <p className="mt-4 text-sm text-gray-500">
+        {/* Hint para UX: mantenemos carrito y envío */}
+        {locale === 'es'
+          ? 'Hemos conservado los artículos de tu carrito y tu información de envío para que puedas reintentar rápidamente.'
+          : 'We kept your cart items and shipping info so you can retry quickly.'}
+      </p>
     </div>
   )
 }

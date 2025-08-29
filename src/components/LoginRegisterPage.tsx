@@ -8,8 +8,8 @@ import { toast } from 'sonner'
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 type Dict = {
-  login: { title: string; email: string; password: string; submit: string; success: string; error: string }
-  register: { title: string; first_name: string; last_name: string; submit: string; error: string }
+  login: { title: string; email: string; password: string; submit: string; success: string; error: string; forgot: string }
+  register: { title: string; first_name: string; last_name: string; submit: string; error: string; /* estos dos pueden no existir en el dict */ phone?: string; address?: string }
   common: { loading: string; required_fields?: string }
 }
 
@@ -26,7 +26,15 @@ export default function LoginRegisterPage({ dict, locale }: { dict: Dict; locale
   const router = useRouter()
   const { refreshCustomer } = useCustomer()
   const [tab, setTab] = useState<'login' | 'register'>('login')
-  const [form, setForm] = useState({ email: '', password: '', first_name: '', last_name: '' })
+
+  const [form, setForm] = useState({
+    email: '',
+    password: '',
+    first_name: '',
+    last_name: '',
+    phone: '',
+    address: '',
+  })
   const [loading, setLoading] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,7 +63,10 @@ export default function LoginRegisterPage({ dict, locale }: { dict: Dict; locale
 
       localStorage.setItem('token', data.token)
       await refreshCustomer()
-      toast.success(dict.login.success)
+
+      // 👉 bandera para abrir el selector en la siguiente página
+      try { sessionStorage.setItem('openLocationOnNextPage', '1') } catch { }
+      //toast.success(dict.login.success)
       router.push(`/${locale}`)
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, dict.login.error))
@@ -79,9 +90,10 @@ export default function LoginRegisterPage({ dict, locale }: { dict: Dict; locale
         body: JSON.stringify({
           email: form.email,
           password: form.password,
-          address: '',
-          first_name: form.first_name,
-          last_name: form.last_name,
+          address: form.address || null,
+          phone: form.phone || null,
+          first_name: form.first_name || null,
+          last_name: form.last_name || null,
         }),
       })
       const regText = await regRes.text()
@@ -101,7 +113,8 @@ export default function LoginRegisterPage({ dict, locale }: { dict: Dict; locale
 
       localStorage.setItem('token', loginData.token)
       await refreshCustomer()
-      toast.success(dict.login.success)
+      try { sessionStorage.setItem('openLocationOnNextPage', '1') } catch {}
+      //toast.success(dict.login.success)
       router.push(`/${locale}`)
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, dict.register.error))
@@ -132,10 +145,13 @@ export default function LoginRegisterPage({ dict, locale }: { dict: Dict; locale
           <>
             <input type="text" name="first_name" value={form.first_name} onChange={handleChange} placeholder={dict.register.first_name} className="w-full border rounded px-3 py-2" />
             <input type="text" name="last_name" value={form.last_name} onChange={handleChange} placeholder={dict.register.last_name} className="w-full border rounded px-3 py-2" />
+            <input type="tel" name="phone" value={form.phone} onChange={handleChange} placeholder={dict.register.phone ?? 'Teléfono'} className="w-full border rounded px-3 py-2" />
+            <input type="text" name="address" value={form.address} onChange={handleChange} placeholder={dict.register.address ?? 'Dirección'} className="w-full border rounded px-3 py-2" />
           </>
         )}
         <input type="email" name="email" value={form.email} onChange={handleChange} placeholder={dict.login.email} className="w-full border rounded px-3 py-2" />
         <input type="password" name="password" value={form.password} onChange={handleChange} placeholder={dict.login.password} className="w-full border rounded px-3 py-2" />
+
         <button
           onClick={tab === 'login' ? handleLogin : handleRegister}
           disabled={loading}
@@ -143,6 +159,18 @@ export default function LoginRegisterPage({ dict, locale }: { dict: Dict; locale
         >
           {loading ? dict.common.loading : tab === 'login' ? dict.login.submit : dict.register.submit}
         </button>
+
+        {tab === 'login' && (
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => router.push(`/${locale}/forgot-password`)}
+              className="text-sm text-green-700 hover:text-green-800 underline underline-offset-2"
+            >
+              {dict?.login?.forgot ?? 'Forgot your password?'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,12 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
-
-type Stat = {
-  name: string
-  value: string
-}
-
+type Stat = { name: string; value: string }
 type About = {
   title: string
   description: string
@@ -14,47 +8,45 @@ type About = {
   description3: string
   stats: Stat[]
 }
-
-type Dict = {
-  about: About
-}
-
-type Props = {
-  dict: Dict
-}
+type Dict = { about: About }
+type Props = { dict: Dict }
 
 export default function AboutWithStats({ dict }: Props) {
-  const about = dict.about
-  const stats = about.stats
+  const { about } = dict
 
   return (
-    <div id="about" className="relative isolate overflow-visible bg-green-900 py-24 sm:py-32">
-      <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: 'easeOut' }}
-        viewport={{ once: true }}
-        className="mx-auto max-w-7xl px-6 lg:px-8"
-      >
-        <div className="mx-auto max-w-2xl lg:mx-0">
-          <h2 className="text-5xl font-semibold tracking-tight text-white sm:text-7xl">{about.title}</h2>
-          <p className="mt-8 text-lg font-medium text-left text-green-200 sm:text-xl/8">
+    <div id="about" className="relative isolate bg-green-900 py-12 sm:py-16">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-white">
+            {about.title}
+          </h2>
+
+          <p className="mt-3 text-base sm:text-lg leading-relaxed text-green-100">
             {about.description}{' '}
-            <span className="font-semibold text-lime-300">{about.description2}</span>{' '}
+            <span className="font-semibold text-green-600">{about.description2}</span>{' '}
             {about.description3}
           </p>
         </div>
-        <div className="mx-auto mt-10 max-w-2xl lg:mx-0 lg:max-w-none">
-          <dl className="mt-16 grid grid-cols-2 gap-8 sm:mt-20 sm:grid-cols-2 lg:grid-cols-4">
-            {stats.map((stat) => (
-              <div key={stat.name} className="flex flex-col-reverse gap-1">
-                <dt className="text-base/7 text-white">{stat.name}</dt>
-                <dd className="text-4xl font-semibold tracking-tight text-white">{stat.value}</dd>
+
+        <div className="mx-auto mt-8 sm:mt-10 max-w-3xl lg:max-w-5xl">
+          <dl className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
+            {about.stats.map((stat) => (
+              <div
+                key={stat.name}
+                className="rounded-xl bg-white/5 border border-white/10 p-3 sm:p-4"
+              >
+                <dd className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">
+                  {stat.value}
+                </dd>
+                <dt className="mt-1 text-xs sm:text-sm uppercase tracking-wide text-green-200/90">
+                  {stat.name}
+                </dt>
               </div>
             ))}
           </dl>
         </div>
-      </motion.div>
+      </div>
     </div>
   )
 }

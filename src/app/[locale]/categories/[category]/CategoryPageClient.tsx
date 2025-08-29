@@ -4,15 +4,18 @@ import { useCart } from '@/context/CartContext'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { checkCustomerAuth } from '@/lib/auth'
+import { getProductsByCategory, type DeliveryLocation } from '@/lib/products'
+import { useLocation } from '@/context/LocationContext'
 
 type Product = {
-  id: number         
+  id: number
   name: string
-  price: number        
+  price: number        // USD (ej: 100.00)
   imageSrc: string
   quantity?: number
+  description?: string
 }
 
 type Dict = {
@@ -22,49 +25,78 @@ type Dict = {
     search: string
     login_required?: string
   }
-  common?: {
-    back: string
-  }
-  categories: {
-    list: Record<string, string>
-    noProducts: string
+  common?: { back: string }
+  categories: { list: Record<string, string>; noProducts: string }
+  location_banner: {
+    location_selected: string
+    location_selected_change: string
+    country_us: string
+    country_cu: string
+    province_placeholder: string
+    municipality_placeholder: string
+    change: string
+    location_municipality: string
+    location_city: string
   }
 }
 
 type Props = {
   params: { locale: string; category: string }
   dict: Dict
-  products: Product[]
+  products: Product[]                 // productos iniciales del server (sin filtrar por ubicación)
 }
 
 export default function CategoryPageClient({ params, dict, products }: Props) {
   const { addItem } = useCart()
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
+  const { location, clearLocation } = useLocation()
+
+  // Items que se muestran en la UI (inicialmente los que vienen del server)
+  const [items, setItems] = useState<Product[]>(products)
+  const [loading, setLoading] = useState(false)
+
+  // Cuando cambia la ubicación, recargamos desde el backend con ?country=(...).
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        setLoading(true)
+        const list = await getProductsByCategory(params.category, location as DeliveryLocation | undefined)
+        if (!cancelled) setItems(list as any)
+      } catch {
+        if (!cancelled) setItems(products)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [params.category, location?.country, location?.province, location?.municipality, location?.area_type])
 
   const handleAddToCart = async (product: Product) => {
     const isLoggedIn = await checkCustomerAuth()
-  
     if (!isLoggedIn) {
       toast.error(dict.cart?.login_required || 'You must be logged in to add products to your cart.')
       router.push(`/${params.locale}/login`)
       return
     }
-  
     try {
-      await addItem(Number(product.id), 1, product.price) // 👈 clave
+      await addItem(Number(product.id), 1)
       toast.success(`${product.name} ${dict.cart?.added || 'added to cart'}`)
     } catch {
       toast.error('Error adding product to cart')
     }
   }
-  
 
-  const filteredProducts = products.filter(
-    (product) =>
-      typeof product.name === 'string' &&
-      product.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredProducts = useMemo(() => {
+    const s = searchTerm.trim().toLowerCase()
+    const base = items || []
+    if (!s) return base
+    return base.filter((p) => typeof p.name === 'string' && p.name.toLowerCase().includes(s))
+  }, [items, searchTerm])
+
+  const fmt = new Intl.NumberFormat(params.locale || 'es', { style: 'currency', currency: 'USD' })
 
   return (
     <div className="p-4">
@@ -78,6 +110,34 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
         </span>
       </button>
 
+      {/* Faja informativa de ubicación actual (si existe) */}
+      {location && (
+        <div className="mb-3 text-xs text-gray-700">
+          {dict.location_banner.location_selected}:{' '}
+          <span className="font-medium">
+            {location.country === 'US'
+              ? dict.location_banner.country_us
+              : `${dict.location_banner.country_cu} · ${location.province || dict.location_banner.province_placeholder}${location.municipality ? ` / ${location.municipality}` : ''
+              } · ${location.area_type === 'municipio'
+                ? dict.location_banner.location_municipality
+                : dict.location_banner.location_city
+              }`}
+          </span>
+          {' · '}
+          <button
+            type="button"
+            onClick={() => {
+              try { window.dispatchEvent(new CustomEvent('location:open')) } catch { }
+            }}
+            className="underline text-emerald-700 hover:text-emerald-800"
+            title={dict.location_banner.location_selected_change}
+          >
+            {dict.location_banner.change}
+          </button>
+        </div>
+      )}
+
+
       <h1 className="text-2xl font-bold mb-2">
         {dict.categories.list[params.category as keyof typeof dict.categories.list] || params.category}
       </h1>
@@ -90,7 +150,9 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
         className="mb-4 w-full md:w-1/2 px-3 py-2 border rounded"
       />
 
-      {filteredProducts.length === 0 ? (
+      {loading ? (
+        <p className="text-gray-500">Cargando productos…</p>
+      ) : filteredProducts.length === 0 ? (
         <p className="text-gray-500">{dict.categories.noProducts || 'No products found.'}</p>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -104,8 +166,18 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
               <h2 className="text-base text-center font-semibold text-gray-800 line-clamp-2 mb-1">
                 {product.name}
               </h2>
+
+              {/* Descripción breve */}
+              {product.description ? (
+                <p className="text-xs text-gray-600 line-clamp-2 mb-2 text-center px-1">
+                  {product.description}
+                </p>
+              ) : (
+                <div className="h-1" />
+              )}
+
               <p className="text-green-700 text-center font-semibold text-sm mb-2">
-                ${(product.price / 100).toFixed(2)}
+                {fmt.format(product.price)}
               </p>
               <button
                 onClick={() => handleAddToCart(product)}

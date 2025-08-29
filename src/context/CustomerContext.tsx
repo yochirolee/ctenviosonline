@@ -5,11 +5,19 @@ import { usePathname, useRouter } from 'next/navigation'
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
+type CustomerMetadata = {
+  role?: 'admin' | 'owner' | 'delivery' | ''
+  owner_id?: number | null
+  // otros campos opcionales que puedas guardar
+  [key: string]: string | number | boolean | null | undefined
+}
+
 type Customer = {
   id: number
   email: string
   first_name?: string
   last_name?: string
+  metadata?: CustomerMetadata | null
 }
 
 type CustomerContextType = {

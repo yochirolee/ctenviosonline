@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /es/admin/
+Disallow: /en/admin/
+Disallow: /delivery/
+Disallow: /es/delivery/
+Disallow: /en/delivery/

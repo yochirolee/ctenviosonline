@@ -12,100 +12,155 @@
     "view": "View Our Products"
   },
   "about": {
-  "title": "About Us",
-  "description": "Welcome to ",
-  "description2": "CTEnvios Online",
-  "description3": ", your digital store for sending packages to Cuba easily, quickly, and securely. We created this platform so you can manage your shipments from the comfort of your home, with full transparency, real-time tracking, and convenient payment options. Our goal is to help you stay connected with your loved ones by offering a reliable and accessible service from anywhere in the United States. At CTEnvios Online, making your delivery experience simple is our top priority.",
-  "stats": [
-    { "name": "Registered Users", "value": "5,000+" },
-    { "name": "Orders Processed", "value": "20,000+" },
-    { "name": "On-Time Delivery Rate", "value": "98%" },
-    { "name": "24/7 Support", "value": "Yes" }
-  ]
+    "title": "About Us",
+    "description": "Welcome to ",
+    "description2": "CTEnvios Online",
+    "description3": ", your digital store for sending packages to Cuba easily, quickly, and securely. We created this platform so you can manage your shipments from the comfort of your home, with full transparency, real-time tracking, and convenient payment options. Our goal is to help you stay connected with your loved ones by offering a reliable and accessible service from anywhere in the United States. At CTEnvios Online, making your delivery experience simple is our top priority.",
+    "stats": [
+      {
+        "name": "Registered Users",
+        "value": "5,000+"
+      },
+      {
+        "name": "Orders Processed",
+        "value": "20,000+"
+      },
+      {
+        "name": "On-Time Delivery Rate",
+        "value": "98%"
+      },
+      {
+        "name": "24/7 Support",
+        "value": "Yes"
+      }
+    ]
   },
-"faq": {
-  "label": "F.A.Q",
-  "title1": "Frequently Asked",
-  "title2": "Questions",
-  "questions": [
-    {
-      "q": "How can I place an order?",
-      "a": "You can place an order directly through our website by selecting the desired product or service, filling out the shipment details, and completing the payment online."
+  "faq": {
+    "label": "F.A.Q",
+    "title1": "Frequently Asked",
+    "title2": "Questions",
+    "questions": [
+      {
+        "q": "How can I place an order?",
+        "a": "You can place an order directly through our website by selecting the desired product or service, filling out the shipment details, and completing the payment online."
+      },
+      {
+        "q": "What types of shipments do you offer?",
+        "a": "We offer both air and sea shipments to Cuba, depending on the type of package and delivery urgency."
+      },
+      {
+        "q": "How can I track my shipment?",
+        "a": "Once your order is processed, you will receive a tracking number that you can use to monitor your shipment's progress in real time."
+      },
+      {
+        "q": "What payment methods do you accept?",
+        "a": "We accept credit/debit cards and other secure online payment options."
+      },
+      {
+        "q": "Can I send packages to any province in Cuba?",
+        "a": "Yes, we deliver to all provinces in Cuba. Some remote areas may have extended delivery times."
+      },
+      {
+        "q": "How long does delivery take?",
+        "a": "Delivery time depends on the shipping method. Air shipments usually take 7–15 business days, while sea shipments may take 4–6 weeks."
+      },
+      {
+        "q": "Is my personal information secure?",
+        "a": "Yes, your data is protected with secure encryption protocols and is never shared with third parties."
+      }
+    ]
+  },
+  "footer": {
+    "subheading": "Shop quality products and have them delivered right to your door.",
+    "quickLinksTitle": "Quick Links",
+    "addressLabel": "Address",
+    "hoursLabel": "Hours",
+    "emailLabel": "Email",
+    "phoneLabel": "Phone",
+    "contactTitle": "Contact Us",
+    "copyright": "All rights reserved."
+  },
+  "checkout": {
+    "description": "Review your order before completing the payment.",
+    "product": "Product",
+    "quantity": "Quantity",
+    "total": "Total",
+    "back": "Back",
+    "title": "Order Summary",
+    "shipping": "Shipping Information",
+    "shipping1": "We will use this information to quote and ship your order.",
+    "payment": "Payment Method",
+    "subtotal": "Subtotal",
+    "empty": "Your cart is empty.",
+    "first_name": "First Name",
+    "last_name": "Last Name",
+    "ci": "ID Number",
+    "addressExact": "Exact address",
+    "addressExact_placeholder": "Street, number, between streets, apartment, references…",
+    "instructions_label": "Delivery instructions (optional)",
+    "phone": "Phone (the +53 is already included)",
+    "phoneeu": "Phone (the +1 is already included)",
+    "email": "Email",
+    "province": "Province",
+    "municipality": "Municipality",
+    "address": "Exact Address",
+    "address1eu": "Exact Address 1",
+    "address2eu": "Exact Address 2",
+    "cityeu": "City",
+    "stateeu": "State",
+    "zipeu": "Zip Code",
+    "instructions": "Delivery instructions (optional)",
+    "pay": "Pay with external link",
+    "directPay": "Pay with card",
+    "review": "Review your order before completing the payment.",
+    "shippingcuba": "Shipping to Cuba",
+    "shippingeu": "Shipping to the United States",
+    "tax": "Tax",
+    "shipping_label": "Shipping",
+    "card_fee_label": "Card fee",
+    "card_fee_note": "* Estimated total with card fee.",
+    "total_with_card": "Total with card",
+    "errors": {
+      "nombre": "First name is required",
+      "apellidos": "Last name is required",
+      "ci": "ID must have 11 digits",
+      "telefono": "Must have exactly 8 digits",
+      "telefonoeu": "Must have exactly 10 digits",
+      "email": "Invalid email",
+      "provincia": "Province is required",
+      "municipio": "Municipality is required",
+      "address": "Exact address is required",
+      "address1eu": "Exact address 1 is required",
+      "cityeu": "City is required",
+      "stateeu": "State is required",
+      "zipeu": "Zip is required"
     },
-    {
-      "q": "What types of shipments do you offer?",
-      "a": "We offer both air and sea shipments to Cuba, depending on the type of package and delivery urgency."
-    },
-    {
-      "q": "How can I track my shipment?",
-      "a": "Once your order is processed, you will receive a tracking number that you can use to monitor your shipment's progress in real time."
-    },
-    {
-      "q": "What payment methods do you accept?",
-      "a": "We accept credit/debit cards and other secure online payment options."
-    },
-    {
-      "q": "Can I send packages to any province in Cuba?",
-      "a": "Yes, we deliver to all provinces in Cuba. Some remote areas may have extended delivery times."
-    },
-    {
-      "q": "How long does delivery take?",
-      "a": "Delivery time depends on the shipping method. Air shipments usually take 7–15 business days, while sea shipments may take 4–6 weeks."
-    },
-    {
-      "q": "Is my personal information secure?",
-      "a": "Yes, your data is protected with secure encryption protocols and is never shared with third parties."
-    }
-  ]
-},
-
-"footer": {
-  "subheading": "Shop quality products and have them delivered right to your door.",
-  "quickLinksTitle": "Quick Links",
-  "addressLabel": "Address",
-  "hoursLabel": "Hours",
-  "emailLabel": "Email",
-  "phoneLabel": "Phone",
-  "contactTitle": "Contact Us",
-  "copyright": "All rights reserved."
-},
-"checkout": {
-  "description": "Review your order before completing the payment.",
-  "product": "Product",
-  "quantity": "Quantity",
-  "total": "Total",
-  "back": "Back",
-  "title": "Order Summary",
-  "shipping": "Shipping Information",
-  "payment": "Payment Method",
-  "subtotal": "Subtotal",
-  "empty": "Your cart is empty.",
-  "first_name": "First Name",
-  "last_name": "Last Name",
-  "ci": "ID Number",
-  "phone": "Phone (the +53 is already included)",
-  "email": "Email",
-  "province": "Province",
-  "municipality": "Municipality",
-  "address": "Exact Address",
-  "instructions": "Delivery instructions (optional)",
-  "pay": "Pay",
-  "review": "Review your order before completing the payment.",
-  "errors": {
-    "nombre": "First name is required",
-    "apellidos": "Last name is required",
-    "ci": "ID must have 11 digits",
-    "telefono": "Must have exactly 8 digits",
-    "email": "Invalid email",
-    "provincia": "Province is required",
-    "municipio": "Municipality is required",
-    "address": "Exact address is required"
-  }
-},
+    "available": "Available: ",
+    "available_message": "Only available",
+    "available_message2": "Reduce the amount to continue",
+    "weight": "Weight: ",
+    "weight_unit": " lb (per unit)",
+    "provider": "Provider: ",
+    "quoting": "Calculating shipping…",
+    "quote_not_available": "Shipping not available for this address.",
+    "quote_estimated": "Estimated shipping: ",
+    "provider_unavailable": "Provider not available: ",
+    "shipping_breakdown_title": "Shipping breakdown by provider",
+    "shipping_breakdown_weight_pre": "(weight ",
+    "shipping_breakdown_weight_post": " lb)"
+  },
   "success": {
     "title": "Payment Successful",
     "message": "Thank you for your purchase. Your payment has been received.",
-    "continue": "Return to Home"
+    "continue": "Return to Home",
+    "confirmingBody": "We’ve received your order and are confirming the payment with the provider. This may take 1–2 minutes.",
+    "confirmingTitle": "We’re confirming your payment...",
+    "view_orders": "View my orders",
+    "view_order": "View order",
+    "order_number": "Orden #",
+    "see_details": "View details",
+    "orders_created": "Created Orders",
+    "confirming_message": "We’re verifying your transaction. Do not close this page."
   },
   "error": {
     "title": "Payment Error",
@@ -114,55 +169,209 @@
     "home": "Home"
   },
   "categories": {
-  "title": "Shop by Category",
-  "subtitle": "Find what you need quickly",
-  "noProducts": "There are no products in this category yet.",
-  "list": {
-    "food": "Food",
-    "clothing": "Clothing",
-    "medicine": "Medicine",
-    "appliances": "Appliances",
-    "hygiene": "Hygiene",
-    "technology": "Technology"
+    "title": "Shop by Category",
+    "subtitle": "Find what you need quickly",
+    "noProducts": "There are no products in this category yet.",
+    "list": {
+      "h24": "24 H Delivery",
+      "food": "Food",
+      "clothing": "Clothing",
+      "medicine": "Medicine",
+      "appliances": "Appliances",
+      "hygiene": "Health & Beauty",
+      "technology": "Technology"
+    }
+  },
+  "cart": {
+    "addToCart": "Add to Cart",
+    "added": "added to the cart",
+    "search": "Search product...",
+    "login_required": "You must be logged in to add products to your cart.",
+    "title": "Shopping Cart",
+    "delete": "Remove",
+    "subtotal": "Subtotal",
+    "subtotaldetails": "Shipping and the 3% card fee are calculated at checkout.",
+    "checkout": "Proceed to Checkout",
+    "continue": "Continue shopping",
+    "empty": "Your cart is empty."
+  },
+  "login": {
+    "title": "Log In",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign In",
+    "success": "You have successfully logged in.",
+    "error": "Invalid email or password.",
+    "forgot": "Forgot your password?"
+  },
+  "register": {
+    "title": "Register",
+    "first_name": "First Name",
+    "last_name": "Last Name",
+    "submit": "Create Account",
+    "error": "Registration failed. Please check your information."
+  },
+  "common": {
+    "loading": "Loading...",
+    "required_fields": "All fields are required",
+    "greeting": "Hello,",
+    "login": "Log In",
+    "logout": "Log out",
+    "back": "Back",
+    "confirm_logout_title": "Log out?",
+    "confirm_logout_message": "You will need to log in again to continue shopping.",
+    "cancel": "Cancel"
+  },
+  "spotlight": {
+    "title": "Popular right now",
+    "subtitle": "Buy directly without browsing categories",
+    "addToCart": "Add to Cart",
+    "added": "added to the cart",
+    "login_required": "You must be logged in to add products to your cart.",
+    "viewAll": "View all"
+  },
+  "bestsellers": {
+    "title": "Best Sellers",
+    "subtitle": "What people loved recently"
+  },
+  "location_banner": {
+    "location_selected": "Location selected",
+    "location_selected_change": "Change location",
+    "location_select": "Select a location",
+    "location_select_required": "Select province and municipality to continue.",
+    "location_select_required1": "You have not selected a destiny yet",
+    "location_municipality": "Municipality",
+    "location_city": "City",
+    "where_title": "Where do you want to receive your products?",
+    "where_subtitle": "Select the country and, if Cuba, the province and municipality.",
+    "country_us": "United States",
+    "country_cu": "Cuba",
+    "province_placeholder": "Province…",
+    "municipality_placeholder": "Municipality…",
+    "save": "Save",
+    "change": "Change"
+  },
+  "orders": {
+    "title": "My orders",
+    "empty": "No orders yet.",
+    "login_needed": "You must log in to view your orders.",
+    "see_detail": "See details",
+    "continue_shopping": "Continue shopping",
+    "order_label": "Order",
+    "method_label": "Method",
+    "estimated": "estimated",
+    "errors": {
+      "load_failed": "Could not load order history.",
+      "network": "Network error."
+    },
+    "statuses": {
+      "pending": "Pending",
+      "paid": "Paid",
+      "failed": "Failed",
+      "delivered": "Delivered",
+      "requires_action": "Requires action",
+      "canceled": "Canceled"
+    },
+    "product_fallback": "Product"
+  },
+  "order_detail": {
+    "error_title": "Error",
+    "not_found": "We couldn't find the order.",
+    "back_to_orders": "Back to my orders",
+    "order_label": "Order",
+    "payment_title": "Payment",
+    "shipping_title": "Shipping",
+    "delivery_title": "Delivery",
+    "products_title": "Products",
+    "back_to_history": "Back to history",
+    "continue_shopping": "Continue shopping",
+    "labels": {
+      "provider": "Provider",
+      "mode": "Mode",
+      "state": "Status",
+      "authorization": "Authorization",
+      "reference": "Reference",
+      "utn": "UTN",
+      "card": "Card",
+      "card_generic": "Card",
+      "invoice": "Invoice",
+      "transaction": "Transaction",
+      "checkout_session": "Checkout session",
+      "paid_on": "Paid on",
+      "view_payment_link": "View payment link",
+      "recipient": "Recipient",
+      "email": "Email",
+      "phone": "Phone",
+      "address": "Address",
+      "city_state_zip": "City/State/ZIP",
+      "municipality_province": "Municipality/Province",
+      "ci": "ID (CI)",
+      "delivery_state": "Delivery status",
+      "delivered": "Delivered",
+      "delivery_date": "Delivery date",
+      "notes": "Notes",
+      "view_delivery_photo": "View delivery photo",
+      "view_full_size": "View full size",
+      "no_photo": "No photo attached."
+    },
+    "totals": {
+      "subtotal": "Subtotal (items):",
+      "taxes": "Taxes:",
+      "shipping": "Shipping:",
+      "total_wo_fee": "Total (without fee):",
+      "card_fee_label": "Card fee",
+      "total_with_card": "Total with card:"
+    },
+    "product_fallback": "Product",
+    "errors": {
+      "load_failed": "The order could not be loaded.",
+      "network": "Network error."
+    },
+    "statuses": {
+      "pending": "Pending",
+      "paid": "Paid",
+      "failed": "Failed",
+      "delivered": "Delivered",
+      "requires_action": "Requires action",
+      "canceled": "Canceled"
+    }
+  },
+  "card_modal": {
+    "title": "Pay with card",
+    "total_label": "Total:",
+    "disclaimer": "We do not store your card data.",
+    "fields": {
+      "card_number": "Card number",
+      "month": "Month",
+      "year": "Year",
+      "cvv": "CVV",
+      "zip": "ZIP code",
+      "name_on_card": "Name on card",
+      "name_on_card_placeholder": "As it appears on the card"
+    },
+    "placeholders": {
+      "card_number": "4111 1111 1111 1111",
+      "month": "MM",
+      "year": "YY",
+      "cvv3": "123",
+      "cvv4": "1234",
+      "zip": "33101"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "pay_now": "Pay now",
+      "processing": "Processing…"
+    },
+    "errors": {
+      "card_number_invalid": "Invalid card number",
+      "month_invalid": "Invalid month (01–12)",
+      "year_invalid": "Invalid year (two digits)",
+      "year_expired": "Expired year",
+      "expired": "Card expired",
+      "cvv_len": "CVV must be 3–4 digits",
+      "cvv_len_amex": "CVV must be 4 digits",
+      "zip_invalid": "Invalid ZIP",
+      "name_required": "Name is required"
+    }
   }
-},
-"cart": {
-  "addToCart": "Add to Cart",
-  "added": "added to the cart",
-  "search": "Search product...",
-  "login_required": "You must be logged in to add products to your cart.",
-  "title": "Shopping Cart",
-  "delete": "Remove",
-  "subtotal": "Subtotal",
-  "subtotaldetails": "Shipping and taxes calculated at checkout",
-  "checkout": "Checkout",
-  "continue": "Continue shopping",
-  "empty": "Your cart is empty."
-},
-"login": {
-  "title": "Log In",
-  "email": "Email",
-  "password": "Password",
-  "submit": "Sign In",
-  "success": "You have successfully logged in.",
-  "error": "Invalid email or password."
-},
-"register": {
-  "title": "Register",
-  "first_name": "First Name",
-  "last_name": "Last Name",
-  "submit": "Create Account",
-  "error": "Registration failed. Please check your information."
-},
-"common": {
-  "loading": "Loading...",  
-  "required_fields": "All fields are required",
-  "greeting": "Hello,",
-  "login": "Log In",
-  "logout": "Log out",
-  "back": "Back",
-  "confirm_logout_title": "Log out?",
-  "confirm_logout_message": "You will need to log in again to continue shopping.",
-  "cancel": "Cancel"
-}
 }
