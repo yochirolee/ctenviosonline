@@ -7,7 +7,6 @@ import AdminTabs from '@/components/admin/AdminTabs'
 import { listAdminOrdersPaged, updateOrderStatus, type AdminOrderListItem, type AdminOrderPage } from '@/lib/adminApi'
 import { toast } from 'sonner'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import type { ReactNode } from 'react'
 
 type Filters = {
   q: string
@@ -163,8 +162,7 @@ export default function AdminOrdersPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Dirección</label>
-              <select className="input" value={filters.sort_dir} onChange={e => setFilters(s => ({ ...s, sort_by: e.target.value as Filters['sort_by'] }))}>
-
+              <select className="input" value={filters.sort_dir} onChange={(e) => setFilters(s => ({ ...s, sort_dir: e.target.value as Filters['sort_dir'] }))}>
                 <option value="desc">Desc</option>
                 <option value="asc">Asc</option>
               </select>
@@ -292,9 +290,9 @@ function Row({
         <span className={
           'px-2 py-0.5 rounded text-xs ' +
           (o.status === 'paid' ? 'bg-green-100 text-green-700'
-              : o.status === 'pending' ? 'bg-amber-100 text-amber-700'
-                : o.status === 'failed' ? 'bg-red-100 text-red-700'
-                  : 'bg-gray-100 text-gray-700')
+            : o.status === 'pending' ? 'bg-amber-100 text-amber-700'
+              : o.status === 'failed' ? 'bg-red-100 text-red-700'
+                : 'bg-gray-100 text-gray-700')
         }>
           {o.status}
         </span>
