@@ -220,7 +220,8 @@
     "back": "Back",
     "confirm_logout_title": "Log out?",
     "confirm_logout_message": "You will need to log in again to continue shopping.",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+     "orders": "My orders"
   },
   "spotlight": {
     "title": "Popular right now",

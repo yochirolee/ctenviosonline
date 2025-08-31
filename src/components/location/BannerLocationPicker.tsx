@@ -42,7 +42,7 @@ function computeAreaType(prov: string, mun: string): 'city' | 'municipio' {
 }
 
 export default function BannerLocationPicker({ dict }: { dict: Dict }) {
-  const { location, setLocation, clearLocation } = useLocation()
+  const { location, setLocation } = useLocation()
   const [open, setOpen] = useState(false)
 
   // abre si no hay location

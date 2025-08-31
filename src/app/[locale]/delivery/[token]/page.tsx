@@ -1,4 +1,6 @@
 'use client'
+/* eslint-disable @next/next/no-img-element */
+
 import { useEffect, useMemo, useRef, useState, use } from 'react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
@@ -7,11 +9,32 @@ const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
 const MAX_MB = Number(process.env.NEXT_PUBLIC_DELIVERY_MAX_MB ?? 6)
 const ALLOWED_MIME = /^(image\/(jpe?g|png|webp|heic|heif))$/i
 
+type DeliveryOrderShipping = {
+  address?: string
+  address2?: string
+  city?: string
+  state?: string
+  zip?: string
+  contact?: string
+  phone?: string
+}
+
+type DeliveryOrder = {
+  id: number | string
+  status?: string
+  shipping: DeliveryOrderShipping
+}
+
+type Draft = {
+  notes?: string
+  client_tx_id?: string
+}
+
 export default function DeliverPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params)
 
   const [loading, setLoading] = useState(true)
-  const [order, setOrder] = useState<any>(null)
+  const [order, setOrder] = useState<DeliveryOrder | null>(null)
   const [delivered, setDelivered] = useState(false)
   const [notes, setNotes] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
@@ -28,10 +51,14 @@ export default function DeliverPage({ params }: { params: Promise<{ token: strin
     ;(async () => {
       try {
         const r = await fetch(`${API_URL}/deliver/${encodeURIComponent(token)}`, { cache: 'no-store' })
-        const j = await r.json().catch(() => null)
+        const j = await r.json().catch(() => null) as
+          | { ok: true; order: DeliveryOrder; delivered?: boolean }
+          | { ok: false; message?: string }
+          | null
+
         if (!mounted) return
-        if (!j?.ok) {
-          setMessage(j?.message || 'No se pudo cargar')
+        if (!j || !('ok' in j) || j.ok !== true) {
+          setMessage((j as { message?: string } | null)?.message || 'No se pudo cargar')
           setLoading(false)
           return
         }
@@ -42,7 +69,7 @@ export default function DeliverPage({ params }: { params: Promise<{ token: strin
         try {
           const raw = localStorage.getItem(DRAFT_KEY)
           if (raw) {
-            const d = JSON.parse(raw)
+            const d = JSON.parse(raw) as Draft
             setNotes(d.notes || '')
             clientTxRef.current = d.client_tx_id || ''
             // (foto no se rehidrata por seguridad)
@@ -62,8 +89,8 @@ export default function DeliverPage({ params }: { params: Promise<{ token: strin
     }
   }, [token, DRAFT_KEY, photoPreviewUrl])
 
-  const persistDraft = (patch: any = {}) => {
-    const next = {
+  const persistDraft = (patch: Draft = {}) => {
+    const next: Draft = {
       notes,
       client_tx_id: clientTxRef.current || '',
       ...patch,
@@ -131,19 +158,27 @@ export default function DeliverPage({ params }: { params: Promise<{ token: strin
       if (photo) fd.append('photo', photo)
 
       const r = await fetch(`${API_URL}/deliver/confirm`, { method: 'POST', body: fd })
-      const j = await r.json().catch(() => null)
+      const j = await r.json().catch(() => null) as
+        | {
+            ok: true
+            already_delivered?: boolean
+            photo_url?: string
+            status?: string
+          }
+        | { ok: false; message?: string }
+        | null
 
-      if (!j?.ok) {
-        setMessage(j?.message || 'No se pudo confirmar. Guardado local; reintenta.')
+      if (!j || !('ok' in j) || j.ok !== true) {
+        setMessage((j as { message?: string } | null)?.message || 'No se pudo confirmar. Guardado local; reintenta.')
         setSending(false)
         return
       }
 
       setDelivered(true)
-      setMessage(j?.already_delivered ? 'Esta orden ya estaba entregada.' : '¡Entrega confirmada!')
+      setMessage(j.already_delivered ? 'Esta orden ya estaba entregada.' : '¡Entrega confirmada!')
 
       // si el backend devuelve la URL remota de la foto, úsala
-      if (j?.photo_url) {
+      if (j.photo_url) {
         // libera blob previo si hubiese
         if (photoPreviewUrl && photoPreviewUrl.startsWith('blob:')) {
           URL.revokeObjectURL(photoPreviewUrl)
@@ -152,7 +187,7 @@ export default function DeliverPage({ params }: { params: Promise<{ token: strin
       }
 
       // refresca estado local de la orden
-      setOrder((o: any) => (o ? { ...o, status: j?.status || 'delivered' } : o))
+      setOrder((o) => (o ? { ...o, status: j.status || 'delivered' } : o))
 
       try {
         localStorage.removeItem(DRAFT_KEY)

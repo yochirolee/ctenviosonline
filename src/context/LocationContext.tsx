@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
 
 export type DeliveryLocation = {
   country: 'US' | 'CU'
@@ -27,15 +27,24 @@ const LocationContext = createContext<LocationCtx>({
 const STORAGE_KEY_V2 = 'delivery_location_v2'
 const LEGACY_KEYS = ['delivery_location'] // para migración
 
-function normalize(loc: any): DeliveryLocation | null {
-  if (!loc || (loc.country !== 'US' && loc.country !== 'CU')) return null
-  const out: DeliveryLocation = { country: loc.country }
-  if (loc.country === 'CU') {
-    out.province = typeof loc.province === 'string' ? loc.province : undefined
-    out.municipality = typeof loc.municipality === 'string' ? loc.municipality : undefined
-    out.area_type = loc.area_type === 'city' || loc.area_type === 'municipio' ? loc.area_type : undefined
+function normalize(loc: unknown): DeliveryLocation | null {
+  if (typeof loc !== 'object' || loc === null) return null
+  const l = loc as Record<string, unknown>
+
+  const country = l.country === 'US' || l.country === 'CU' ? l.country : null
+  if (!country) return null
+
+  const out: DeliveryLocation = { country }
+
+  if (country === 'CU') {
+    out.province = typeof l.province === 'string' ? l.province : undefined
+    out.municipality = typeof l.municipality === 'string' ? l.municipality : undefined
+    out.area_type =
+      l.area_type === 'city' || l.area_type === 'municipio'
+        ? l.area_type
+        : undefined
   }
-  // Si es US, limpia campos de CU
+
   return out
 }
 
@@ -74,34 +83,43 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   // 🚨 Emite un evento para quien quiera escuchar cambios globales
-  const broadcast = (loc: DeliveryLocation | null) => {
-    try { window.dispatchEvent(new CustomEvent('location:changed', { detail: loc })) } catch {}
-  }
+  // Emisor de evento estable
+const broadcast = useCallback((loc: DeliveryLocation | null) => {
+  try {
+    window.dispatchEvent(new CustomEvent('location:changed', { detail: loc }))
+  } catch {}
+}, [])
 
-  const setLocation = (loc: DeliveryLocation) => {
-    const normalized = normalize(loc)
-    setLocationState(normalized)
-    persist(normalized)
-    broadcast(normalized)
-  }
+// setLocation estable
+const setLocation = useCallback((loc: DeliveryLocation) => {
+  const normalized = normalize(loc)
+  setLocationState(normalized)
+  persist(normalized)
+  broadcast(normalized)
+}, [broadcast])
 
-  // 🔧 Actualiza solo lo que necesitas (ideal para checkout)
-  const updateLocation = (partial: Partial<DeliveryLocation>) => {
-    setLocationState(prev => {
-      const merged = normalize({ ...(prev || {}), ...partial }) || null
-      persist(merged)
-      broadcast(merged)
-      return merged
-    })
-  }
+// updateLocation estable
+const updateLocation = useCallback((partial: Partial<DeliveryLocation>) => {
+  setLocationState(prev => {
+    const merged = normalize({ ...(prev || {}), ...partial }) || null
+    persist(merged)
+    broadcast(merged)
+    return merged
+  })
+}, [broadcast])
 
-  const clearLocation = () => {
-    setLocationState(null)
-    persist(null)
-    broadcast(null)
-  }
+// clearLocation estable
+const clearLocation = useCallback(() => {
+  setLocationState(null)
+  persist(null)
+  broadcast(null)
+}, [broadcast])
 
-  const value = useMemo(() => ({ location, setLocation, updateLocation, clearLocation }), [location])
+// value con dependencias completas
+const value = useMemo(
+  () => ({ location, setLocation, updateLocation, clearLocation }),
+  [location, setLocation, updateLocation, clearLocation]
+)
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>
 }
 

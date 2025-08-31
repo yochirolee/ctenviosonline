@@ -7,21 +7,6 @@ import type { Dict } from '@/types/Dict'
 import ProductsSpotlight from '@/components/ProductsSpotlight'
 import BestSellers from '@/components/BestSellers'
 
-const IMAGE_MAP = {
-  h24: '/h24.jpg',
-  food: '/food.jpg',
-  clothing: '/clothing.jpg',
-  medicine: '/medicine.jpg',
-  appliances: '/appliances.jpg',
-  hygiene: '/higiene.webp',
-  technology: '/tecnology.jpg',
-}
-
-const CATEGORIES = Object.keys(IMAGE_MAP).map((key) => ({
-  slug: key,
-  image: IMAGE_MAP[key as keyof typeof IMAGE_MAP],
-}))
-
 export default async function Home({
   params,
 }: {

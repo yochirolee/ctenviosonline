@@ -17,8 +17,8 @@ import type { Dict } from "@/types/Dict"
 type Params = { locale: string }
 
 async function resolveParams(p: Params | Promise<Params>): Promise<Params> {
-  // Detecta si es promesa sin depender de instanceof
-  return (p as any)?.then ? await (p as Promise<Params>) : (p as Params)
+  // Normaliza de forma segura sin usar `any`
+  return Promise.resolve(p)
 }
 
 /** ---- Metadata por locale (acepta params como Promise o como objeto) ---- */
@@ -119,7 +119,7 @@ export default async function LocaleLayout({
           {/* Si prefieres que el banner vaya arriba del navbar, muévelo aquí */}
           <Navbar dict={dict} />
           <CartDrawer dict={dict} />
-          <BannerLocationPicker  dict={dict}/>
+          <BannerLocationPicker dict={dict} />
           <GlobalSearch dict={dict} />
           {children}
           <Toaster position="top-center" />

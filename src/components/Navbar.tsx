@@ -18,7 +18,7 @@ export default function Navbar({ dict }: Props) {
   const { customer, loading, logout } = useCustomer()
 
   const ordersLabel =
-    (dict as any)?.common?.orders || (locale === 'en' ? 'My orders' : 'Mis pedidos')
+  dict.common?.orders ?? (locale === 'en' ? 'My orders' : 'Mis pedidos')
 
   const isOrders = pathname?.includes('/orders')
   const role = customer?.metadata?.role

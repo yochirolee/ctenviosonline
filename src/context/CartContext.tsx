@@ -17,7 +17,7 @@ type LineItemMetadata = {
   owner?: string
   /** opcional: peso en lb */
   weight_lb?: number
-  [k: string]: any
+  [k: string]: unknown
 }
 
 type LineItem = {
@@ -153,6 +153,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = async (productId: number, quantity = 1, _unitPrice?: number) => {
     // _unitPrice se IGNORA: el backend calcula precio/tax en /cart/add
+    void _unitPrice;
     const res = await fetch(`${API_URL}/cart/add`, {
       method: 'POST',
       headers: authHeaders(),
@@ -160,12 +161,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     })
     if (res.status === 409) {
       const payload = await res.json().catch(() => null)
-      const err: any = new Error('OUT_OF_STOCK')
+      const err = new Error('OUT_OF_STOCK') as Error & {
+        code: 'OUT_OF_STOCK'
+        available?: number
+        title?: string
+      }
       err.code = 'OUT_OF_STOCK'
       err.available = Number(payload?.available ?? 0)
       err.title = payload?.title
       throw err
     }
+    
     if (!res.ok) throw new Error('No se pudo agregar al carrito')
     await fetchCart()
   }
@@ -206,8 +212,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [customerLoading, customer])
 
   useEffect(() => {
-    const onCartUpdated = (e: any) => {
-      const cleared = !!e?.detail?.cleared
+    const onCartUpdated = (e: Event) => {
+      const detail = (e as CustomEvent<{ cleared?: boolean }>).detail
+      const cleared = !!detail?.cleared
       if (cleared) {
         setItems([])
         setCartId(null)
@@ -215,7 +222,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         fetchCart()
       }
     }
-
+  
     const onStorage = (ev: StorageEvent) => {
       if (ev.key === 'cart' || ev.key === 'cart_last_update') {
         if (ev.newValue === null) {
@@ -226,14 +233,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-
+  
     if (typeof window !== 'undefined') {
       window.addEventListener('cart:updated', onCartUpdated as EventListener)
       window.addEventListener('storage', onStorage)
-      // 👇 extra útil: al volver de otra página/ventana, sincroniza
       window.addEventListener('focus', fetchCart as unknown as EventListener)
     }
-
     return () => {
       if (typeof window !== 'undefined') {
         window.removeEventListener('cart:updated', onCartUpdated as EventListener)
@@ -243,6 +248,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  
 
   return (
     <CartContext.Provider

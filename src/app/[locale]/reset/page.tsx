@@ -23,7 +23,7 @@ export default function ResetPasswordPage() {
   }, [sp])
 
   const t = (key: string) => {
-    const es: Record<string,string> = {
+    const es: Record<string, string> = {
       title: 'Crear nueva contraseña',
       desc: 'Crea una nueva contraseña para tu cuenta.',
       pass: 'Nueva contraseña',
@@ -34,9 +34,9 @@ export default function ResetPasswordPage() {
       missing: 'Faltan datos del enlace. Vuelve a solicitarlo.',
       ok: 'Contraseña actualizada. Inicia sesión.',
       err: 'No se pudo restablecer la contraseña',
-      back: 'Volver a iniciar sesión'
+      back: 'Volver a iniciar sesión',
     }
-    const en: Record<string,string> = {
+    const en: Record<string, string> = {
       title: 'Create new password',
       desc: 'Create a new password for your account.',
       pass: 'New password',
@@ -47,7 +47,7 @@ export default function ResetPasswordPage() {
       missing: 'Missing link data. Request it again.',
       ok: 'Password updated. Please sign in.',
       err: 'Could not reset password',
-      back: 'Back to sign in'
+      back: 'Back to sign in',
     }
     return (locale === 'es' ? es : en)[key]
   }
@@ -70,21 +70,25 @@ export default function ResetPasswordPage() {
       const res = await fetch(`${API_URL}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, token, new_password: password })
+        body: JSON.stringify({ email, token, new_password: password }),
       })
       const text = await res.text()
       if (!res.ok) {
         let msg = t('err')
         try {
-          const data = text ? JSON.parse(text) : {}
+          const data = text ? (JSON.parse(text) as { error?: string }) : null
           if (data?.error) msg = data.error
-        } catch {}
+        } catch {
+          // ignore parse errors, keep generic msg
+        }
         throw new Error(msg)
       }
       toast.success(t('ok'))
       router.push(`/${locale}/login`)
-    } catch (e: any) {
-      toast.error(e?.message || t('err'))
+    } catch (e: unknown) {
+      const msg =
+        e instanceof Error ? e.message : typeof e === 'string' ? e : t('err')
+      toast.error(msg)
     } finally {
       setLoading(false)
     }
@@ -99,7 +103,7 @@ export default function ResetPasswordPage() {
       <input
         type="email"
         value={email}
-        onChange={e => setEmail(e.target.value)}
+        onChange={(e) => setEmail(e.target.value)}
         placeholder="Email"
         className="w-full border rounded px-3 py-2 mb-3"
       />
@@ -107,7 +111,7 @@ export default function ResetPasswordPage() {
       <input
         type="password"
         value={password}
-        onChange={e => setPassword(e.target.value)}
+        onChange={(e) => setPassword(e.target.value)}
         placeholder={t('pass')}
         className="w-full border rounded px-3 py-2 mb-3"
       />
@@ -115,7 +119,7 @@ export default function ResetPasswordPage() {
       <input
         type="password"
         value={confirm}
-        onChange={e => setConfirm(e.target.value)}
+        onChange={(e) => setConfirm(e.target.value)}
         placeholder={t('confirm')}
         className="w-full border rounded px-3 py-2 mb-3"
       />
@@ -123,7 +127,9 @@ export default function ResetPasswordPage() {
       <button
         onClick={onSubmit}
         disabled={loading}
-        className={`w-full py-2 rounded text-white ${loading ? 'bg-gray-400' : 'bg-green-700 hover:bg-green-800'}`}
+        className={`w-full py-2 rounded text-white ${
+          loading ? 'bg-gray-400' : 'bg-green-700 hover:bg-green-800'
+        }`}
       >
         {loading ? t('saving') : t('save')}
       </button>

@@ -220,7 +220,8 @@
     "back": "Atrás",
     "confirm_logout_title": "¿Cerrar sesión?",
     "confirm_logout_message": "Tendrás que iniciar sesión de nuevo para continuar con la compra.",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "orders": "Mis pedidos"
   },
   "spotlight": {
     "title": "Populares ahora",

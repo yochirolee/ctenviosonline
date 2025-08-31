@@ -2,17 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, usePathname } from 'next/navigation'
+import Image from 'next/image'
 import { Search, X } from 'lucide-react'
 import { useLocation } from '@/context/LocationContext'
 import { useCart } from '@/context/CartContext'
 import { checkCustomerAuth } from '@/lib/auth'
 import { searchProducts, type DeliveryLocation, type SimplifiedProduct } from '@/lib/products'
 import { toast } from 'sonner'
+import type { Dict } from '@/types/Dict'
 
 /** Wrapper: decide si mostrar el buscador global.
  *  Solo usa usePathname (un hook) y nunca cambia el orden de hooks.
  */
-export default function GlobalSearch(props: { dict: any }) {
+export default function GlobalSearch(props: { dict: Dict }) {
   const pathname = usePathname()
   const isSearchPage = pathname?.split('/')[2] === 'search' // /es/search o /en/search
   if (isSearchPage) return null
@@ -20,7 +22,7 @@ export default function GlobalSearch(props: { dict: any }) {
 }
 
 /** Componente interno con todos los hooks de contexto/estado/efectos */
-function GlobalSearchInner({ dict }: { dict: any }) {
+function GlobalSearchInner({ dict }: { dict: Dict }) {
   const { locale } = useParams() as { locale: string }
   const { location } = useLocation()
   const { addItem } = useCart()
@@ -37,10 +39,10 @@ function GlobalSearchInner({ dict }: { dict: any }) {
   )
 
   // Debounce
-  const timer = useRef<any>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!open) return
-    clearTimeout(timer.current)
+    if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(async () => {
       const term = q.trim()
       if (!term) { setResults([]); return }
@@ -52,8 +54,10 @@ function GlobalSearchInner({ dict }: { dict: any }) {
         setLoading(false)
       }
     }, 300)
-    return () => clearTimeout(timer.current)
-  }, [q, open, location?.country, location?.province, location?.municipality, location?.area_type])
+    return () => {
+      if (timer.current) clearTimeout(timer.current)
+    }
+  }, [q, open, location]) // ← incluye `location` para satisfacer la regla de deps
 
   const handleAdd = async (p: SimplifiedProduct) => {
     const isLoggedIn = await checkCustomerAuth()
@@ -122,8 +126,14 @@ function GlobalSearchInner({ dict }: { dict: any }) {
                 <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[60vh] overflow-auto">
                   {results.map((p) => (
                     <li key={p.id} className="border rounded-lg overflow-hidden bg-white flex">
-                      <div className="w-20 h-20 bg-gray-50 flex-shrink-0">
-                        <img src={p.imageSrc} alt={p.name} className="w-full h-full object-cover" />
+                      <div className="w-20 h-20 bg-gray-50 flex-shrink-0 relative">
+                        <Image
+                          src={p.imageSrc}
+                          alt={p.name}
+                          width={80}
+                          height={80}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div className="p-2 flex flex-col grow">
                         <h4 className="text-sm font-semibold text-gray-900 line-clamp-2">{p.name}</h4>

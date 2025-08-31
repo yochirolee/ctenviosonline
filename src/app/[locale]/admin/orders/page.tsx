@@ -7,6 +7,7 @@ import AdminTabs from '@/components/admin/AdminTabs'
 import { listAdminOrdersPaged, updateOrderStatus, type AdminOrderListItem, type AdminOrderPage } from '@/lib/adminApi'
 import { toast } from 'sonner'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 type Filters = {
   q: string
@@ -154,7 +155,7 @@ export default function AdminOrdersPage() {
           <div className="md:col-span-6 flex gap-2 items-end">
             <div>
               <label className="block text-sm font-medium text-gray-700">Ordenar por</label>
-              <select className="input" value={filters.sort_by} onChange={e => setFilters(s => ({ ...s, sort_by: e.target.value as any }))}>
+              <select className="input" value={filters.sort_by} onChange={e => setFilters(s => ({ ...s, sort_by: e.target.value as Filters['sort_by'] }))}>
                 <option value="created_at">Fecha</option>
                 <option value="total">Total</option>
                 <option value="status">Estado</option>
@@ -162,7 +163,8 @@ export default function AdminOrdersPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Dirección</label>
-              <select className="input" value={filters.sort_dir} onChange={e => setFilters(s => ({ ...s, sort_dir: e.target.value as any }))}>
+              <select className="input" value={filters.sort_dir} onChange={e => setFilters(s => ({ ...s, sort_by: e.target.value as Filters['sort_by'] }))}>
+
                 <option value="desc">Desc</option>
                 <option value="asc">Asc</option>
               </select>
@@ -247,8 +249,14 @@ export default function AdminOrdersPage() {
   )
 }
 
-function Th({ children, className = '' }: any) {
-  return <th className={`px-3 py-2 text-left font-semibold text-gray-700 ${className}`}>{children}</th>
+function Th(
+  { children, className = '' }: { children?: React.ReactNode; className?: string }
+) {
+  return (
+    <th className={`px-3 py-2 text-left font-semibold text-gray-700 ${className}`}>
+      {children}
+    </th>
+  );
 }
 
 function Row({

@@ -46,8 +46,16 @@ type Order = {
   id: number | string
   created_at?: string
   status?: 'pending' | 'paid' | 'failed' | string
-  metadata?: { shipping?: ShippingMeta;[k: string]: unknown }
+  metadata?: { shipping?: ShippingMeta; [k: string]: unknown }
   items?: OrderItem[]
+  [k: string]: unknown
+}
+
+type PaymentInfo = {
+  provider?: string
+  mode?: 'direct' | string
+  link_id?: string | number
+  link?: string
   [k: string]: unknown
 }
 
@@ -55,8 +63,8 @@ type CheckoutSession = {
   id: number | string
   status: string
   created_order_ids?: number[]
-  snapshot?: any
-  payment?: any
+  snapshot?: unknown
+  payment?: PaymentInfo
   processed_at?: string
 }
 
@@ -110,11 +118,11 @@ export default function SuccessClient({
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith('medusa_')) localStorage.removeItem(key)
       })
-  
+
       // 🧹 Checkout (todas las variantes conocidas)
       localStorage.removeItem('checkout_form_v2')
       localStorage.removeItem('checkout_country_v1')
-  
+
       // Legacy/compat
       localStorage.removeItem('checkout_form_v1')
       localStorage.removeItem('checkout_form')
@@ -124,16 +132,15 @@ export default function SuccessClient({
       localStorage.removeItem('checkout_draft_v1')
       localStorage.removeItem('formData')
       localStorage.removeItem('shippingInfo')
-  
+
       // ❗️No tocamos delivery_location_v2 (el banner debe persistir)
     } catch {}
-  
+
     // Notificar a la UI
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('cart:updated', { detail: { cleared: true, items: 0 } }))
     }
   }
-   
 
   const fetchOrder = async (id: string | number): Promise<Order | null> => {
     const res = await fetch(`${API_URL}/orders/${id}`, { headers: authHeaders(), cache: 'no-store' })
@@ -141,13 +148,15 @@ export default function SuccessClient({
     return (await res.json().catch(() => null)) as Order | null
   }
 
-  async function fetchOrderDetail(orderId: number | string) {
+  async function fetchOrderDetail(orderId: number | string): Promise<{ order: Order; items: OrderItem[] } | null> {
     const res = await fetch(`${API_URL}/orders/${orderId}/detail`, {
       headers: authHeaders(),
       cache: 'no-store',
-    });
-    if (!res.ok) return null;
-    return res.json();
+    })
+    if (!res.ok) return null
+    const data = await res.json().catch(() => null)
+    if (!data) return null
+    return data as { order: Order; items: OrderItem[] }
   }
 
   const stopPolling = () => {
@@ -162,7 +171,6 @@ export default function SuccessClient({
   // =========================
   useEffect(() => {
     if (!sessionId) return
-    let mounted = true
     let attempts = 0
     const maxAttempts = 30
     const intervalMs = 3000
@@ -171,30 +179,34 @@ export default function SuccessClient({
       const r = await fetch(`${API_URL}/checkout-sessions/${sid}`, { cache: 'no-store' })
       if (r.status === 404) return null // permitirá fallback a confirm por link (compat)
       if (!r.ok) throw new Error('No se pudo leer la sesión')
-      const j = await r.json().catch(() => null)
-      if (!j?.ok) throw new Error(j?.message || 'Sesión inválida')
-      return j.session as CheckoutSession
+      const j: unknown = await r.json().catch(() => null)
+      if (!j || typeof j !== 'object') throw new Error('Sesión inválida')
+      const rec = j as { ok?: boolean; message?: string; session?: unknown }
+      if (rec.ok !== true) throw new Error(rec.message || 'Sesión inválida')
+      return rec.session as CheckoutSession
     }
 
     const confirmViaLinkFallback = async (sid: string): Promise<{ paid: boolean; orders: number[] }> => {
       // Solo para compat con el flujo por link anterior
       const r = await fetch(`${API_URL}/payments/bmspay/confirm/${sid}`, { cache: 'no-store' })
       if (!r.ok) return { paid: false, orders: [] }
-      const c = await r.json().catch(() => null)
-      const ids = Array.isArray(c?.orders) ? c.orders.map((x: any) => Number(x)).filter(Number.isFinite) : []
-      return { paid: !!c?.paid, orders: ids }
+      const c: unknown = await r.json().catch(() => null)
+      const ids = Array.isArray((c as { orders?: unknown }).orders)
+        ? ((c as { orders: unknown[] }).orders).map((x: unknown) => Number(x)).filter(Number.isFinite)
+        : []
+      return { paid: !!(c as { paid?: unknown }).paid, orders: ids }
     }
 
     const afterPaid = async (ids: number[]) => {
       setPaid(true)
       setCreatedOrders(ids)
       // Traer items de cada orden (para miniaturas estilo Amazon)
-      const bundles: Array<{ order: Order; items: OrderItem[] }> = [];
+      const bundles: Array<{ order: Order; items: OrderItem[] }> = []
       for (const id of ids) {
-        const d = await fetchOrderDetail(id);
-        if (d) bundles.push({ order: d.order, items: d.items ?? [] });
+        const d = await fetchOrderDetail(id)
+        if (d) bundles.push({ order: d.order, items: d.items ?? [] })
       }
-      setOrdersDetail(bundles);
+      setOrdersDetail(bundles)
       cleanLocal()
       setLoading(false)
       stopPolling()
@@ -219,14 +231,17 @@ export default function SuccessClient({
           }
 
           const p = session.payment || {}
-          const looksLikeLink = p?.provider === 'bmspay' && (p?.mode !== 'direct') && (p?.link_id || p?.link)
+          const looksLikeLink =
+            p?.provider === 'bmspay' && (p?.mode !== 'direct') && (p?.link_id != null || p?.link != null)
           if (status === 'pending' && looksLikeLink) {
             try {
               const r = await fetch(`${API_URL}/payments/bmspay/confirm/${sessionId}`, { cache: 'no-store' })
               if (r.ok) {
-                const c = await r.json().catch(() => null)
-                if (c?.paid) {
-                  const ids = Array.isArray(c?.orders) ? c.orders.map((x: any) => Number(x)).filter(Number.isFinite) : []
+                const c: unknown = await r.json().catch(() => null)
+                if ((c as { paid?: unknown })?.paid) {
+                  const ids = Array.isArray((c as { orders?: unknown[] }).orders)
+                    ? ((c as { orders: unknown[] }).orders).map((x: unknown) => Number(x)).filter(Number.isFinite)
+                    : []
                   await afterPaid(ids)
                   return
                 }
@@ -270,7 +285,6 @@ export default function SuccessClient({
     pollingRef.current = setInterval(tick, intervalMs)
 
     return () => {
-      mounted = false
       stopPolling()
     }
   }, [sessionId])
@@ -322,8 +336,8 @@ export default function SuccessClient({
           setConfirming(true)
           try {
             const r = await fetch(`${API_URL}/payments/bmspay/confirm/${orderId}`, { cache: 'no-store' })
-            const c = await r.json().catch(() => null)
-            if (c?.paid) {
+            const c: unknown = await r.json().catch(() => null)
+            if ((c as { paid?: unknown })?.paid) {
               const ord = await fetchOrder(orderId)
               if (ord) {
                 setOrder(ord)
@@ -348,7 +362,7 @@ export default function SuccessClient({
           attempts++
           try {
             const r = await fetch(`${API_URL}/payments/bmspay/confirm/${orderId}`, { cache: 'no-store' })
-            const c = await r.json().catch(() => null)
+            const c: unknown = await r.json().catch(() => null)
 
             // Refetch protegido
             const res2 = await fetch(`${API_URL}/orders/${orderId}`, { headers: authHeaders(), cache: 'no-store' })
@@ -364,7 +378,7 @@ export default function SuccessClient({
               }
             }
 
-            if (c?.active === false || attempts >= maxAttempts) {
+            if ((c as { active?: unknown })?.active === false || attempts >= maxAttempts) {
               clearInterval(timer)
               setErrorMsg(
                 attempts >= maxAttempts
@@ -486,12 +500,12 @@ export default function SuccessClient({
               const thumbs = items
                 .map(it => it.image_url)
                 .filter(Boolean)
-                .slice(0, 4) as string[];
+                .slice(0, 4) as string[]
 
               return (
                 <div key={String(order.id)} className="bg-white rounded border p-4">
                   <div className="flex items-center justify-between mb-3">
-                  <div className="font-medium">{dict.success.order_number}{order.id}</div>
+                    <div className="font-medium">{dict.success.order_number}{order.id}</div>
                     <a
                       href={`/${locale}/orders/${order.id}`}
                       className="text-sm text-green-700 underline"
@@ -524,7 +538,7 @@ export default function SuccessClient({
                     )}
                   </div>
                 </div>
-              );
+              )
             })
           )}
         </div>
@@ -534,7 +548,7 @@ export default function SuccessClient({
       {!sessionId && order && (
         <div className="max-w-3xl mx-auto mt-8 bg-white border rounded p-4">
           <div className="flex items-center justify-between">
-          <div className="text-lg font-semibold">{dict.success.order_number}{order.id}</div>
+            <div className="text-lg font-semibold">{dict.success.order_number}{order.id}</div>
             <div className="flex items-center gap-2">
               {order.status && (
                 <span

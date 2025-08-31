@@ -99,12 +99,10 @@ export async function deleteOwner(id: number): Promise<{ ok: true }> {
   });
   const text = await r.text().catch(() => '');
   if (!r.ok) throw new Error(`deleteOwner ${r.status} ${text}`);
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { ok: true } as any;
-  }
+  // Éxito: estandarizamos la respuesta y eliminamos el `as any`
+  return { ok: true } as const;
 }
+
 
 /* ---------------- Shipping config efectiva (owner_shipping_config) ---------------- */
 

@@ -1,4 +1,5 @@
 'use client'
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -51,7 +52,7 @@ export default function BestSellers({ dict }: { dict: Dict }) {
     }
     load()
     return () => { cancelled = true }
-  }, [location?.country, location?.province, location?.municipality, location?.area_type])
+  }, [location]) // ← incluimos 'location' para satisfacer el linter
 
   const fmt = useMemo(
     () => new Intl.NumberFormat(locale || 'es', { style: 'currency', currency: 'USD' }),
@@ -103,14 +104,13 @@ export default function BestSellers({ dict }: { dict: Dict }) {
             <article key={p.id} className="border rounded-xl overflow-hidden shadow-sm bg-white flex flex-col">
               <div className="relative h-36 bg-gray-50">
                 <img src={p.imageSrc} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
-
                 {(() => {
-                  const sold = Number((p as any).sold_qty ?? 0); // 👈 fuerza a número
+                  const sold = Number(p.sold_qty ?? 0) // ← sin any
                   return sold > 0 ? (
                     <span className="absolute top-2 left-2 text-[11px] bg-orange-500 text-white px-2 py-0.5 rounded-full">
                       {locale === 'en' ? `Sold ${sold}+` : `Vendidos ${sold}+`}
                     </span>
-                  ) : null;
+                  ) : null
                 })()}
               </div>
               <div className="p-3 flex flex-col">

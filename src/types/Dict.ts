@@ -181,6 +181,7 @@ export type Dict = {
     confirm_logout_title: string
     confirm_logout_message: string
     cancel: string
+    orders: string
   }
   spotlight?: {
     title: string

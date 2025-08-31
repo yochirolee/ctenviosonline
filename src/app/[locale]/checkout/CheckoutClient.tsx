@@ -1,7 +1,7 @@
 "use client"
 
 import { useCart } from "@/context/CartContext"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, CreditCard } from "lucide-react"
 import type { Dict } from '@/types/Dict'
@@ -63,7 +63,14 @@ function buildQuoteErrorMsg({
     : `Algunos productos del carrito no pueden entregarse en la localidad seleccionada. Cambia la localidad o elimina esos productos para continuar.`
 }
 
-function buildAvailabilityErrorMsg(unavailable: any[], locLabel?: string) {
+type UnavailableLine = {
+  owner_name?: string
+  title: string
+  requested?: number
+  available?: number
+}
+
+function buildAvailabilityErrorMsg(unavailable: UnavailableLine[], locLabel?: string) {
   if (!Array.isArray(unavailable) || unavailable.length === 0) {
     return 'Hay productos sin disponibilidad. Modifica el carrito para continuar.'
   }
@@ -75,8 +82,10 @@ function buildAvailabilityErrorMsg(unavailable: any[], locLabel?: string) {
   }
   const parts = Object.entries(byOwner).map(([owner, lines]) => {
     const prods = lines.map(l => {
-      const q = (Number.isFinite(l.requested) && Number.isFinite(l.available))
-        ? ` (pediste ${l.requested}, quedan ${l.available})` : ''
+      const rq = Number.isFinite(l.requested) ? Number(l.requested) : undefined
+      const av = Number.isFinite(l.available) ? Number(l.available) : undefined
+      const q = (typeof rq === 'number' && typeof av === 'number')
+        ? ` (pediste ${rq}, quedan ${av})` : ''
       return `• ${l.title}${q}`
     }).join('\n')
     const locText = locLabel ? ` en ${locLabel}` : ''
@@ -97,8 +106,26 @@ function getErrorMessage(err: unknown, fallback = "Error en el proceso de checko
 
 const LS_FORM_KEY = 'checkout_form_v2' // new version key
 
+// ===== tipos locales de carrito usados en la UI =====
+type CartLine = {
+  id: number | string
+  title: string
+  quantity: number
+  unit_price?: number
+  thumbnail?: string | null
+  weight?: number | string | null
+  owner_name?: string | null
+  metadata?: {
+    price_with_margin_cents?: number
+    tax_cents?: number
+    owner?: string
+  } | null
+}
+
 export default function CheckoutPage({ dict }: { dict: Dict }) {
   const { items, cartId, clearCart, refreshCartNow } = useCart()
+  const cartItems: CartLine[] = (items as unknown as CartLine[]) ?? []
+
   const router = useRouter()
   const { locale } = useParams<{ locale: string }>()
   const { location } = useLocation() // <- fuente de verdad para CU/US
@@ -124,7 +151,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
     const load = async () => {
       try {
-        let data: any = null
+        let data: unknown = null
 
         // 1) intenta /customers/me
         try {
@@ -146,14 +173,18 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
           } catch { }
         }
 
-        if (data) {
+        if (data && typeof data === 'object') {
+          const rec = data as Record<string, unknown>
+          const getStr = (key: string): string | undefined =>
+            typeof rec[key] === 'string' ? (rec[key] as string) : undefined
+
           setBuyer(prev => ({
-            first_name: data.first_name || data.firstName || data.nombre || prev.first_name,
-            last_name: data.last_name || data.lastName || data.apellidos || prev.last_name,
-            email: data.email || prev.email,
-            phone: String(data.phone || data.telefono || prev.phone || '').replace(/^\+?1/, ''), // normaliza
-            address: data.address || data.address_line1 || data.direccion || prev.address,
-            zip: data.zip || data.zipCode || prev.zip || "",
+            first_name: getStr('first_name') || getStr('firstName') || getStr('nombre') || prev.first_name,
+            last_name: getStr('last_name') || getStr('lastName') || getStr('apellidos') || prev.last_name,
+            email: getStr('email') || prev.email,
+            phone: String(getStr('phone') || getStr('telefono') || prev.phone || '').replace(/^\+?1/, ''),
+            address: getStr('address') || getStr('address_line1') || getStr('direccion') || prev.address,
+            zip: getStr('zip') || getStr('zipCode') || prev.zip || "",
           }))
         }
       } catch {
@@ -236,7 +267,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       // Banner obligatorio con province/municipality
       if (!location?.province || !location?.municipality) {
         newErrors._cuLoc = dict.location_banner.location_select_required
-        if (!firstErrorField) firstErrorField = 'location' // agrega id="location" al banner
+        if (!firstErrorField) firstErrorField = 'location'
       }
 
       // Teléfono cubano: 8+ dígitos
@@ -259,7 +290,6 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
     } else if (isUS) {
       // ===== Estados Unidos =====
-      // Teléfono US: 10 dígitos
       const usPhone = formData.telefono.replace(/\D/g, '')
       if (!/^\d{10}$/.test(usPhone)) {
         newErrors.telefono = dict.checkout.errors.telefonoeu
@@ -287,37 +317,44 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       }
 
     } else {
-      // Sin country -> pedir usar el banner
       newErrors._noCountry = dict.location_banner.location_select_required1
-      if (!firstErrorField) firstErrorField = 'location' // agrega id="location" al banner
+      if (!firstErrorField) firstErrorField = 'location'
     }
 
     setErrors(newErrors)
     return { ok: Object.keys(newErrors).length === 0, firstErrorField }
   }
 
-
   // ===== Precios (centavos) =====
-  const priceWithMarginCentsFromMeta = (item: any): number | undefined => {
+  const priceWithMarginCentsFromMeta = (item: CartLine): number | undefined => {
     const v = item?.metadata?.price_with_margin_cents
     return typeof v === 'number' && v >= 0 ? v : undefined
   }
-  const normalizeUnitPriceToCents = (item: any): number => {
+
+  const normalizeUnitPriceToCents = (item: CartLine): number => {
     const up = Number(item?.unit_price ?? 0)
     if (!isFinite(up)) return 0
     if (Number.isInteger(up) && up >= 1000) return up
     return Math.round(up * 100)
   }
-  const itemDisplayCents = (item: any): number =>
-    priceWithMarginCentsFromMeta(item) ?? normalizeUnitPriceToCents(item)
 
-  const subtotalCents = useMemo(() =>
-    items.reduce((acc, it: any) => acc + itemDisplayCents(it) * it.quantity, 0), [items])
-  const taxCents = useMemo(() =>
-    items.reduce((acc, it: any) => {
-      const perItemTax = Number.isFinite(it?.metadata?.tax_cents) ? Number(it.metadata.tax_cents) : 0
-      return acc + perItemTax * it.quantity
-    }, 0), [items])
+  const itemDisplayCents = useCallback((item: CartLine): number => {
+    return priceWithMarginCentsFromMeta(item) ?? normalizeUnitPriceToCents(item)
+  }, [])
+
+  const subtotalCents = useMemo(
+    () => cartItems.reduce((acc, it) => acc + itemDisplayCents(it) * it.quantity, 0),
+    [cartItems, itemDisplayCents]
+  )
+
+  const taxCents = useMemo(
+    () =>
+      cartItems.reduce((acc, it) => {
+        const perItemTax = Number.isFinite(it?.metadata?.tax_cents) ? Number(it.metadata?.tax_cents) : 0
+        return acc + perItemTax * it.quantity
+      }, 0),
+    [cartItems]
+  )
 
   // ===== Shipping quote =====
   const [shippingQuoteCents, setShippingQuoteCents] = useState(0)
@@ -355,17 +392,17 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         const shipping =
           isCU
             ? {
-              country: 'CU',
-              province: location!.province,
-              municipality: location!.municipality,
-              area_type: computeAreaType(location!.province!, location!.municipality!),
-            }
+                country: 'CU',
+                province: location!.province,
+                municipality: location!.municipality,
+                area_type: computeAreaType(location!.province!, location!.municipality!),
+              }
             : {
-              country: 'US',
-              state: formData.state,
-              city: formData.city,
-              zip: formData.zip,
-            }
+                country: 'US',
+                state: formData.state,
+                city: formData.city,
+                zip: formData.zip,
+              }
 
         const r = await fetch(`${API_URL}/shipping/quote`, {
           method: 'POST',
@@ -378,34 +415,39 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         })
 
         const raw = await r.text()
-        let data: any = null
+        let data: unknown = null
         try { data = raw ? JSON.parse(raw) : null } catch { data = null }
 
-        if (data && data.ok === false) {
+        const rec = (typeof data === 'object' && data !== null) ? (data as Record<string, unknown>) : null
+        const okFlag = rec && typeof rec.ok === 'boolean' ? (rec.ok as boolean) : undefined
+
+        if (okFlag === false) {
+          const u = Array.isArray(rec?.unavailable) ? (rec!.unavailable as Array<{ owner_id: number; owner_name: string }>) : []
           setQuoteOk(false)
           setQuoteError(
             buildQuoteErrorMsg({
               province: isCU ? location?.province : undefined,
               municipality: isCU ? location?.municipality : undefined,
-              unavailable: Array.isArray(data.unavailable) ? data.unavailable : [],
-            }) || data.message || 'No se puede entregar a esta dirección.'
+              unavailable: u,
+            }) || (typeof rec?.message === 'string' ? (rec.message as string) : 'No se puede entregar a esta dirección.')
           )
-          setUnavailableOwners(Array.isArray(data.unavailable) ? data.unavailable : [])
+          setUnavailableOwners(u)
           setShippingQuoteCents(0)
           setShippingBreakdown([])
           return
         }
 
-        if (r.status >= 400 || !data) {
+        if (r.status >= 400 || !rec) {
+          const u = Array.isArray(rec?.unavailable) ? (rec!.unavailable as Array<{ owner_id: number; owner_name: string }>) : []
           setQuoteOk(false)
           setQuoteError(
             buildQuoteErrorMsg({
               province: isCU ? location?.province : undefined,
               municipality: isCU ? location?.municipality : undefined,
-              unavailable: Array.isArray(data?.unavailable) ? data.unavailable : [],
+              unavailable: u,
             })
           )
-          setUnavailableOwners(Array.isArray(data?.unavailable) ? data.unavailable : [])
+          setUnavailableOwners(u)
           setShippingQuoteCents(0)
           setShippingBreakdown([])
           return
@@ -414,8 +456,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         setQuoteOk(true)
         setQuoteError(null)
         setUnavailableOwners([])
-        setShippingQuoteCents(Number(data.shipping_total_cents || 0))
-        setShippingBreakdown(Array.isArray(data.breakdown) ? data.breakdown : [])
+        setShippingQuoteCents(Number((rec.shipping_total_cents as number) || 0))
+        setShippingBreakdown(Array.isArray(rec.breakdown) ? (rec.breakdown as Array<{ owner_id: number | null, owner_name: string, mode: string, weight_lb: number, shipping_cents: number }>) : [])
       } catch {
         // noop
       } finally {
@@ -427,7 +469,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       clearTimeout(t)
       controller.abort()
     }
-  }, [API_URL, cartId, isCU, isUS, location?.province, location?.municipality, formData.state, formData.city, formData.zip])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartId, isCU, isUS, location?.province, location?.municipality, location?.country, formData.state, formData.city, formData.zip, readyToQuote])
 
   const grandTotalCents = subtotalCents + taxCents + shippingQuoteCents
   const cardFeeCents = Math.round(grandTotalCents * FEE_RATE)
@@ -440,12 +483,41 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
   const payDisabled =
     isPaying ||
-    items.length === 0 ||
+    cartItems.length === 0 ||
     quoting ||
     !readyToQuote ||
     (readyToQuote && quoteOk !== true) ||
     !acceptedTerms
 
+  // ===== helpers para leer campos de respuestas desconocidas =====
+  const getMsg = (v: unknown): string | undefined => {
+    if (typeof v === 'object' && v !== null) {
+      const m = (v as Record<string, unknown>).message
+      return typeof m === 'string' ? m : undefined
+    }
+    return undefined
+  }
+  const getPayUrl = (v: unknown): string | undefined => {
+    if (typeof v === 'object' && v !== null) {
+      const u = (v as Record<string, unknown>).payUrl
+      return typeof u === 'string' ? u : undefined
+    }
+    return undefined
+  }
+  const getSessionId = (v: unknown): string | number | undefined => {
+    if (typeof v === 'object' && v !== null) {
+      const s = (v as Record<string, unknown>).sessionId
+      return (typeof s === 'string' || typeof s === 'number') ? s : undefined
+    }
+    return undefined
+  }
+  const getOrderId = (v: unknown): string | number | undefined => {
+    if (typeof v === 'object' && v !== null) {
+      const s = (v as Record<string, unknown>).orderId
+      return (typeof s === 'string' || typeof s === 'number') ? s : undefined
+    }
+    return undefined
+  }
 
   // ===== Checkout por link =====
   const handleCheckout = async () => {
@@ -485,7 +557,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         const locLabel = isCU
           ? [location?.municipality, location?.province].filter(Boolean).join(', ')
           : [formData.city, formData.state, formData.zip].filter(Boolean).join(', ')
-        const msg = buildAvailabilityErrorMsg(Array.isArray(vdata?.unavailable) ? vdata.unavailable : [], locLabel)
+        const msg = buildAvailabilityErrorMsg(Array.isArray(vdata?.unavailable) ? (vdata.unavailable as UnavailableLine[]) : [], locLabel)
         toast.error(msg)
         return
       }
@@ -505,31 +577,31 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       const shipping =
         isCU
           ? {
-            country: 'CU',
-            first_name: formData.nombre,
-            last_name: formData.apellidos,
-            phone: `+53${formData.telefono}`,
-            email: formData.email,
-            province: location!.province,
-            municipality: location!.municipality,
-            address: formData.direccion || '', // “Dirección exacta”
-            area_type: computeAreaType(location!.province!, location!.municipality!),
-            instructions: formData.instrucciones || undefined,
-            ci: formData.ci,
-          }
+              country: 'CU',
+              first_name: formData.nombre,
+              last_name: formData.apellidos,
+              phone: `+53${formData.telefono}`,
+              email: formData.email,
+              province: location!.province,
+              municipality: location!.municipality,
+              address: formData.direccion || '', // “Dirección exacta”
+              area_type: computeAreaType(location!.province!, location!.municipality!),
+              instructions: formData.instrucciones || undefined,
+              ci: formData.ci,
+            }
           : {
-            country: 'US',
-            first_name: formData.nombre,
-            last_name: formData.apellidos,
-            phone: `+1${formData.telefono.replace(/\D/g, '')}`,
-            email: formData.email,
-            address_line1: formData.address1,
-            address_line2: formData.address2 || undefined,
-            city: formData.city,
-            state: formData.state,
-            zip: formData.zip,
-            instructions: formData.instrucciones || undefined,
-          }
+              country: 'US',
+              first_name: formData.nombre,
+              last_name: formData.apellidos,
+              phone: `+1${formData.telefono.replace(/\D/g, '')}`,
+              email: formData.email,
+              address_line1: formData.address1,
+              address_line2: formData.address2 || undefined,
+              city: formData.city,
+              state: formData.state,
+              zip: formData.zip,
+              instructions: formData.instrucciones || undefined,
+            }
 
       const res = await fetch(`${API_URL}/checkout/${cartId}`, {
         method: 'POST',
@@ -551,7 +623,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
               address: buyer.address || undefined,
               zip: buyer.zip || undefined,
             },
-            billing: {           // 👈 NUEVO bloque de facturación (claro y directo)
+            billing: {
               first_name: buyer.first_name || formData.nombre,
               last_name: buyer.last_name || formData.apellidos,
               email: buyer.email || formData.email,
@@ -566,15 +638,16 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       const raw = await res.text()
       try { data = raw ? (JSON.parse(raw) as CheckoutResponse) : null } catch { data = null }
 
-      const sessionId = (data as any)?.sessionId
-      const orderId = (data as any)?.orderId
+      const sessionId = getSessionId(data)
+      const orderId = getOrderId(data)
       idForFail = sessionId ? String(sessionId) : (orderId ? String(orderId) : '')
 
       if (!res.ok) {
-        const msg = (data as any)?.message || 'No se pudo completar el checkout.'
+        const msg = getMsg(data) || 'No se pudo completar el checkout.'
+        const rec = (typeof data === 'object' && data !== null) ? (data as Record<string, unknown>) : null
         const stockIssue =
-          (data as any)?.reason === 'insufficient_stock' ||
-          Array.isArray((data as any)?.stock_issues) ||
+          rec?.reason === 'insufficient_stock' ||
+          (Array.isArray(rec?.stock_issues)) ||
           /sin disponibilidad|sin stock|stock/i.test(String(msg))
 
         if (stockIssue) refreshCartNow()
@@ -583,12 +656,13 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         return
       }
 
-      if (data && (data as any).payUrl) {
-        window.location.assign((data as any).payUrl as string)
+      const payUrl = getPayUrl(data)
+      if (payUrl) {
+        window.location.assign(payUrl)
         return
       }
 
-      if (sessionId) {
+      if (sessionId !== undefined) {
         toast.success('¡Orden creada!')
         await clearCart()
         router.push(`/${locale}/checkout/success?sessionId=${sessionId}`)
@@ -598,7 +672,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       throw new Error('Respuesta inesperada del servidor.')
     } catch (err: unknown) {
       refreshCartNow()
-      const msg = (data as any)?.message || getErrorMessage(err)
+      const msg = getMsg(data) || getErrorMessage(err)
       toast.error(msg)
       router.push(`/${locale}/checkout/cancel?ref=${idForFail}&msg=${encodeURIComponent(msg)}`)
     } finally {
@@ -647,7 +721,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         const locLabel = isCU
           ? [location?.municipality, location?.province].filter(Boolean).join(', ')
           : [formData.city, formData.state, formData.zip].filter(Boolean).join(', ')
-        toast.error(buildAvailabilityErrorMsg(Array.isArray(vdata?.unavailable) ? vdata.unavailable : [], locLabel))
+        toast.error(buildAvailabilityErrorMsg(Array.isArray(vdata?.unavailable) ? (vdata.unavailable as UnavailableLine[]) : [], locLabel))
         return
       }
     } catch {
@@ -658,31 +732,31 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     const shipping =
       isCU
         ? {
-          country: 'CU',
-          first_name: formData.nombre,
-          last_name: formData.apellidos,
-          phone: `+53${formData.telefono}`,
-          email: formData.email,
-          province: location!.province,
-          municipality: location!.municipality,
-          address: formData.direccion || '',
-          area_type: computeAreaType(location!.province!, location!.municipality!),
-          instructions: formData.instrucciones || undefined,
-          ci: formData.ci,
-        }
+            country: 'CU',
+            first_name: formData.nombre,
+            last_name: formData.apellidos,
+            phone: `+53${formData.telefono}`,
+            email: formData.email,
+            province: location!.province,
+            municipality: location!.municipality,
+            address: formData.direccion || '',
+            area_type: computeAreaType(location!.province!, location!.municipality!),
+            instructions: formData.instrucciones || undefined,
+            ci: formData.ci,
+          }
         : {
-          country: 'US',
-          first_name: formData.nombre,
-          last_name: formData.apellidos,
-          phone: `+1${formData.telefono.replace(/\D/g, '')}`,
-          email: formData.email,
-          address_line1: formData.address1,
-          address_line2: formData.address2 || undefined,
-          city: formData.city,
-          state: formData.state,
-          zip: formData.zip,
-          instructions: formData.instrucciones || undefined,
-        }
+            country: 'US',
+            first_name: formData.nombre,
+            last_name: formData.apellidos,
+            phone: `+1${formData.telefono.replace(/\D/g, '')}`,
+            email: formData.email,
+            address_line1: formData.address1,
+            address_line2: formData.address2 || undefined,
+            city: formData.city,
+            state: formData.state,
+            zip: formData.zip,
+            instructions: formData.instrucciones || undefined,
+          }
 
     setStartingDirect(true)
     try {
@@ -717,15 +791,17 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       const data = await r.json().catch(() => null)
 
       if (!r.ok || !data?.ok) {
-        const msg = data?.message || 'No se pudo iniciar el pago directo.'
+        const msg = (typeof data === 'object' && data && typeof (data as Record<string, unknown>).message === 'string')
+          ? String((data as Record<string, unknown>).message)
+          : 'No se pudo iniciar el pago directo.'
         toast.error(msg)
         return
       }
 
-      setDirectSession({ id: String(data.sessionId), amount: Number(data.amount || 0) })
+      setDirectSession({ id: String((data as Record<string, unknown>).sessionId), amount: Number((data as Record<string, unknown>).amount || 0) })
       setShowCardModal(true)
-    } catch (e: any) {
-      toast.error(e?.message || 'Error iniciando el pago directo.')
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, 'Error iniciando el pago directo.'))
     } finally {
       setStartingDirect(false)
     }
@@ -758,14 +834,16 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
           expMonth: p.expMonth,
           expYear: p.expYear,
           cvn: p.cvn,
-          zipCode: p.zipCode,            // <- Billing ZIP usado por el gateway
+          zipCode: p.zipCode,
           nameOnCard: p.nameOnCard,
         }),
       })
       const data = await r.json().catch(() => null)
 
-      if (!r.ok || !data?.ok || data?.paid !== true) {
-        const msg = data?.message || 'El pago fue rechazado.'
+      if (!r.ok || !data?.ok || (data as Record<string, unknown>).paid !== true) {
+        const msg = (typeof data === 'object' && data && typeof (data as Record<string, unknown>).message === 'string')
+          ? String((data as Record<string, unknown>).message)
+          : 'El pago fue rechazado.'
         toast.error(msg)
         return
       }
@@ -774,10 +852,11 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       setShowCardModal(false)
 
       await clearCart()
-      const sid = (data as any)?.sessionId ?? directSession.id
+      const rec = data as Record<string, unknown>
+      const sid = (typeof rec.sessionId === 'string' || typeof rec.sessionId === 'number') ? rec.sessionId : directSession.id
       window.location.assign(`/${locale}/checkout/success?sessionId=${sid}`)
-    } catch (e: any) {
-      toast.error(e?.message || 'Error procesando el pago.')
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, 'Error procesando el pago.'))
     } finally {
       setCardPaying(false)
     }
@@ -1068,8 +1147,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
         {/* Contenido */}
         <div className="px-4 py-4 sm:px-6 sm:py-6 space-y-4">
-          {items.length > 0 ? (
-            items.map((item: any) => {
+          {cartItems.length > 0 ? (
+            cartItems.map((item) => {
               const perItemCents = itemDisplayCents(item)
               const lineCents = perItemCents * item.quantity
               return (
@@ -1091,7 +1170,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
                     {(item?.owner_name || item?.metadata?.owner) && (
                       <p className="text-xs text-gray-500">
-                        {dict.checkout.provider}{item.owner_name || item.metadata.owner}
+                        {dict.checkout.provider}{item.owner_name || item.metadata?.owner}
                       </p>
                     )}
                     <p className="text-sm font-semibold text-gray-800 mt-1">

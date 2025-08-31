@@ -19,6 +19,14 @@ const authHeaders = (): HeadersInit => {
   return h
 }
 
+type Role = 'admin' | 'owner' | 'delivery' | '' | null;
+
+type CustomerMetadata = {
+  role?: Role;
+  owner_id?: number | null;
+  [key: string]: unknown; // por si guardas extra
+};
+
 type Customer = {
   id: number
   email: string
@@ -26,8 +34,8 @@ type Customer = {
   last_name?: string | null
   phone?: string | null
   address?: string | null
-  metadata?: any
-}
+  metadata?: CustomerMetadata   // <-- reemplaza 'any'
+};
 
 type Owner = { id: number; name: string }
 
@@ -91,11 +99,14 @@ export default function AdminCustomersScreen() {
     })
   }, [items, q])
 
-  const roleOf = (c: Customer): string =>
-    String(c.metadata?.role || '').trim()
+  const roleOf = (c: Customer): Exclude<Role, null> => {
+    const r = String(c.metadata?.role ?? '').trim();
+    return r === 'admin' || r === 'owner' || r === 'delivery' ? r : '';
+  };
 
   const ownerIdOf = (c: Customer): number | '' =>
-    Number.isInteger(c.metadata?.owner_id) ? Number(c.metadata.owner_id) : ''
+    Number.isInteger(c.metadata?.owner_id) ? Number(c.metadata!.owner_id) : '';
+  
 
   const onChangeRole = async (c: Customer, next: string) => {
     try {
@@ -117,20 +128,20 @@ export default function AdminCustomersScreen() {
   }
 
   const onChangeOwner = async (c: Customer, next: string) => {
-    const role = roleOf(c)
+    const role = roleOf(c); // 'admin' | 'owner' | 'delivery' | ''
     if (role !== 'owner' && role !== 'delivery') {
-      toast.error('Asigna primero el rol owner o delivery')
-      return
+      toast.error('Asigna primero el rol owner o delivery');
+      return;
     }
-    const owner_id = next === '' ? null : Number(next)
+    const owner_id = next === '' ? null : Number(next);
     try {
-      await setCustomerRoleAndOwner(c.id, { role: role as any, owner_id })
-      await load()
-      toast.success('Owner asignado')
+      await setCustomerRoleAndOwner(c.id, { role, owner_id }); // <-- sin 'as any'
+      await load();
+      toast.success('Owner asignado');
     } catch {
-      toast.error('No se pudo asignar el owner')
+      toast.error('No se pudo asignar el owner');
     }
-  }
+  };
 
   const onDelete = async (id: number) => {
     try {

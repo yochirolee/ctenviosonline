@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import AdminGuard from '@/components/admin/AdminGuard'
 import AdminTabs from '@/components/admin/AdminTabs'
@@ -15,6 +15,15 @@ const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
 
 type Owner = { id: number; name: string; email?: string | null }
 
+// --- Tipos para metadata de producto (evitar any) ---
+type ProductMeta = {
+  taxable?: boolean
+  tax_pct?: number
+  margin_pct?: number
+  price_cents?: number
+  archived?: boolean
+}
+type ProductForm = Partial<Omit<Product, 'metadata'>> & { metadata?: ProductMeta }
 // headers con token para endpoints admin
 const authHeaders = (): HeadersInit => {
   const h: Record<string, string> = {}
@@ -33,16 +42,16 @@ export default function AdminProductsPage() {
   const [owners, setOwners] = useState<Owner[]>([])
   const [editing, setEditing] = useState<Product | null>(null)
 
-  const [form, setForm] = useState<Partial<Product> & { owner_id?: number | '' | null }>({
+  const [form, setForm] = useState<ProductForm>({
     title: '',
     price: undefined,
     weight: undefined,
     category_id: undefined,
     image_url: 'http://localhost:4000/img/productName.jpg',
     description: '',
-    metadata: { taxable: true, tax_pct: undefined, margin_pct: undefined, price_cents: undefined } as any,
+    metadata: { taxable: true, tax_pct: undefined, margin_pct: undefined, price_cents: undefined },
     stock_qty: 0,
-    owner_id: undefined,
+    owner_id: null,
   })
 
   // filtros / paginación
@@ -67,7 +76,7 @@ export default function AdminProductsPage() {
           cache: 'no-store',
         })
         const data = await res.json().catch(() => [])
-        if (Array.isArray(data)) setOwners(data)
+        if (Array.isArray(data)) setOwners(data as Owner[])
       } catch {
         setOwners([])
       }
@@ -75,25 +84,29 @@ export default function AdminProductsPage() {
     loadOwners()
   }, [])
 
-  const load = async () => {
+  // carga categorías y productos (paginado + filtros)
+  const load = useCallback(async () => {
     const [c, data] = await Promise.all([
       listCategories(),
-
+      // evita `as any` construyendo los parámetros correctamente
       listProductsAdmin({
-        q: debouncedQ,
+        q: debouncedQ || undefined,
         owner_id: ownerIdFilter,
         category_id: categoryId,
         archived,
         page,
-        limit
-      } as any),
+        limit,
+      }),
     ])
     setCats(c)
     setItems(data.items)
     setPages(data.pages)
     setTotal(data.total)
-  }
-  useEffect(() => { load() }, [debouncedQ, ownerIdFilter, categoryId, archived, page, limit])
+  }, [debouncedQ, ownerIdFilter, categoryId, archived, page, limit])
+
+  useEffect(() => {
+    void load()
+  }, [load])
 
   // --- helpers ---
   const dollarsToCents = (amount: number | string | undefined) => {
@@ -103,7 +116,7 @@ export default function AdminProductsPage() {
   }
 
   // valores form para validar/preview
-  const meta = form.metadata || {}
+  const meta: ProductMeta = form.metadata ?? {}
   const baseUSD = Number(form.price || 0)
   const marginPct = Number(meta.margin_pct || 0)
   const taxPct = Number(meta.tax_pct || 0)
@@ -117,7 +130,7 @@ export default function AdminProductsPage() {
 
   // validación price ↔ price_cents
   const expectedPriceCents = dollarsToCents(form.price)
-  const enteredPriceCents = (meta as any).price_cents
+  const enteredPriceCents = meta.price_cents
   const hasPriceCents = enteredPriceCents != null && !Number.isNaN(enteredPriceCents as number)
   const priceMismatch =
     hasPriceCents &&
@@ -135,36 +148,36 @@ export default function AdminProductsPage() {
       )
     }
 
-    const m = form.metadata || {}
-    const cleanMeta = {
+    const m: ProductMeta = form.metadata ?? {}
+    const cleanMeta: ProductMeta = {
       taxable: m.taxable !== false,
       tax_pct: Math.max(0, Math.min(30, Number.isFinite(m.tax_pct as number) ? Number(m.tax_pct) : 0)),
       margin_pct: Math.max(0, Number.isFinite(m.margin_pct as number) ? Number(m.margin_pct) : 0),
       price_cents:
-        (m as any).price_cents == null || Number.isNaN((m as any).price_cents as number)
+        m.price_cents == null || Number.isNaN(m.price_cents as number)
           ? undefined
-          : Math.floor(Number((m as any).price_cents)),
-      archived: !!(m as any).archived,
+          : Math.floor(Number(m.price_cents)),
+      archived: !!m.archived,
     }
 
-    const body: Omit<Product, 'id'> & { owner_id?: number | null } = {
+    const body: Omit<Product, 'id'> & { owner_id?: number | null; metadata?: ProductMeta } = {
       title: String(form.title || '').trim(),
       price: Number(form.price || undefined),
       weight: form.weight ?? undefined,
       category_id: form.category_id ?? undefined,
       image_url: form.image_url || '',
       description: form.description || '',
-      metadata: cleanMeta as any,
+      metadata: cleanMeta,
       stock_qty: Number.isInteger(Number(form.stock_qty)) ? Number(form.stock_qty) : 0,
       owner_id: typeof form.owner_id === 'number' ? form.owner_id : null,
     }
 
     try {
       if (editing) {
-        await updateProduct(editing.id, body as any)
+        await updateProduct(editing.id, body)
         toast.success('Producto actualizado')
       } else {
-        await createProduct(body as any)
+        await createProduct(body)
         toast.success('Producto creado')
         setPage(1)
       }
@@ -175,9 +188,9 @@ export default function AdminProductsPage() {
         category_id: undefined,
         image_url: 'http://localhost:4000/img/productName.jpg',
         description: '',
-        metadata: { taxable: true, tax_pct: undefined, margin_pct: undefined, price_cents: undefined } as any,
+        metadata: { taxable: true, tax_pct: undefined, margin_pct: undefined, price_cents: undefined },
         stock_qty: 0,
-        owner_id: undefined,
+        owner_id: null,
       })
       await load()
       setEditing(null)
@@ -186,25 +199,36 @@ export default function AdminProductsPage() {
     }
   }
 
+  // Para acceder a campos opcionales sin `any`, define un tipo auxiliar
+  type ProductLike = Product & {
+    owner_id?: number | null
+    stock_qty?: number | null
+    category_id?: number | null
+    weight?: number | null
+    metadata?: ProductMeta | (ProductMeta & Record<string, unknown>)
+  }
+
   const onEdit = (p: Product) => {
-    const m = p.metadata || {}
+    const px = p as ProductLike
+    const m = (px.metadata ?? {}) as ProductMeta & { archived?: boolean }
+
     setEditing(p)
     setForm({
       title: p.title,
       price: Number(p.price),
-      weight: (p as any).weight ?? undefined,
-      category_id: (p as any).category_id ?? undefined,
+      weight: px.weight ?? undefined,
+      category_id: px.category_id ?? undefined,
       image_url: p.image_url || '',
       description: p.description || '',
-      stock_qty: (p as any).stock_qty ?? 0,
+      stock_qty: px.stock_qty ?? 0,
       metadata: {
-        taxable: (m as any).taxable ?? true,
-        tax_pct: typeof (m as any).tax_pct === 'number' ? (m as any).tax_pct : undefined,
-        margin_pct: typeof (m as any).margin_pct === 'number' ? (m as any).margin_pct : undefined,
-        price_cents: typeof (m as any).price_cents === 'number' ? (m as any).price_cents : undefined,
-        archived: (m as any).archived ?? false,
-      } as any,
-      owner_id: (p as any).owner_id ?? '',
+        taxable: m.taxable ?? true,
+        tax_pct: typeof m.tax_pct === 'number' ? m.tax_pct : undefined,
+        margin_pct: typeof m.margin_pct === 'number' ? m.margin_pct : undefined,
+        price_cents: typeof m.price_cents === 'number' ? m.price_cents : undefined,
+        archived: m.archived ?? false,
+      },
+      owner_id: px.owner_id ?? null,
     })
   }
 
@@ -261,7 +285,12 @@ export default function AdminProductsPage() {
 
           <div>
             <label htmlFor="f-cat" className="block text-sm font-medium text-gray-700">Categoría</label>
-            <select id="f-cat" className="input" value={categoryId ?? ''} onChange={e => { setCategoryId(e.target.value === '' ? undefined : Number(e.target.value)); setPage(1) }}>
+            <select
+              id="f-cat"
+              className="input"
+              value={categoryId ?? ''}
+              onChange={e => { setCategoryId(e.target.value === '' ? undefined : Number(e.target.value)); setPage(1) }}
+            >
               <option value="">Todas las categorías</option>
               {cats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -288,7 +317,12 @@ export default function AdminProductsPage() {
 
           <div>
             <label htmlFor="f-arch" className="block text-sm font-medium text-gray-700">Estado</label>
-            <select id="f-arch" className="input" value={archived} onChange={e => { setArchived(e.target.value as any); setPage(1) }}>
+            <select
+              id="f-arch"
+              className="input"
+              value={archived}
+              onChange={e => { setArchived(e.target.value as 'all' | 'true' | 'false'); setPage(1) }}
+            >
               <option value="all">Todos</option>
               <option value="false">Activos</option>
               <option value="true">Archivados</option>
@@ -310,7 +344,12 @@ export default function AdminProductsPage() {
 
             <div>
               <label htmlFor="p-title" className="block text-sm font-medium text-gray-700">Título</label>
-              <input id="p-title" className="input" value={form.title as any} onChange={e => setForm(s => ({ ...s, title: e.target.value }))} />
+              <input
+                id="p-title"
+                className="input"
+                value={form.title ?? ''}
+                onChange={e => setForm(s => ({ ...s, title: e.target.value }))}
+              />
             </div>
 
             <div>
@@ -347,7 +386,12 @@ export default function AdminProductsPage() {
 
             <div>
               <label htmlFor="p-cat" className="block text-sm font-medium text-gray-700">Categoría</label>
-              <select id="p-cat" className="input" value={(form.category_id ?? '') as any} onChange={e => setForm(s => ({ ...s, category_id: e.target.value === '' ? undefined : Number(e.target.value) }))}>
+              <select
+                id="p-cat"
+                className="input"
+                value={form.category_id ?? ''}
+                onChange={e => setForm(s => ({ ...s, category_id: e.target.value === '' ? undefined : Number(e.target.value) }))}
+              >
                 <option value="">Sin categoría</option>
                 {cats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -355,8 +399,14 @@ export default function AdminProductsPage() {
 
             <div>
               <label htmlFor="p-img" className="block text-sm font-medium text-gray-700">Imagen URL</label>
-              <input id="p-img" className="input" value={form.image_url as any} onChange={e => setForm(s => ({ ...s, image_url: e.target.value }))} />
+              <input
+                id="p-img"
+                className="input"
+                value={form.image_url ?? ''}
+                onChange={e => setForm(s => ({ ...s, image_url: e.target.value }))}
+              />
             </div>
+
             <div>
               <label htmlFor="p-desc" className="block text-sm font-medium text-gray-700">Descripción</label>
               <textarea
@@ -364,7 +414,7 @@ export default function AdminProductsPage() {
                 className="input"
                 rows={3}
                 placeholder="Descripción breve del producto"
-                value={form.description as any}
+                value={form.description ?? ''}
                 onChange={e => setForm(s => ({ ...s, description: e.target.value }))}
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -378,13 +428,10 @@ export default function AdminProductsPage() {
               <select
                 id="p-owner"
                 className="input"
-                value={form.owner_id ?? ''}  // en UI usamos '' como fallback, pero NO lo guardamos
+                value={form.owner_id ?? ''} // UI puede mostrar '' pero el estado guarda number|null
                 onChange={(e) => {
-                  const ownerId = e.target.value === '' ? null : Number(e.target.value) // number | null
-                  setForm(prev => ({
-                    ...prev,
-                    owner_id: ownerId, // <-- number|null
-                  }))
+                  const ownerId = e.target.value === '' ? null : Number(e.target.value)
+                  setForm(prev => ({ ...prev, owner_id: ownerId })) // number|null
                 }}
               >
                 <option value="">Sin owner</option>
@@ -392,6 +439,7 @@ export default function AdminProductsPage() {
                   <option key={o.id} value={o.id}>{o.name}</option>
                 ))}
               </select>
+
             </div>
 
             <fieldset className="border rounded p-3">
@@ -428,7 +476,7 @@ export default function AdminProductsPage() {
                 <label htmlFor="m-pricecents" className="block text-sm text-gray-700">Precio en centavos (opcional)</label>
                 <input
                   id="m-pricecents" className="input" type="number" step="1" min={0}
-                  value={(form.metadata as any)?.price_cents == null || Number.isNaN((form.metadata as any)?.price_cents) ? '' : String((form.metadata as any)?.price_cents)}
+                  value={form.metadata?.price_cents == null || Number.isNaN(form.metadata?.price_cents) ? '' : String(form.metadata?.price_cents)}
                   onChange={e => setForm(s => ({ ...s, metadata: { ...(s.metadata || {}), price_cents: e.target.value === '' ? undefined : Math.floor(Number(e.target.value)) } }))}
                 />
                 {priceMismatch && (
@@ -462,9 +510,9 @@ export default function AdminProductsPage() {
                       category_id: undefined,
                       image_url: 'http://localhost:4000/img/productName.jpg',
                       description: '',
-                      metadata: { taxable: true, tax_pct: undefined, margin_pct: undefined, price_cents: undefined } as any,
+                      metadata: { taxable: true, tax_pct: undefined, margin_pct: undefined, price_cents: undefined },
                       stock_qty: 0,
-                      owner_id: form.owner_id ?? undefined,
+                      owner_id: form.owner_id ?? null,
                     })
                   }}
                   className="px-3 py-2 rounded bg-gray-200"
@@ -478,7 +526,8 @@ export default function AdminProductsPage() {
           {/* Lista */}
           <div className="md:col-span-2 bg-white rounded shadow divide-y">
             {items.map(p => {
-              const ownerId = (p as any).owner_id as number | undefined
+              const px = p as ProductLike
+              const ownerId = px.owner_id as number | undefined
               const ownerName =
                 (ownerId && owners.find(o => o.id === ownerId)?.name) || 'sin owner'
 
@@ -491,9 +540,10 @@ export default function AdminProductsPage() {
                       <span className="font-medium">
                         {(() => {
                           const base = Number(p.price || 0)
-                          const marginPct = Number((p.metadata as any)?.margin_pct || 0)
-                          const taxPct = Number((p.metadata as any)?.tax_pct || 0)
-                          const taxable = (p.metadata as any)?.taxable !== false
+                          const m = (px.metadata ?? {}) as ProductMeta
+                          const marginPct = Number(m.margin_pct || 0)
+                          const taxPct = Number(m.tax_pct || 0)
+                          const taxable = m.taxable !== false
                           const priceWithMargin = base * (1 + marginPct / 100)
                           const estTax = taxable ? priceWithMargin * (taxPct / 100) : 0
                           const estTotal = priceWithMargin + estTax
@@ -502,15 +552,15 @@ export default function AdminProductsPage() {
                       </span>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
-                          {p.category_id ? `Cat #${p.category_id}` : 'Sin categoría'}
+                          {px.category_id ? `Cat #${px.category_id}` : 'Sin categoría'}
                         </span>
                         <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
                           {ownerName}
                         </span>
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${(p as any).stock_qty > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}`}>
-                          {(p as any).stock_qty > 0 ? `Stock: ${(p as any).stock_qty}` : 'Agotado'}
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${Number(px.stock_qty || 0) > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}`}>
+                          {Number(px.stock_qty || 0) > 0 ? `Stock: ${px.stock_qty}` : 'Agotado'}
                         </span>
-                        {(p.metadata as any)?.archived && (
+                        {((px.metadata as ProductMeta | undefined)?.archived) && (
                           <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
                             Archivado
                           </span>

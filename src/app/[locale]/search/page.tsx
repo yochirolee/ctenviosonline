@@ -6,8 +6,11 @@ import SearchResultsClient from './SearchResultsClient' // 👈 importa el clien
 type Params = { locale: string }
 type SP = { q?: string; page?: string }
 
+// Helper sin `any`: usa Promise.resolve con overloads
+async function resolve<T>(p: Promise<T>): Promise<T>
+async function resolve<T>(p: T): Promise<T>
 async function resolve<T>(p: T | Promise<T>): Promise<T> {
-  return (p as any)?.then ? await (p as Promise<T>) : (p as T)
+  return Promise.resolve(p)
 }
 
 export default async function SearchPage({
@@ -34,7 +37,6 @@ export default async function SearchPage({
         {q ? `“${q}”` : locale === 'en' ? 'Type to search' : 'Escribe para buscar'}
       </p>
 
-      {/* 👇 ahora sí renderiza el cliente */}
       <SearchResultsClient
         locale={locale}
         dict={dict}

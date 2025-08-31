@@ -19,9 +19,10 @@ export type AdminCustomer = {
   phone: string | null
   address: string | null
   role: string | null
-  metadata?: any
+  metadata?: Record<string, unknown> | null
   created_at: string
 }
+
 
 export async function listCategories(): Promise<Category[]> {
   const r = await fetch(`${API_URL}/categories`, { cache: 'no-store' });
@@ -145,14 +146,14 @@ export async function updateProduct(id: number, input: Partial<Product>): Promis
   return r.json();
 }
 
-export async function deleteProduct(id: number) {
+export async function deleteProduct(id: number): Promise<unknown> {
   const res = await fetch(`${API_URL}/admin/products/${id}`, {
     method: 'DELETE',
     headers: authHeaders(),
   })
   const text = await res.text().catch(() => '')
   if (!res.ok) throw new Error(`deleteProduct ${res.status} ${text}`)
-  try { return JSON.parse(text) } catch { return {} as any }
+  try { return JSON.parse(text) as unknown } catch { return {} as unknown }
 }
 
 /* Paginado de productos (admin) */
@@ -226,7 +227,7 @@ export type OrderRow = {
   total?: string
   total_calc?: string
   items_count?: number
-  metadata?: any
+  metadata?: Record<string, unknown> | null
 }
 
 /** Nuevo item del listado de órdenes admin (paginado) */
@@ -302,7 +303,6 @@ export async function updateOrderStatus(id: number, status: string): Promise<Ord
 }
 
 /* ========== Order detail (ADMIN) ========== */
-
 export type AdminOrderDetail = {
   order: {
     id: number
@@ -314,7 +314,7 @@ export type AdminOrderDetail = {
     card_fee_pct: number
     card_fee: number
     total_with_fee: number
-    metadata?: any
+    metadata?: Record<string, unknown> | null
   }
   items: Array<{
     product_id: number

@@ -15,14 +15,28 @@ type Item = {
   image_url?: string
 }
 
+type PricingMeta = {
+  card_diff_pct?: number
+  estimated_gateway_total?: number
+  total?: number
+  tax?: number
+}
+
+type OrderMetadata = {
+  pricing?: PricingMeta
+  // Si tu backend añade más cosas, quedan permitidas:
+  [k: string]: unknown
+}
+
 type OrderRow = {
   order_id: number
   created_at?: string
   status?: 'pending' | 'paid' | 'failed' | string
   payment_method?: string
-  metadata?: any
+  metadata?: OrderMetadata
   items: Item[]
 }
+
 
 type Dict = {
   common: { back: string; login: string; loading: string }

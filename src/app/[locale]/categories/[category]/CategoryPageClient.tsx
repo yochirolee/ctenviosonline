@@ -50,7 +50,7 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
   const { addItem } = useCart()
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
-  const { location, clearLocation } = useLocation()
+  const { location } = useLocation() // <-- quitamos clearLocation (no usado)
 
   // Items que se muestran en la UI (inicialmente los que vienen del server)
   const [items, setItems] = useState<Product[]>(products)
@@ -62,8 +62,11 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
     const load = async () => {
       try {
         setLoading(true)
-        const list = await getProductsByCategory(params.category, location as DeliveryLocation | undefined)
-        if (!cancelled) setItems(list as any)
+        const list = await getProductsByCategory(
+          params.category,
+          location as DeliveryLocation | undefined
+        )
+        if (!cancelled) setItems(list as Product[]) // <-- sin `any`
       } catch {
         if (!cancelled) setItems(products)
       } finally {
@@ -72,7 +75,7 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
     }
     load()
     return () => { cancelled = true }
-  }, [params.category, location?.country, location?.province, location?.municipality, location?.area_type])
+  }, [params.category, location?.country, location?.province, location?.municipality, location?.area_type, products])
 
   const handleAddToCart = async (product: Product) => {
     const isLoggedIn = await checkCustomerAuth()
@@ -136,8 +139,7 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
           </button>
         </div>
       )}
-
-
+      
       <h1 className="text-2xl font-bold mb-2">
         {dict.categories.list[params.category as keyof typeof dict.categories.list] || params.category}
       </h1>

@@ -1,6 +1,5 @@
 // app/[locale]/(legal)/terms/page.tsx  ← ajusta la ruta si tu proyecto la tiene en otro lugar
 import type { Metadata } from "next"
-import Link from "next/link"
 import Footer from "@/components/Footer"
 import { getDictionary } from "@/lib/dictionaries"
 import BackButton from "@/components/BackButton"

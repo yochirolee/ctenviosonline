@@ -3,7 +3,7 @@
 export type DeliveryLocation = {
   country: 'US' | 'CU'
   province?: string
-  municipality?: string 
+  municipality?: string
   area_type?: 'city' | 'municipio'
 }
 
@@ -16,6 +16,16 @@ export type SimplifiedProduct = {
   description?: string
 }
 
+export type ProductMetadata = {
+  owner?: string
+  taxable?: boolean
+  tax_pct?: number
+  margin_pct?: number
+  price_cents?: number
+  archived?: boolean
+  [k: string]: unknown
+}
+
 type ProductFromAPI = {
   id: number | string
   title?: string
@@ -25,7 +35,18 @@ type ProductFromAPI = {
   // campos de precio calculado (si el backend los expone)
   price_with_margin_cents?: number
   price_with_margin_usd?: number | string
-  metadata?: any
+  metadata?: ProductMetadata | null
+}
+
+type BestSellerFromAPI = ProductFromAPI & {
+  sold_qty?: number | string | null
+}
+
+type SearchResponse = {
+  items?: ProductFromAPI[]
+  page?: number
+  limit?: number
+  has_more?: boolean
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
@@ -36,7 +57,7 @@ function buildLocParams(loc?: DeliveryLocation) {
   if (!loc) return sp
   if (loc.country) sp.set('country', loc.country)
   if (loc.province) sp.set('province', String(loc.province))
-    if (loc?.municipality) sp.set('municipality', String(loc.municipality))
+  if (loc.municipality) sp.set('municipality', String(loc.municipality))
   if (loc.area_type) sp.set('area_type', String(loc.area_type))
   return sp
 }
@@ -103,7 +124,7 @@ export async function getProducts(loc?: DeliveryLocation): Promise<SimplifiedPro
   return data.map(mapApiProduct)
 }
 
-// lib/products.ts
+/** Más vendidos (puede venir sold_qty como string/number/null desde el backend) */
 export async function getBestSellers(
   loc?: DeliveryLocation,
   opts?: { limit?: number; days?: number; status?: string }
@@ -117,57 +138,57 @@ export async function getBestSellers(
   const res = await fetch(url, { cache: 'no-store' })
   if (!res.ok) return []
 
-  const data: any[] = await res.json()
+  const data: BestSellerFromAPI[] = await res.json()
 
   return data.map((p) => ({
-    ...mapApiProduct(p),          // id, name, price, imageSrc, description...
-    sold_qty: Number(p.sold_qty ?? 0),   // 👈 normaliza a number SIEMPRE
+    ...mapApiProduct(p),
+    sold_qty: Number(p.sold_qty ?? 0),
   }))
 }
 
+/** Búsqueda simple (devuelve solo items) */
 export async function searchProducts(
   q: string,
   loc?: DeliveryLocation,
   opts?: { page?: number; limit?: number }
 ): Promise<SimplifiedProduct[]> {
-  const sp = buildLocParams(loc);
-  if (q) sp.set('q', q);
-  if (opts?.page) sp.set('page', String(opts.page));
-  if (opts?.limit) sp.set('limit', String(opts.limit));
+  const sp = buildLocParams(loc)
+  if (q) sp.set('q', q)
+  if (opts?.page) sp.set('page', String(opts.page))
+  if (opts?.limit) sp.set('limit', String(opts.limit))
 
-  const url = `${API_URL}/products/search${sp.toString() ? `?${sp.toString()}` : ''}`;
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) return [];
-  const data = await res.json();
-  const rows = (data?.items ?? []) as any[];
-  return rows.map(mapApiProduct);
+  const url = `${API_URL}/products/search${sp.toString() ? `?${sp.toString()}` : ''}`
+  const res = await fetch(url, { cache: 'no-store' })
+  if (!res.ok) return []
+
+  const data: SearchResponse = await res.json()
+  const rows: ProductFromAPI[] = data.items ?? []
+  return rows.map(mapApiProduct)
 }
 
-// lib/products.ts
+/** Búsqueda con paginado */
 export async function searchProductsPaged(
   q: string,
   loc?: DeliveryLocation,
   opts?: { page?: number; limit?: number }
 ): Promise<{ items: SimplifiedProduct[]; page: number; limit: number; has_more: boolean }> {
-  const sp = buildLocParams(loc);
-  if (q) sp.set('q', q);
-  if (opts?.page) sp.set('page', String(opts.page));
-  if (opts?.limit) sp.set('limit', String(opts.limit));
+  const sp = buildLocParams(loc)
+  if (q) sp.set('q', q)
+  if (opts?.page) sp.set('page', String(opts.page))
+  if (opts?.limit) sp.set('limit', String(opts.limit))
 
-  const url = `${API_URL}/products/search${sp.toString() ? `?${sp.toString()}` : ''}`;
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) return { items: [], page: opts?.page || 1, limit: opts?.limit || 12, has_more: false };
+  const url = `${API_URL}/products/search${sp.toString() ? `?${sp.toString()}` : ''}`
+  const res = await fetch(url, { cache: 'no-store' })
+  if (!res.ok) {
+    return { items: [], page: opts?.page || 1, limit: opts?.limit || 12, has_more: false }
+  }
 
-  const data = await res.json();
-  const rows = (data?.items ?? []) as any[];
+  const data: SearchResponse = await res.json()
+  const rows: ProductFromAPI[] = data.items ?? []
   return {
     items: rows.map(mapApiProduct),
-    page: Number(data?.page ?? opts?.page ?? 1),
-    limit: Number(data?.limit ?? opts?.limit ?? 12),
-    has_more: Boolean(data?.has_more),
-  };
+    page: Number(data.page ?? opts?.page ?? 1),
+    limit: Number(data.limit ?? opts?.limit ?? 12),
+    has_more: Boolean(data.has_more),
+  }
 }
-
-
-
-

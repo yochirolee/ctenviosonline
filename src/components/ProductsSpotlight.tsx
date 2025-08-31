@@ -9,6 +9,7 @@ import { useLocation } from '@/context/LocationContext'
 import { useCart } from '@/context/CartContext'
 import { checkCustomerAuth } from '@/lib/auth'
 import type { Dict } from '@/types/Dict'
+import Image from 'next/image'
 
 export default function ProductsSpotlight({ dict }: { dict: Dict }) {
   const { locale } = useParams() as { locale: string }
@@ -20,14 +21,11 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
   const [loading, setLoading] = useState(true)
   const railRef = useRef<HTMLDivElement>(null)
 
-  // Textos con fallbacks:
   const t = {
     title: dict.spotlight?.title ?? (locale === 'en' ? 'Popular right now' : 'Populares ahora'),
     subtitle:
       dict.spotlight?.subtitle ??
-      (locale === 'en'
-        ? 'Buy directly without browsing categories'
-        : 'Compra directo sin navegar categorías'),
+      (locale === 'en' ? 'Buy directly without browsing categories' : 'Compra directo sin navegar categorías'),
     addToCart: dict.spotlight?.addToCart ?? dict.cart?.addToCart ?? (locale === 'en' ? 'Add to Cart' : 'Agregar al carrito'),
     added: dict.spotlight?.added ?? dict.cart?.added ?? (locale === 'en' ? 'added to the cart' : 'agregado al carrito'),
     login_required:
@@ -39,13 +37,27 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     viewAll: dict.spotlight?.viewAll ?? (locale === 'en' ? 'View all' : 'Ver todo'),
   }
 
+  // Memoiza la ubicación para usarla como única dependencia en el efecto
+  const loc = useMemo(
+    () =>
+      location
+        ? ({
+            country: location.country,
+            province: location.province,
+            municipality: location.municipality,
+            area_type: location.area_type,
+          } as DeliveryLocation)
+        : undefined,
+    [location?.country, location?.province, location?.municipality, location?.area_type]
+  )
+
   useEffect(() => {
     let cancelled = false
     const load = async () => {
       try {
         setLoading(true)
-        const list = await getProducts(location as DeliveryLocation | undefined)
-        if (!cancelled) setItems(list.slice(0, 20))
+        const list = await getProducts(loc)
+        if (!cancelled) setItems((list ?? []).slice(0, 20))
       } catch {
         if (!cancelled) setItems([])
       } finally {
@@ -53,8 +65,10 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
       }
     }
     load()
-    return () => { cancelled = true }
-  }, [location?.country, location?.province, location?.municipality, location?.area_type])
+    return () => {
+      cancelled = true
+    }
+  }, [loc])
 
   const fmt = useMemo(
     () => new Intl.NumberFormat(locale || 'es', { style: 'currency', currency: 'USD' }),
@@ -71,9 +85,10 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     try {
       await addItem(Number(p.id), 1)
       toast.success(`${p.name} ${t.added}`)
-    } catch (e: any) {
-      if (e?.code === 'OUT_OF_STOCK') {
-        toast.error(`Sin stock${e?.available ? ` (disp: ${e.available})` : ''}`)
+    } catch (e: unknown) {
+      const err = (e ?? {}) as { code?: string; available?: number }
+      if (err.code === 'OUT_OF_STOCK') {
+        toast.error(`Sin stock${Number.isFinite(err.available) ? ` (disp: ${err.available})` : ''}`)
       } else {
         toast.error(locale === 'en' ? 'Error adding to cart' : 'Error agregando al carrito')
       }
@@ -141,13 +156,22 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
                 className="w-56 flex-shrink-0 snap-start rounded-xl border shadow-sm overflow-hidden bg-white"
               >
                 <div className="relative h-36 bg-gray-50">
-                  <img src={p.imageSrc} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
+                  <Image
+                    src={p.imageSrc}
+                    alt={p.name}
+                    fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 224px"
+                    className="object-cover"
+                    priority={false}
+                  />
                 </div>
                 <div className="p-3 flex flex-col">
                   <h3 className="text-sm font-semibold text-gray-900 line-clamp-2">{p.name}</h3>
                   {p.description ? (
                     <p className="text-xs text-gray-600 mt-1 line-clamp-2">{p.description}</p>
-                  ) : <span className="mt-1" />}
+                  ) : (
+                    <span className="mt-1" />
+                  )}
                   <div className="mt-2 text-green-700 font-semibold text-sm">{fmt.format(p.price)}</div>
                   <button
                     onClick={() => handleAdd(p)}
@@ -163,10 +187,14 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
           {/* Controles móviles */}
           <div className="mt-4 flex justify-center md:hidden gap-3">
             <button onClick={() => scrollBy(-320)} className="px-3 py-2 rounded border text-sm">
-              <span className="inline-flex items-center gap-1"><ChevronLeft size={16} /> {locale === 'en' ? 'Prev' : 'Anterior'}</span>
+              <span className="inline-flex items-center gap-1">
+                <ChevronLeft size={16} /> {locale === 'en' ? 'Prev' : 'Anterior'}
+              </span>
             </button>
             <button onClick={() => scrollBy(320)} className="px-3 py-2 rounded border text-sm">
-              <span className="inline-flex items-center gap-1">{locale === 'en' ? 'Next' : 'Siguiente'} <ChevronRight size={16} /></span>
+              <span className="inline-flex items-center gap-1">
+                {locale === 'en' ? 'Next' : 'Siguiente'} <ChevronRight size={16} />
+              </span>
             </button>
           </div>
         </div>

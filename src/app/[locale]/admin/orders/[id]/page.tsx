@@ -3,9 +3,80 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import AdminGuard from '@/components/admin/AdminGuard'
-import AdminTabs from '@/components/admin/AdminTabs'
 import { getAdminOrderDetail } from '@/lib/adminApi'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
+
+type DeliveryMeta = {
+  delivered?: boolean
+  delivered_at?: string
+  photo_url?: string
+  notes?: string
+  delivered_by?: string
+}
+
+type ShippingUS = {
+  country: 'US'
+  first_name?: string
+  last_name?: string
+  phone?: string
+  email?: string
+  address_line1?: string
+  address_line2?: string | null
+  city?: string
+  state?: string
+  zip?: string
+  instructions?: string | null
+}
+
+type ShippingIntl = {
+  country?: string // cualquier país ≠ 'US'
+  first_name?: string
+  last_name?: string
+  phone?: string
+  email?: string
+  address?: string | null
+  municipality?: string | null
+  province?: string | null
+  ci?: string | null
+  instructions?: string | null
+}
+
+type Shipping = ShippingUS | ShippingIntl
+const isUS = (s: Shipping): s is ShippingUS => s?.country === 'US';
+type BmsPayTx = {
+  InvoiceNumber?: string
+  Id?: string
+  ServiceReferenceNumber?: string
+  PaidOn?: string
+  Status?: number
+  StatusText?: string
+  Link?: string
+}
+
+type DirectPay = {
+  provider?: string
+  mode?: 'direct' | 'link' | string
+  AuthorizationNumber?: string
+  ServiceReferenceNumber?: string
+  UserTransactionNumber?: string
+  CardType?: string
+  LastFour?: string
+  verbiage?: string
+  invoice?: string
+  link?: string
+}
+
+type OrderMetadata = {
+  shipping?: Shipping | null
+  bmspay_transaction?: BmsPayTx | null
+  payment?: DirectPay | null
+  checkout_session_id?: string
+  session_id?: string
+  pricing?: { shipping?: number }
+  shipping_by_owner?: Record<string, number>
+  snapshot?: { shipping_by_owner?: Record<string, number> }
+  delivery?: DeliveryMeta | null
+}
 
 export default function AdminOrderDetailPage() {
   const { locale, id } = useParams<{ locale: string; id: string }>()
@@ -55,9 +126,10 @@ export default function AdminOrderDetailPage() {
 
   const { order, items } = data
 
-  const shipping = (order.metadata?.shipping ?? null) as any
-  const bms = (order.metadata?.bmspay_transaction ?? null) as any
-  const pay = (order.metadata?.payment ?? null) as any
+  const md = (order.metadata ?? {}) as OrderMetadata
+  const shipping = md.shipping ?? null
+  const bms = md.bmspay_transaction ?? null
+  const pay = md.payment ?? null
 
   // Fallbacks robustos (ya existentes)
   const payInvoice = pay?.invoice || bms?.InvoiceNumber || String(order.metadata?.session_id || '')
@@ -81,7 +153,7 @@ export default function AdminOrderDetailPage() {
 
   // Desglose de envío por owner (opcional)
   const shippingByOwner: Record<string, number> | null =
-    order?.metadata?.shipping_by_owner || order?.metadata?.snapshot?.shipping_by_owner || null
+    md.shipping_by_owner ?? md.snapshot?.shipping_by_owner ?? null
 
   // Derivados de pago (link/directo)
   const provider = pay?.provider || (bms ? 'bmspay' : order.payment_method || '—')
@@ -90,20 +162,17 @@ export default function AdminOrderDetailPage() {
   const serviceRef = pay?.ServiceReferenceNumber || bms?.ServiceReferenceNumber || null
   const utn = pay?.UserTransactionNumber || null
   const cardMasked = (pay?.CardType || pay?.LastFour) ? `${pay.CardType || 'Card'} •••• ${pay.LastFour || '••••'}` : null
-  const checkoutSessionDisplay =
-    (order.metadata as any)?.checkout_session_id ??
-    (order.metadata as any)?.session_id ??
-    null
+  const checkoutSessionDisplay = md.checkout_session_id ?? md.session_id ?? null
 
   // Estado de aprobación (mostrar si disponible)
   // - Preferimos verbiage "APPROVED" del pago directo si viene textual
   // - Si bmspay_transaction.Status === 1 lo consideramos APPROVED
   // - Si hubiera StatusText lo usamos como texto directo
   const statusTextRaw =
-    (typeof pay?.verbiage === 'string' ? pay?.verbiage : undefined) ||
-    (typeof (bms as any)?.StatusText === 'string' ? (bms as any)?.StatusText : undefined) ||
-    (typeof (bms as any)?.Status === 'number'
-      ? ((bms as any)?.Status === 1 ? 'APPROVED' : undefined)
+    (typeof pay?.verbiage === 'string' ? pay.verbiage : undefined) ||
+    (typeof bms?.StatusText === 'string' ? bms.StatusText : undefined) ||
+    (typeof bms?.Status === 'number'
+      ? (bms.Status === 1 ? 'APPROVED' : undefined)
       : undefined)
 
   const approvedDisplay = statusTextRaw && /approved/i.test(statusTextRaw) ? 'APPROVED' : (statusTextRaw || null)
@@ -211,27 +280,66 @@ export default function AdminOrderDetailPage() {
 
         {/* Envío (si existe) */}
         {shipping && (
-          <div className="bg-white border rounded">
-            <div className="p-4 border-b font-semibold">Envío</div>
-            <div className="p-4 text-sm space-y-1">
-              <div><span className="text-gray-600">Destinatario:</span> <span className="font-medium">{shipping.first_name} {shipping.last_name}</span></div>
-              <div><span className="text-gray-600">Tel/Email:</span> <span className="font-medium">{shipping.phone} · {shipping.email}</span></div>
-              {shipping.country === 'US' ? (
-                <>
-                  <div><span className="text-gray-600">Dirección:</span> <span className="font-medium">{shipping.address_line1}{shipping.address_line2 ? `, ${shipping.address_line2}` : ''}</span></div>
-                  <div><span className="text-gray-600">Ciudad/Estado/ZIP:</span> <span className="font-medium">{shipping.city}, {shipping.state} {shipping.zip}</span></div>
-                </>
-              ) : (
-                <>
-                  <div><span className="text-gray-600">Dirección:</span> <span className="font-medium">{shipping.address}</span></div>
-                  <div><span className="text-gray-600">Municipio/Provincia:</span> <span className="font-medium">{shipping.municipality}, {shipping.province}</span></div>
-                  {shipping.ci && <div><span className="text-gray-600">CI:</span> <span className="font-medium">{shipping.ci}</span></div>}
-                </>
-              )}
-              {shipping.instructions && <div className="text-gray-600">Notas: <span className="font-medium">{shipping.instructions}</span></div>}
+          <div className="p-4 text-sm space-y-1">
+            <div>
+              <span className="text-gray-600">Destinatario:</span>{' '}
+              <span className="font-medium">
+                {(shipping.first_name ?? '')} {(shipping.last_name ?? '')}
+              </span>
             </div>
+
+            <div>
+              <span className="text-gray-600">Tel/Email:</span>{' '}
+              <span className="font-medium">
+                {(shipping.phone ?? '')} · {(shipping.email ?? '')}
+              </span>
+            </div>
+
+            {isUS(shipping) ? (
+              <>
+                <div>
+                  <span className="text-gray-600">Dirección:</span>{' '}
+                  <span className="font-medium">
+                    {(shipping.address_line1 ?? '')}
+                    {shipping.address_line2 ? `, ${shipping.address_line2}` : ''}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Ciudad/Estado/ZIP:</span>{' '}
+                  <span className="font-medium">
+                    {(shipping.city ?? '')}, {(shipping.state ?? '')} {(shipping.zip ?? '')}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <span className="text-gray-600">Dirección:</span>{' '}
+                  <span className="font-medium">{shipping.address ?? ''}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Municipio/Provincia:</span>{' '}
+                  <span className="font-medium">
+                    {(shipping.municipality ?? '')}, {(shipping.province ?? '')}
+                  </span>
+                </div>
+                {shipping.ci && (
+                  <div>
+                    <span className="text-gray-600">CI:</span>{' '}
+                    <span className="font-medium">{shipping.ci}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            {shipping.instructions && (
+              <div className="text-gray-600">
+                Notas: <span className="font-medium">{shipping.instructions}</span>
+              </div>
+            )}
           </div>
         )}
+
 
         {/* Entrega */}
         {delivery?.delivered && (

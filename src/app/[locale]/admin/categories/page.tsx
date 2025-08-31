@@ -103,7 +103,7 @@ export default function AdminCategoriesPage() {
                   name="slug"
                   className="input"
                   placeholder="slug"
-                  value={form.slug as any}
+                  value={form.slug ?? ""}
                   onChange={e => setForm(s => ({ ...s, slug: e.target.value }))}
                   autoComplete="off"
                   required
@@ -117,7 +117,7 @@ export default function AdminCategoriesPage() {
                   name="name"
                   className="input"
                   placeholder="nombre"
-                  value={form.name as any}
+                  value={form.name ?? ""}
                   onChange={e => setForm(s => ({ ...s, name: e.target.value }))}
                   autoComplete="off"
                   required
@@ -131,7 +131,7 @@ export default function AdminCategoriesPage() {
                   name="image_url"
                   className="input"
                   placeholder="https://res.cloudinary.com/.../img.jpg"
-                  value={form.image_url as any}
+                  value={form.image_url ?? ""}
                   onChange={e => setForm(s => ({ ...s, image_url: e.target.value }))}
                   autoComplete="off"
                   inputMode="url"

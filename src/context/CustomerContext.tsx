@@ -81,7 +81,6 @@ export const CustomerProvider = ({ children }: { children: React.ReactNode }) =>
 
   useEffect(() => {
     refreshCustomer()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

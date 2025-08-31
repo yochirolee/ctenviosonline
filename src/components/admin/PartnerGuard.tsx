@@ -11,20 +11,42 @@ export default function PartnerGuard({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     let cancelled = false
+
     const goHome = () => {
-      if (!didNav.current) { didNav.current = true; router.replace(locale ? `/${locale}` : '/') }
+      if (!didNav.current) {
+        didNav.current = true
+        router.replace(locale ? `/${locale}` : '/')
+      }
     }
 
     const check = async () => {
       try {
         const t = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-        if (!t) { setAllowed(false); return goHome() }
+        if (!t) {
+          if (!cancelled) setAllowed(false)
+          return goHome()
+        }
+
         const me = await getMe().catch(() => null)
         const role = me?.metadata?.role
         const ok = role === 'owner' || role === 'delivery' || role === 'admin'
-        if (!cancelled) ok ? setAllowed(true) : (setAllowed(false), goHome())
-      } catch { if (!cancelled) { setAllowed(false); goHome() } }
+
+        if (!cancelled) {
+          if (ok) {
+            setAllowed(true)
+          } else {
+            setAllowed(false)
+            goHome()
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setAllowed(false)
+          goHome()
+        }
+      }
     }
+
     check()
     return () => { cancelled = true }
   }, [router, locale])

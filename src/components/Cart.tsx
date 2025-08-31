@@ -1,4 +1,5 @@
 'use client'
+/* eslint-disable @next/next/no-img-element */
 
 import React from 'react'
 import {
@@ -14,15 +15,31 @@ import { usePathname, useRouter } from 'next/navigation'
 import type { Dict } from '@/types/Dict'
 import { toast } from 'sonner'
 
+type CartItemMeta = {
+  base_cents?: number
+  margin_pct?: number
+  tax_cents?: number
+  owner?: string
+  [k: string]: unknown
+}
+
+type CartItem = {
+  id: number | string
+  product_id: number
+  title: string
+  unit_price?: number
+  quantity: number
+  thumbnail?: string
+  available?: number | null
+  weight?: number | string | null
+  owner_name?: string
+  metadata?: CartItemMeta
+}
+
 export default function CartDrawer({ dict }: { dict: Dict }) {
-  const {
-    items,
-    removeItem,
-    addItem,
-    isCartOpen,
-    setIsCartOpen,
-    refreshCartNow, // 👈 para forzar sync visual tras errores de stock
-  } = useCart()
+  const cart = useCart()
+  const items = cart.items as CartItem[]
+  const { removeItem, addItem, isCartOpen, setIsCartOpen, refreshCartNow } = cart
 
   const router = useRouter()
   const pathname = usePathname()
@@ -50,46 +67,41 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
   }, [isCartOpen])
 
   // --- Helpers de precio ---
-  function priceWithMarginCentsFromMeta(item: any): number | undefined {
-    const base = typeof item?.metadata?.base_cents === 'number' && item.metadata.base_cents >= 0
-      ? item.metadata.base_cents
-      : undefined
-    const marginPct = typeof item?.metadata?.margin_pct === 'number' && isFinite(item.metadata.margin_pct)
-      ? Number(item.metadata.margin_pct)
-      : 0
+  function priceWithMarginCentsFromMeta(item: CartItem): number | undefined {
+    const base =
+      typeof item?.metadata?.base_cents === 'number' && item.metadata.base_cents >= 0
+        ? item.metadata.base_cents
+        : undefined
+    const marginPct =
+      typeof item?.metadata?.margin_pct === 'number' && isFinite(item.metadata.margin_pct)
+        ? Number(item.metadata.margin_pct)
+        : 0
     if (base == null) return undefined
-    return Math.round(base * (100 + marginPct) / 100)
+    return Math.round((base * (100 + marginPct)) / 100)
   }
 
-  function normalizeUnitPriceToCents(item: any): number {
+  function normalizeUnitPriceToCents(item: CartItem): number {
     const up = Number(item?.unit_price ?? 0)
     if (!isFinite(up)) return 0
     if (Number.isInteger(up) && up >= 1000) return up // ya está en cents
     return Math.round(up * 100) // venía en USD
   }
 
-  function itemUnitCents(item: any): number {
+  function itemUnitCents(item: CartItem): number {
     return priceWithMarginCentsFromMeta(item) ?? normalizeUnitPriceToCents(item)
   }
 
   // Subtotal (centavos)
-  const subtotalCents = items.reduce(
-    (sum, item) => sum + itemUnitCents(item) * item.quantity,
-    0
-  )
+  const subtotalCents = items.reduce((sum, item) => sum + itemUnitCents(item) * item.quantity, 0)
 
   // Tax general (centavos): suma de tax_cents por ítem * cantidad
-  const taxCents = items.reduce((sum, item: any) => {
-    const perItemTax = Number.isFinite(item?.metadata?.tax_cents) ? Number(item.metadata.tax_cents) : 0
+  const taxCents = items.reduce((sum, item: CartItem) => {
+    const perItemTax =
+      Number.isFinite(item?.metadata?.tax_cents) && typeof item?.metadata?.tax_cents === 'number'
+        ? item.metadata!.tax_cents!
+        : 0
     return sum + perItemTax * item.quantity
   }, 0)
-
-  const totalCents = subtotalCents + taxCents
-
-  const anyOverStock = React.useMemo(
-    () => items.some(it => Number.isFinite(it?.available) && it.available !== null && it.quantity > (it.available as number)),
-    [items]
-  )
 
   return (
     <Dialog open={isCartOpen} onClose={() => setIsCartOpen(false)} className="relative z-50">
@@ -115,7 +127,7 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
                 <p className="text-gray-500">{dict.cart.empty}</p>
               ) : (
                 <ul className="divide-y divide-gray-200">
-                  {items.map((item: any) => {
+                  {items.map((item: CartItem) => {
                     const unitCents = itemUnitCents(item)
                     const lineCents = unitCents * item.quantity
 
@@ -127,16 +139,14 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
                     const over = available !== null && item.quantity > available
                     const reached = available !== null && item.quantity >= available
 
-                    const qtyClass = over
-                      ? 'text-red-600 font-semibold'
-                      : 'text-gray-700'
+                    const qtyClass = over ? 'text-red-600 font-semibold' : 'text-gray-700'
 
                     return (
-                      <li
-                        key={item.id}
-                        className={`flex py-6 ${over ? 'bg-red-50/60' : ''}`}
-                      >
-                        <div className={`w-24 h-24 overflow-hidden rounded-md border ${over ? 'border-red-300' : 'border-gray-200'}`}>
+                      <li key={item.id} className={`flex py-6 ${over ? 'bg-red-50/60' : ''}`}>
+                        <div
+                          className={`w-24 h-24 overflow-hidden rounded-md border ${over ? 'border-red-300' : 'border-gray-200'
+                            }`}
+                        >
                           <img
                             src={item.thumbnail ?? '/pasto.jpg'}
                             alt={item.title}
@@ -151,28 +161,34 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
 
                           {(item?.owner_name || item?.metadata?.owner) && (
                             <div className="mt-0.5 text-xs text-gray-500">
-                              {dict.checkout.provider}{item.owner_name || item.metadata.owner}
+                              {dict.checkout.provider}
+                              {item.owner_name || item.metadata?.owner}
                             </div>
                           )}
 
                           <div className="mt-1 text-sm text-gray-500">
                             <span>
-                              {dict.checkout.quantity}: <span className={qtyClass}>{item.quantity}</span> · ${(unitCents / 100).toFixed(2)} c/u
+                              {dict.checkout.quantity}:{' '}
+                              <span className={qtyClass}>{item.quantity}</span> · $
+                              {(unitCents / 100).toFixed(2)} c/u
                             </span>
                           </div>
 
                           {/* Disponibilidad visual */}
                           {available !== null && (
                             <div
-                              className={`mt-1 text-xs ${over ? 'text-red-600 font-semibold' : 'text-gray-500'}`}
+                              className={`mt-1 text-xs ${over ? 'text-red-600 font-semibold' : 'text-gray-500'
+                                }`}
                             >
                               {over ? (
                                 <>
-                                  {dict.checkout.available_message}{available}. {dict.checkout.available_message2}
+                                  {dict.checkout.available_message}
+                                  {available}. {dict.checkout.available_message2}
                                 </>
                               ) : (
                                 <>
-                                  {dict.checkout.available}{available}
+                                  {dict.checkout.available}
+                                  {available}
                                 </>
                               )}
                             </div>
@@ -180,13 +196,17 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
 
                           {Number(item?.weight) > 0 && (
                             <div className="mt-1 text-xs text-gray-500">
-                              {dict.checkout.weight}{Number(item.weight).toFixed(2)}{dict.checkout.weight_unit}
+                              {dict.checkout.weight}
+                              {Number(item.weight).toFixed(2)}
+                              {dict.checkout.weight_unit}
                             </div>
                           )}
 
                           <div className="mt-2 flex items-center gap-3">
                             <button
-                              onClick={() => removeItem(item.id)}
+                              onClick={() => removeItem(
+                                typeof item.id === 'number' ? item.id : Number(item.id)
+                              )}
                               className="px-3 py-1 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1"
                               aria-label="Disminuir"
                             >
@@ -208,16 +228,25 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
                                 }
                                 try {
                                   await addItem(item.product_id, 1)
-                                } catch (e: any) {
-                                  if (e?.code === 'OUT_OF_STOCK') {
+                                } catch (e: unknown) {
+                                  const err = (e ?? {}) as {
+                                    code?: string
+                                    available?: number
+                                    title?: string
+                                    message?: string
+                                  }
+                                  if (err?.code === 'OUT_OF_STOCK') {
                                     toast.error(
-                                      Number(e?.available) === 0
-                                        ? `Sin stock disponible para ${e?.title ?? 'este producto'}.`
-                                        : `Solo quedan ${e?.available} de ${e?.title ?? 'este producto'}.`
+                                      Number(err?.available) === 0
+                                        ? `Sin stock disponible para ${err?.title ?? 'este producto'}.`
+                                        : `Solo quedan ${err?.available} de ${err?.title ?? 'este producto'}.`
                                     )
                                     // fuerza refresco para ver el stock/qty real
                                     refreshCartNow()
-                                  } else if (e?.message === 'AUTH_MISSING' || e?.message === 'AUTH_FORBIDDEN') {
+                                  } else if (
+                                    err?.message === 'AUTH_MISSING' ||
+                                    err?.message === 'AUTH_FORBIDDEN'
+                                  ) {
                                     toast.error('Tu sesión expiró. Inicia sesión para continuar.')
                                     router.push(`/${locale}/login`)
                                   } else {
@@ -225,7 +254,10 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
                                   }
                                 }
                               }}
-                              className={`px-3 py-1 rounded border ${reached ? 'cursor-not-allowed' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100'} focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1`}
+                              className={`px-3 py-1 rounded border ${reached
+                                  ? 'cursor-not-allowed'
+                                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100'
+                                } focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1`}
                               aria-label="Aumentar"
                               disabled={reached}
                               title={reached ? 'No hay más stock disponible' : undefined}
@@ -252,9 +284,7 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
                     <p>${(taxCents / 100).toFixed(2)}</p>
                   </div>
 
-                  <p className="mt-0.5 text-xs text-gray-500">
-                    {dict.cart.subtotaldetails}
-                  </p>
+                  <p className="mt-0.5 text-xs text-gray-500">{dict.cart.subtotaldetails}</p>
 
                   <div className="flex justify-between text-base font-semibold text-gray-900 pt-2">
                     <p>{dict.checkout.total ?? 'Total'}</p>
