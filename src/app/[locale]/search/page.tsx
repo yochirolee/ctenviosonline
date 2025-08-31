@@ -10,11 +10,11 @@ export default async function SearchPage({
   params,
   searchParams,
 }: {
-  params: Params
-  searchParams?: SP
+  params: Promise<Params>
+  searchParams?: Promise<SP>
 }) {
-  const { locale } = params
-  const sp = searchParams ?? {}
+  const { locale } = await params
+  const sp = (await (searchParams ?? Promise.resolve({} as SP))) as SP
 
   const qRaw = sp.q
   const pageRaw = sp.page
