@@ -202,7 +202,7 @@
     "submit": "Entrar",
     "success": "Has iniciado sesión correctamente.",
     "error": "Correo o contraseña incorrectos.",
-    "frgot": "¿Olvidaste tu contraseña?"
+    "forgot": "¿Olvidaste tu contraseña?"
   },
   "register": {
     "title": "Crear cuenta",
