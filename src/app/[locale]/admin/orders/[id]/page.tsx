@@ -135,21 +135,13 @@ export default function AdminOrderDetailPage() {
   const payInvoice = pay?.invoice || bms?.InvoiceNumber || String(order.metadata?.session_id || '')
   const payLink = pay?.link || bms?.Link || null
 
-  type DeliveryMeta = {
-    delivered?: boolean
-    delivered_at?: string
-    photo_url?: string
-    notes?: string
-    delivered_by?: string
-  }
-
   const delivery = (order.metadata?.delivery ?? null) as DeliveryMeta | null
   const deliveredAt = delivery?.delivered_at
     ? new Date(delivery.delivered_at).toLocaleString()
     : null
 
   // Envío (snapshot)
-  const shippingUsd: number = Number(order?.metadata?.pricing?.shipping ?? 0)
+  const shippingUsd: number = Number(md.pricing?.shipping ?? 0)
 
   // Desglose de envío por owner (opcional)
   const shippingByOwner: Record<string, number> | null =
