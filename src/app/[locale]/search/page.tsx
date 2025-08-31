@@ -1,30 +1,27 @@
 // app/[locale]/search/page.tsx
 import { getDictionary } from '@/lib/dictionaries'
 import type { Dict } from '@/types/Dict'
-import SearchResultsClient from './SearchResultsClient' // 👈 importa el cliente
+import SearchResultsClient from './SearchResultsClient'
 
 type Params = { locale: string }
-type SP = { q?: string; page?: string }
-
-// Helper sin `any`: usa Promise.resolve con overloads
-async function resolve<T>(p: Promise<T>): Promise<T>
-async function resolve<T>(p: T): Promise<T>
-async function resolve<T>(p: T | Promise<T>): Promise<T> {
-  return Promise.resolve(p)
-}
+type SP = { q?: string | string[]; page?: string | string[] }
 
 export default async function SearchPage({
   params,
   searchParams,
 }: {
-  params: Params | Promise<Params>
-  searchParams: SP | Promise<SP>
+  params: Params
+  searchParams?: SP
 }) {
-  const { locale } = await resolve(params)
-  const sp = await resolve(searchParams)
+  const { locale } = params
+  const sp = searchParams ?? {}
 
-  const q = (sp.q ?? '').toString()
-  const page = Math.max(1, Number(sp.page ?? '1') || 1)
+  const qRaw = sp.q
+  const pageRaw = sp.page
+
+  const q = Array.isArray(qRaw) ? qRaw[0] ?? '' : qRaw ?? ''
+  const pageStr = Array.isArray(pageRaw) ? pageRaw[0] ?? '1' : pageRaw ?? '1'
+  const page = Math.max(1, Number(pageStr) || 1)
 
   const dict = (await getDictionary(locale)) as Dict
 
