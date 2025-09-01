@@ -70,9 +70,9 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
     } else {
       try {
         await addItem(Number(p.id), 1)
-        toast.success(`${p.name} ${dict?.cart?.added || (locale === 'en' ? 'added to the cart' : 'agregado al carrito')}`)
+        toast.success(`${p.name} ${dict?.cart?.added || (locale === 'en' ? 'added to the cart' : 'agregado al carrito')}`, { position: 'bottom-center' })
       } catch {
-        toast.error(locale === 'en' ? 'Error adding to cart' : 'Error agregando al carrito')
+        toast.error(locale === 'en' ? 'Error adding to cart' : 'Error agregando al carrito', { position: 'bottom-center' })
       }
     }
   }
