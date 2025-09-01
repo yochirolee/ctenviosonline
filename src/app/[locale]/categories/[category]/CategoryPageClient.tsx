@@ -80,15 +80,15 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
   const handleAddToCart = async (product: Product) => {
     const isLoggedIn = await checkCustomerAuth()
     if (!isLoggedIn) {
-      toast.error(dict.cart?.login_required || 'You must be logged in to add products to your cart.')
+      toast.error(dict.cart?.login_required || 'You must be logged in to add products to your cart.', { position: 'bottom-center' })
       router.push(`/${params.locale}/login`)
       return
     }
     try {
       await addItem(Number(product.id), 1)
-      toast.success(`${product.name} ${dict.cart?.added || 'added to cart'}`)
+      toast.success(`${product.name} ${dict.cart?.added || 'added to cart'}`, { position: 'bottom-center' })
     } catch {
-      toast.error('Error adding product to cart')
+      toast.error('Error adding product to cart', { position: 'bottom-center' })
     }
   }
 

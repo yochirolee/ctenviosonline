@@ -25,7 +25,7 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     title: dict.spotlight?.title ?? (locale === 'en' ? 'Popular right now' : 'Populares ahora'),
     subtitle:
       dict.spotlight?.subtitle ??
-      (locale === 'en' ? 'Buy directly without browsing categories' : 'Compra directo sin navegar categorías'),
+      (locale === 'en' ? 'Discover and add instantly' : 'Descubre y agrega al instante'),
     addToCart: dict.spotlight?.addToCart ?? dict.cart?.addToCart ?? (locale === 'en' ? 'Add to Cart' : 'Agregar al carrito'),
     added: dict.spotlight?.added ?? dict.cart?.added ?? (locale === 'en' ? 'added to the cart' : 'agregado al carrito'),
     login_required:
@@ -78,19 +78,19 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
   const handleAdd = async (p: SimplifiedProduct) => {
     const isLoggedIn = await checkCustomerAuth()
     if (!isLoggedIn) {
-      toast.error(t.login_required)
+      toast.error(t.login_required, { position: 'bottom-center' })
       router.push(`/${locale}/login`)
       return
     }
     try {
       await addItem(Number(p.id), 1)
-      toast.success(`${p.name} ${t.added}`)
+      toast.success(`${p.name} ${t.added}`, { position: 'bottom-center' })
     } catch (e: unknown) {
       const err = (e ?? {}) as { code?: string; available?: number }
       if (err.code === 'OUT_OF_STOCK') {
-        toast.error(`Sin stock${Number.isFinite(err.available) ? ` (disp: ${err.available})` : ''}`)
+        toast.error(`Sin stock${Number.isFinite(err.available) ? ` (disp: ${err.available})` : ''}`, { position: 'bottom-center' })
       } else {
-        toast.error(locale === 'en' ? 'Error adding to cart' : 'Error agregando al carrito')
+        toast.error(locale === 'en' ? 'Error adding to cart' : 'Error agregando al carrito', { position: 'bottom-center' })
       }
     }
   }

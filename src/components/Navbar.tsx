@@ -18,31 +18,32 @@ export default function Navbar({ dict }: Props) {
   const { customer, loading, logout } = useCustomer()
 
   const ordersLabel =
-  dict.common?.orders ?? (locale === 'en' ? 'My orders' : 'Mis pedidos')
+    dict.common?.orders ?? (locale === 'en' ? 'My orders' : 'Mis pedidos')
 
   const isOrders = pathname?.includes('/orders')
   const role = customer?.metadata?.role
 
   // mismo estilo base que LanguageSwitcher (unificado para todos los links)
   const navLinkBase =
-    'block rounded-lg px-3 py-2 text-base font-semibold text-gray-800 hover:bg-green-50 ' +
+    'block rounded-lg px-2 py-2 text-sm font-semibold text-gray-800 hover:bg-green-50 ' +
     'lg:px-0 lg:py-0 lg:rounded-none lg:bg-transparent lg:text-sm lg:text-gray-800 ' +
     'lg:hover:bg-transparent lg:hover:text-green-300'
 
   const navLinkActive =
-    'text-white bg-green-600 hover:bg-green-700 rounded-lg lg:rounded-none'
+    'font-bold text-gray-800 hover:bg-transparent lg:font-bold lg:text-gray-800 lg:hover:bg-transparent lg:hover:text-green-50'
+
 
   return (
     <header
       id="navbar"
-      className="sticky top-0 z-50 flex items-center justify-between px-4 md:px-12 lg:px-20 py-3 bg-white shadow"
+      className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-16 lg:px-24 py-3 bg-white shadow"
     >
       {/* Logo + brand */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-4">
         <Link
           href={`/${locale}`}
           aria-label="Ir al inicio"
-          className="flex items-center gap-2"
+          className="flex items-center gap-4"
         >
           <div className="relative w-10 h-10">
             <Image
@@ -60,10 +61,10 @@ export default function Navbar({ dict }: Props) {
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-3 sm:gap-4">
         {!loading && customer && (
-          <>
-            {/* Mis pedidos - ahora con el mismo estilo base; mantiene estado activo */}
+          <nav className="flex items-center gap-1 sm:gap-2">
+            {/* Mis pedidos */}
             <Link
               href={`/${locale}/orders`}
               className={`${navLinkBase} ${isOrders ? navLinkActive : ''}`}
@@ -72,20 +73,20 @@ export default function Navbar({ dict }: Props) {
               {ordersLabel}
             </Link>
 
-            {/* Admin: owner o admin */}
+            {/* Admin */}
             {(role === 'owner' || role === 'admin') && (
               <Link href={`/${locale}/admin`} className={navLinkBase}>
                 Admin
               </Link>
             )}
 
-            {/* Partner Orders: owner o delivery */}
+            {/* Partner Orders */}
             {(role === 'owner' || role === 'delivery') && (
               <Link href={`/${locale}/partner/orders`} className={navLinkBase}>
                 Partner Orders
               </Link>
             )}
-          </>
+          </nav>
         )}
 
         <LanguageSwitcher />

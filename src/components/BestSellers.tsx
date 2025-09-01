@@ -62,15 +62,15 @@ export default function BestSellers({ dict }: { dict: Dict }) {
   const handleAdd = async (p: BestItem) => {
     const isLoggedIn = await checkCustomerAuth()
     if (!isLoggedIn) {
-      toast.error(t.login_required)
+      toast.error(t.login_required, { position: 'bottom-center' })
       router.push(`/${locale}/login`)
       return
     }
     try {
       await addItem(Number(p.id), 1)
-      toast.success(`${p.name} ${t.added}`)
+      toast.success(`${p.name} ${t.added}`, { position: 'bottom-center' })
     } catch {
-      toast.error(locale === 'en' ? 'Error adding to cart' : 'Error agregando al carrito')
+      toast.error(locale === 'en' ? 'Error adding to cart' : 'Error agregando al carrito', { position: 'bottom-center' })
     }
   }
 

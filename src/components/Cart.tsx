@@ -159,13 +159,6 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
                             <p className={`${over ? 'text-red-700' : ''}`}>${(lineCents / 100).toFixed(2)}</p>
                           </div>
 
-                          {(item?.owner_name || item?.metadata?.owner) && (
-                            <div className="mt-0.5 text-xs text-gray-500">
-                              {dict.checkout.provider}
-                              {item.owner_name || item.metadata?.owner}
-                            </div>
-                          )}
-
                           <div className="mt-1 text-sm text-gray-500">
                             <span>
                               {dict.checkout.quantity}:{' '}
@@ -174,10 +167,26 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
                             </span>
                           </div>
 
+                          {Number(item?.weight) > 0 && (
+                            <div className="mt-1 text-sm text-gray-500">
+                              {dict.checkout.weight}
+                              {Number(item.weight).toFixed(2)}
+                              {dict.checkout.weight_unit}
+                            </div>
+                          )}
+
+                          {(item?.owner_name || item?.metadata?.owner) && (
+                            <div className="mt-0.5 text-sm text-gray-500">
+                              {dict.checkout.provider}
+                              {item.owner_name || item.metadata?.owner}
+                            </div>
+                          )}
+                         
+
                           {/* Disponibilidad visual */}
                           {available !== null && (
                             <div
-                              className={`mt-1 text-xs ${over ? 'text-red-600 font-semibold' : 'text-gray-500'
+                              className={`mt-1 text-sm ${over ? 'text-red-600 font-semibold' : 'text-gray-500'
                                 }`}
                             >
                               {over ? (
@@ -191,14 +200,6 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
                                   {available}
                                 </>
                               )}
-                            </div>
-                          )}
-
-                          {Number(item?.weight) > 0 && (
-                            <div className="mt-1 text-xs text-gray-500">
-                              {dict.checkout.weight}
-                              {Number(item.weight).toFixed(2)}
-                              {dict.checkout.weight_unit}
                             </div>
                           )}
 
