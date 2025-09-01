@@ -45,13 +45,13 @@ export default function Navbar({ dict }: Props) {
           aria-label="Ir al inicio"
           className="flex items-center gap-4"
         >
-          <div className="relative w-10 h-10">
+          <div className="relative w-12 h-12 lg:w-14 lg:h-14">
             <Image
               src="/ctelogo.png"
               alt="CTEnvios Logo"
-              fill
-              sizes="(max-width: 640px) 32px, (max-width: 1024px) 40px, 48px"
-              className="object-contain rounded cursor-pointer"
+              width={56}
+              height={56}
+              className="w-12 h-12 lg:w-14 lg:h-14 object-contain rounded cursor-pointer"
             />
           </div>
           <span className="hidden sm:inline text-lg font-bold text-gray-800 cursor-default">

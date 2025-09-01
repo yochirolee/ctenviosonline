@@ -65,11 +65,7 @@ export default function HeroCategories({ dict }: Props) {
                   ? 'Estados Unidos'
                   : `Cuba — ${location.province || 'provincia'}${
                       location.municipality ? ` / ${location.municipality}` : ''
-                    } · ${
-                      location.area_type === 'municipio'
-                        ? dict.location_banner.location_municipality
-                        : dict.location_banner.location_city
-                    }`}
+                    } `}
               </span>
             </>
           ) : (
