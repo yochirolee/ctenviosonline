@@ -22,7 +22,9 @@ export default function Navbar({ dict }: Props) {
   // etiqueta corta para móvil (evita salto de línea)
   const ordersShort = locale === 'en' ? 'Orders' : 'Pedidos'
 
-  const isOrders = pathname?.includes('/orders')
+  const isOrders = pathname?.startsWith(`/${locale}/orders`)
+  const isAdmin = pathname?.startsWith(`/${locale}/admin`)
+  const isPartner = pathname?.startsWith(`/${locale}/partner/orders`)
   const role = customer?.metadata?.role
 
   // Links compactos + no wrap
@@ -30,7 +32,7 @@ export default function Navbar({ dict }: Props) {
     'inline-flex items-center whitespace-nowrap leading-none px-1 py-1 text-sm font-medium text-gray-800 hover:text-green-600 ' +
     'lg:px-2 lg:py-1'
   // Activo solo en negrita (sin color de fondo)
-  const navLinkActive = 'font-bold text-gray-900 hover:text-gray-900'
+  const navLinkActive = '!font-bold !text-gray-900'
 
   return (
     <header
@@ -71,14 +73,14 @@ export default function Navbar({ dict }: Props) {
             </Link>
 
             {(role === 'owner' || role === 'admin') && (
-              <Link href={`/${locale}/admin`} className={navLinkBase}>
+              <Link href={`/${locale}/admin`} className={`${navLinkBase} ${isAdmin ? navLinkActive : ''}`}>
                 <span className="sm:hidden">Admin</span>
                 <span className="hidden sm:inline">Admin</span>
               </Link>
             )}
 
             {(role === 'owner' || role === 'delivery') && (
-              <Link href={`/${locale}/partner/orders`} className={navLinkBase}>
+              <Link href={`/${locale}/partner/orders`} className={`${navLinkBase} ${isPartner ? navLinkActive : ''}`}>
                 {/* etiqueta corta en móvil para ahorrar espacio */}
                 <span className="sm:hidden">{locale === 'en' ? 'Partner' : 'Partner'}</span>
                 <span className="hidden sm:inline">Partner Orders</span>
