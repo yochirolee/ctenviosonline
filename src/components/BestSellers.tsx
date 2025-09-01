@@ -70,7 +70,7 @@ export default function BestSellers({ dict }: { dict: Dict }) {
       await addItem(Number(p.id), 1)
       toast.success(`${p.name} ${t.added}`, { position: 'bottom-center' })
     } catch {
-      toast.error(locale === 'en' ? 'Error adding to cart' : 'Error agregando al carrito', { position: 'bottom-center' })
+      toast.error(locale === 'en' ? 'At the moment, you can’t add products to the cart.' : 'En este momento no se pueden agregar productos al carrito.', { position: 'bottom-center' })
     }
   }
 

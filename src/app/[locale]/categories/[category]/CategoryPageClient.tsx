@@ -88,8 +88,8 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
       await addItem(Number(product.id), 1)
       toast.success(`${product.name} ${dict.cart?.added || 'added to cart'}`, { position: 'bottom-center' })
     } catch {
-      toast.error('Error adding product to cart', { position: 'bottom-center' })
-    }
+      toast.error(params.locale === 'en' ? 'At the moment, you can’t add products to the cart.' : 'En este momento no se pueden agregar productos al carrito.', { position: 'bottom-center' })
+      }
   }
 
   const filteredProducts = useMemo(() => {

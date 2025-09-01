@@ -90,7 +90,7 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
       if (err.code === 'OUT_OF_STOCK') {
         toast.error(`Sin stock${Number.isFinite(err.available) ? ` (disp: ${err.available})` : ''}`, { position: 'bottom-center' })
       } else {
-        toast.error(locale === 'en' ? 'Error adding to cart' : 'Error agregando al carrito', { position: 'bottom-center' })
+        toast.error(locale === 'en' ? 'At the moment, you can’t add products to the cart.' : 'En este momento no se pueden agregar productos al carrito.', { position: 'bottom-center' })
       }
     }
   }
