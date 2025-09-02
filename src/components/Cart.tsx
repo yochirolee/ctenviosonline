@@ -110,16 +110,15 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
         <div className="pointer-events-none absolute inset-y-0 right-0 flex w-full justify-end pl-0 sm:pl-16">
           <DialogPanel
             className="
-            pointer-events-auto
-            w-[100vw] sm:w-full      /* XS: ocupa 100vw; desde sm: normal */
-            max-w-[100vw] sm:max-w-md
-            h-full
-            bg-white shadow-xl pr-[env(safe-area-inset-right)]
-            box-border
-            overflow-x-hidden
-          "
+              pointer-events-auto
+              w-[100vw] sm:w-full
+              max-w-[100vw] sm:max-w-md
+              h-full
+              bg-white shadow-xl pr-[env(safe-area-inset-right)]
+              box-border
+              overflow-x-hidden
+            "
           >
-            {/* Layout columna: header (sticky) + contenido scroll + footer (sticky) */}
             <div className="flex h-full max-h-screen flex-col">
               {/* HEADER sticky */}
               <div className="sticky top-0 z-20 bg-white pr-[env(safe-area-inset-right)]">
@@ -137,22 +136,20 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
                 </div>
               </div>
 
-              {/* CONTENIDO scrollable */}
-              <div className="flex h-full max-h-screen flex-col">
-                <div className="flex-1 overflow-y-auto p-6">
-                  {items.length === 0 ? (
-                    <p className="text-gray-500">{dict.cart.empty}</p>
-                  ) : (
+              {/* CONTENIDO con scroll */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {items.length === 0 ? (
+                  <p className="text-gray-500">{dict.cart.empty}</p>
+                ) : (
+                  <>
                     <ul className="divide-y divide-gray-200">
                       {items.map((item: CartItem) => {
                         const unitCents = itemUnitCents(item)
                         const lineCents = unitCents * item.quantity
-
                         const available: number | null =
                           Number.isFinite(item?.available) && item.available !== null
                             ? Number(item.available)
                             : null
-
                         const over = available !== null && item.quantity > available
                         const reached = available !== null && item.quantity >= available
                         const qtyClass = over ? 'text-red-600 font-semibold' : 'text-gray-700'
@@ -173,19 +170,21 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
 
                             {/* Texto + controles */}
                             <div className="ml-4 flex flex-1 min-w-0 flex-col">
-                              {/* Título y precio: título puede ocupar 2 líneas; precio no se corta */}
                               <div className="flex items-start justify-between gap-3">
-                                <h3 className={`pr-2 text-base font-medium leading-snug break-words line-clamp-2 ${over ? 'text-red-700' : 'text-gray-900'
-                                  }`}>
+                                <h3
+                                  className={`pr-2 text-base font-medium leading-snug break-words line-clamp-2 ${over ? 'text-red-700' : 'text-gray-900'
+                                    }`}
+                                >
                                   {item.title}
                                 </h3>
-                                <p className={`shrink-0 whitespace-nowrap text-base font-medium ${over ? 'text-red-700' : 'text-gray-900'
-                                  }`}>
+                                <p
+                                  className={`shrink-0 whitespace-nowrap text-base font-medium ${over ? 'text-red-700' : 'text-gray-900'
+                                    }`}
+                                >
                                   ${(lineCents / 100).toFixed(2)}
                                 </p>
                               </div>
 
-                              {/* Detalles */}
                               <div className="mt-1 text-sm text-gray-500">
                                 <span>
                                   {dict.checkout.quantity}:{' '}
@@ -209,10 +208,11 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
                                 </div>
                               )}
 
-                              {/* Disponibilidad */}
                               {available !== null && (
-                                <div className={`mt-1 text-sm ${over ? 'text-red-600 font-semibold' : 'text-gray-500'
-                                  }`}>
+                                <div
+                                  className={`mt-1 text-sm ${over ? 'text-red-600 font-semibold' : 'text-gray-500'
+                                    }`}
+                                >
                                   {over ? (
                                     <>
                                       {dict.checkout.available_message}
@@ -294,13 +294,9 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
                         )
                       })}
                     </ul>
-                  )}
-                </div>
 
-                {/* FOOTER sticky (totales + acciones) */}
-                {items.length > 0 && (
-                  <div className="sticky bottom-0 z-20 bg-white border-t border-gray-200 pr-[env(safe-area-inset-right)]">
-                    <div className="p-6 space-y-2">
+                    {/* Totales al final */}
+                    <div className="border-t border-gray-200 mt-6 pt-6 space-y-2">
                       <div className="flex justify-between text-base text-gray-900">
                         <p>{dict.cart.subtotal}</p>
                         <p>${(subtotalCents / 100).toFixed(2)}</p>
@@ -337,11 +333,11 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
                         </button>
                       </div>
                     </div>
-                  </div>
+                  </>
                 )}
-              </div>  </div>
+              </div>
+            </div>
           </DialogPanel>
-
         </div>
       </div>
     </Dialog>
