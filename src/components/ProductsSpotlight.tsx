@@ -161,7 +161,7 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
                 {/* Imagen click → detalle */}
                 <Link
                   href={`/${locale}/product/${p.id}`}
-                  className="relative aspect-[4/3] bg-gray-50 rounded-t-xl overflow-hidden block"
+                  className="relative aspect-[4/3] bg-white rounded-t-xl overflow-hidden block"
                 >
                   <Image
                     src={p.imageSrc}
