@@ -104,15 +104,25 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
   }, 0)
 
   return (
-    <Dialog open={isCartOpen} onClose={() => setIsCartOpen(false)} className="relative z-50">
+    <Dialog open={isCartOpen} onClose={() => setIsCartOpen(false)} className="fixed inset-0 z-50 overscroll-contain touch-pan-y">
       <DialogBackdrop className="fixed inset-0 bg-gray-500/75" />
       <div className="fixed inset-0 overflow-hidden">
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex max-w-full pl-10 sm:pl-16">
-          <DialogPanel className="pointer-events-auto w-screen max-w-md bg-white shadow-xl">
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex w-full justify-end pl-0 sm:pl-16">
+          <DialogPanel
+            className="
+            pointer-events-auto
+            w-[100vw] sm:w-full      /* XS: ocupa 100vw; desde sm: normal */
+            max-w-[100vw] sm:max-w-md
+            h-full
+            bg-white shadow-xl pr-[env(safe-area-inset-right)]
+            box-border
+            overflow-x-hidden
+          "
+          >
             {/* Layout columna: header (sticky) + contenido scroll + footer (sticky) */}
             <div className="flex h-full max-h-screen flex-col">
               {/* HEADER sticky */}
-              <div className="sticky top-0 z-20 bg-white">
+              <div className="sticky top-0 z-20 bg-white pr-[env(safe-area-inset-right)]">
                 <div className="p-6 flex items-start justify-between border-b border-gray-200">
                   <DialogTitle className="text-lg font-medium text-gray-900">
                     {dict.cart.title}
@@ -128,207 +138,208 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
               </div>
 
               {/* CONTENIDO scrollable */}
-              <div className="flex-1 overflow-y-auto p-6">
-                {items.length === 0 ? (
-                  <p className="text-gray-500">{dict.cart.empty}</p>
-                ) : (
-                  <ul className="divide-y divide-gray-200">
-                    {items.map((item: CartItem) => {
-                      const unitCents = itemUnitCents(item)
-                      const lineCents = unitCents * item.quantity
+              <div className="flex h-full max-h-screen flex-col">
+                <div className="flex-1 overflow-y-auto p-6">
+                  {items.length === 0 ? (
+                    <p className="text-gray-500">{dict.cart.empty}</p>
+                  ) : (
+                    <ul className="divide-y divide-gray-200">
+                      {items.map((item: CartItem) => {
+                        const unitCents = itemUnitCents(item)
+                        const lineCents = unitCents * item.quantity
 
-                      const available: number | null =
-                        Number.isFinite(item?.available) && item.available !== null
-                          ? Number(item.available)
-                          : null
+                        const available: number | null =
+                          Number.isFinite(item?.available) && item.available !== null
+                            ? Number(item.available)
+                            : null
 
-                      const over = available !== null && item.quantity > available
-                      const reached = available !== null && item.quantity >= available
-                      const qtyClass = over ? 'text-red-600 font-semibold' : 'text-gray-700'
+                        const over = available !== null && item.quantity > available
+                        const reached = available !== null && item.quantity >= available
+                        const qtyClass = over ? 'text-red-600 font-semibold' : 'text-gray-700'
 
-                      return (
-                        <li key={item.id} className={`flex py-6 ${over ? 'bg-red-50/60' : ''}`}>
-                          {/* Thumb */}
-                          <div
-                            className={`w-24 h-24 overflow-hidden rounded-md border ${over ? 'border-red-300' : 'border-gray-200'
-                              }`}
-                          >
-                            <img
-                              src={item.thumbnail ?? '/pasto.jpg'}
-                              alt={item.title}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-
-                          {/* Texto + controles */}
-                          <div className="ml-4 flex flex-1 min-w-0 flex-col">
-                            {/* Título y precio: título puede ocupar 2 líneas; precio no se corta */}
-                            <div className="flex items-start justify-between gap-3">
-                              <h3 className={`pr-2 text-base font-medium leading-snug break-words line-clamp-2 ${over ? 'text-red-700' : 'text-gray-900'
-                                }`}>
-                                {item.title}
-                              </h3>
-                              <p className={`shrink-0 whitespace-nowrap text-base font-medium ${over ? 'text-red-700' : 'text-gray-900'
-                                }`}>
-                                ${(lineCents / 100).toFixed(2)}
-                              </p>
+                        return (
+                          <li key={item.id} className={`flex py-6 ${over ? 'bg-red-50/60' : ''}`}>
+                            {/* Thumb */}
+                            <div
+                              className={`w-24 h-24 overflow-hidden rounded-md border ${over ? 'border-red-300' : 'border-gray-200'
+                                }`}
+                            >
+                              <img
+                                src={item.thumbnail ?? '/pasto.jpg'}
+                                alt={item.title}
+                                className="w-full h-full object-cover"
+                              />
                             </div>
 
-                            {/* Detalles */}
-                            <div className="mt-1 text-sm text-gray-500">
-                              <span>
-                                {dict.checkout.quantity}:{' '}
-                                <span className={qtyClass}>{item.quantity}</span> · $
-                                {(unitCents / 100).toFixed(2)} c/u
-                              </span>
-                            </div>
+                            {/* Texto + controles */}
+                            <div className="ml-4 flex flex-1 min-w-0 flex-col">
+                              {/* Título y precio: título puede ocupar 2 líneas; precio no se corta */}
+                              <div className="flex items-start justify-between gap-3">
+                                <h3 className={`pr-2 text-base font-medium leading-snug break-words line-clamp-2 ${over ? 'text-red-700' : 'text-gray-900'
+                                  }`}>
+                                  {item.title}
+                                </h3>
+                                <p className={`shrink-0 whitespace-nowrap text-base font-medium ${over ? 'text-red-700' : 'text-gray-900'
+                                  }`}>
+                                  ${(lineCents / 100).toFixed(2)}
+                                </p>
+                              </div>
 
-                            {Number(item?.weight) > 0 && (
+                              {/* Detalles */}
                               <div className="mt-1 text-sm text-gray-500">
-                                {dict.checkout.weight}
-                                {Number(item.weight).toFixed(2)}
-                                {dict.checkout.weight_unit}
+                                <span>
+                                  {dict.checkout.quantity}:{' '}
+                                  <span className={qtyClass}>{item.quantity}</span> · $
+                                  {(unitCents / 100).toFixed(2)} c/u
+                                </span>
                               </div>
-                            )}
 
-                            {(item?.owner_name || item?.metadata?.owner) && (
-                              <div className="mt-0.5 text-sm text-gray-500">
-                                {dict.checkout.provider}
-                                {item.owner_name || item.metadata?.owner}
-                              </div>
-                            )}
+                              {Number(item?.weight) > 0 && (
+                                <div className="mt-1 text-sm text-gray-500">
+                                  {dict.checkout.weight}
+                                  {Number(item.weight).toFixed(2)}
+                                  {dict.checkout.weight_unit}
+                                </div>
+                              )}
 
-                            {/* Disponibilidad */}
-                            {available !== null && (
-                              <div className={`mt-1 text-sm ${over ? 'text-red-600 font-semibold' : 'text-gray-500'
-                                }`}>
-                                {over ? (
-                                  <>
-                                    {dict.checkout.available_message}
-                                    {available}. {dict.checkout.available_message2}
-                                  </>
-                                ) : (
-                                  <>
-                                    {dict.checkout.available}
-                                    {available}
-                                  </>
-                                )}
-                              </div>
-                            )}
+                              {(item?.owner_name || item?.metadata?.owner) && (
+                                <div className="mt-0.5 text-sm text-gray-500">
+                                  {dict.checkout.provider}
+                                  {item.owner_name || item.metadata?.owner}
+                                </div>
+                              )}
 
-                            {/* Controles cantidad */}
-                            <div className="mt-2 flex items-center gap-3">
-                              <button
-                                onClick={() =>
-                                  removeItem(typeof item.id === 'number' ? item.id : Number(item.id))
-                                }
-                                className="px-3 py-1 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1"
-                                aria-label="Disminuir"
-                              >
-                                −
-                              </button>
+                              {/* Disponibilidad */}
+                              {available !== null && (
+                                <div className={`mt-1 text-sm ${over ? 'text-red-600 font-semibold' : 'text-gray-500'
+                                  }`}>
+                                  {over ? (
+                                    <>
+                                      {dict.checkout.available_message}
+                                      {available}. {dict.checkout.available_message2}
+                                    </>
+                                  ) : (
+                                    <>
+                                      {dict.checkout.available}
+                                      {available}
+                                    </>
+                                  )}
+                                </div>
+                              )}
 
-                              <span className={`text-sm ${qtyClass}`}>{item.quantity}</span>
-
-                              <button
-                                onClick={async () => {
-                                  if (reached) {
-                                    toast.error(
-                                      available === 0
-                                        ? `Sin stock disponible para ${item.title}.`
-                                        : `Solo quedan ${available} de ${item.title}.`
-                                    )
-                                    return
+                              {/* Controles cantidad */}
+                              <div className="mt-2 flex items-center gap-3">
+                                <button
+                                  onClick={() =>
+                                    removeItem(typeof item.id === 'number' ? item.id : Number(item.id))
                                   }
-                                  try {
-                                    await addItem(item.product_id, 1)
-                                  } catch (e: unknown) {
-                                    const err = (e ?? {}) as {
-                                      code?: string
-                                      available?: number
-                                      title?: string
-                                      message?: string
-                                    }
-                                    if (err?.code === 'OUT_OF_STOCK') {
+                                  className="px-3 py-1 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1"
+                                  aria-label="Disminuir"
+                                >
+                                  −
+                                </button>
+
+                                <span className={`text-sm ${qtyClass}`}>{item.quantity}</span>
+
+                                <button
+                                  onClick={async () => {
+                                    if (reached) {
                                       toast.error(
-                                        Number(err?.available) === 0
-                                          ? `Sin stock disponible para ${err?.title ?? 'este producto'}.`
-                                          : `Solo quedan ${err?.available} de ${err?.title ?? 'este producto'}.`
+                                        available === 0
+                                          ? `Sin stock disponible para ${item.title}.`
+                                          : `Solo quedan ${available} de ${item.title}.`
                                       )
-                                      refreshCartNow()
-                                    } else if (
-                                      err?.message === 'AUTH_MISSING' ||
-                                      err?.message === 'AUTH_FORBIDDEN'
-                                    ) {
-                                      toast.error('Tu sesión expiró. Inicia sesión para continuar.')
-                                      router.push(`/${locale}/login`)
-                                    } else {
-                                      toast.error('No se pudo agregar al carrito')
+                                      return
                                     }
-                                  }
-                                }}
-                                className={`px-3 py-1 rounded border ${reached
+                                    try {
+                                      await addItem(item.product_id, 1)
+                                    } catch (e: unknown) {
+                                      const err = (e ?? {}) as {
+                                        code?: string
+                                        available?: number
+                                        title?: string
+                                        message?: string
+                                      }
+                                      if (err?.code === 'OUT_OF_STOCK') {
+                                        toast.error(
+                                          Number(err?.available) === 0
+                                            ? `Sin stock disponible para ${err?.title ?? 'este producto'}.`
+                                            : `Solo quedan ${err?.available} de ${err?.title ?? 'este producto'}.`
+                                        )
+                                        refreshCartNow()
+                                      } else if (
+                                        err?.message === 'AUTH_MISSING' ||
+                                        err?.message === 'AUTH_FORBIDDEN'
+                                      ) {
+                                        toast.error('Tu sesión expiró. Inicia sesión para continuar.')
+                                        router.push(`/${locale}/login`)
+                                      } else {
+                                        toast.error('No se pudo agregar al carrito')
+                                      }
+                                    }
+                                  }}
+                                  className={`px-3 py-1 rounded border ${reached
                                     ? 'cursor-not-allowed'
                                     : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100'
-                                  } focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1`}
-                                aria-label="Aumentar"
-                                disabled={reached}
-                                title={reached ? 'No hay más stock disponible' : undefined}
-                              >
-                                +
-                              </button>
+                                    } focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1`}
+                                  aria-label="Aumentar"
+                                  disabled={reached}
+                                  title={reached ? 'No hay más stock disponible' : undefined}
+                                >
+                                  +
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </div>
 
-              {/* FOOTER sticky (totales + acciones) */}
-              {items.length > 0 && (
-                <div className="sticky bottom-0 z-20 bg-white border-t border-gray-200">
-                  <div className="p-6 space-y-2">
-                    <div className="flex justify-between text-base text-gray-900">
-                      <p>{dict.cart.subtotal}</p>
-                      <p>${(subtotalCents / 100).toFixed(2)}</p>
-                    </div>
+                {/* FOOTER sticky (totales + acciones) */}
+                {items.length > 0 && (
+                  <div className="sticky bottom-0 z-20 bg-white border-t border-gray-200 pr-[env(safe-area-inset-right)]">
+                    <div className="p-6 space-y-2">
+                      <div className="flex justify-between text-base text-gray-900">
+                        <p>{dict.cart.subtotal}</p>
+                        <p>${(subtotalCents / 100).toFixed(2)}</p>
+                      </div>
 
-                    <div className="flex justify-between text-sm text-gray-700">
-                      <p>{dict.checkout.tax ?? 'Tax'}</p>
-                      <p>${(taxCents / 100).toFixed(2)}</p>
-                    </div>
+                      <div className="flex justify-between text-sm text-gray-700">
+                        <p>{dict.checkout.tax ?? 'Tax'}</p>
+                        <p>${(taxCents / 100).toFixed(2)}</p>
+                      </div>
 
-                    <p className="mt-0.5 text-xs text-gray-500">{dict.cart.subtotaldetails}</p>
+                      <p className="mt-0.5 text-xs text-gray-500">{dict.cart.subtotaldetails}</p>
 
-                    <div className="flex justify-between text-base font-semibold text-gray-900 pt-2">
-                      <p>{dict.checkout.total ?? 'Total'}</p>
-                      <p>${((subtotalCents + taxCents) / 100).toFixed(2)}</p>
-                    </div>
+                      <div className="flex justify-between text-base font-semibold text-gray-900 pt-2">
+                        <p>{dict.checkout.total ?? 'Total'}</p>
+                        <p>${((subtotalCents + taxCents) / 100).toFixed(2)}</p>
+                      </div>
 
-                    <div className="mt-4">
-                      <Link
-                        href={`/${locale}/checkout`}
-                        onClick={() => setIsCartOpen(false)}
-                        className="flex items-center justify-center rounded-md bg-green-600 px-6 py-3 text-base font-medium text-white hover:bg-green-700 w-full"
-                      >
-                        {dict.cart.checkout}
-                      </Link>
-                    </div>
+                      <div className="mt-4">
+                        <Link
+                          href={`/${locale}/checkout`}
+                          onClick={() => setIsCartOpen(false)}
+                          className="flex items-center justify-center rounded-md bg-green-600 px-6 py-3 text-base font-medium text-white hover:bg-green-700 w-full"
+                        >
+                          {dict.cart.checkout}
+                        </Link>
+                      </div>
 
-                    <div className="mt-2 flex justify-center text-sm text-gray-500">
-                      <button
-                        onClick={() => setIsCartOpen(false)}
-                        className="font-medium text-green-600 hover:text-green-500"
-                      >
-                        {dict.cart.continue} →
-                      </button>
+                      <div className="mt-2 flex justify-center text-sm text-gray-500">
+                        <button
+                          onClick={() => setIsCartOpen(false)}
+                          className="font-medium text-green-600 hover:text-green-500"
+                        >
+                          {dict.cart.continue} →
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>  </div>
           </DialogPanel>
 
         </div>
