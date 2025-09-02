@@ -10,6 +10,7 @@ import { useCart } from '@/context/CartContext'
 import { checkCustomerAuth } from '@/lib/auth'
 import { getBestSellers, type DeliveryLocation, type SimplifiedProduct } from '@/lib/products'
 import type { Dict } from '@/types/Dict'
+import Link from 'next/link'
 
 type BestItem = SimplifiedProduct & { sold_qty?: number }
 
@@ -82,12 +83,12 @@ export default function BestSellers({ dict }: { dict: Dict }) {
         </h2>
         <p className="text-gray-600 text-sm mt-1">{t.subtitle}</p>
       </div>
-
+  
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="border rounded-xl overflow-hidden shadow-sm">
-              <div className="h-36 bg-gray-100 animate-pulse" />
+              <div className="bg-gray-100 animate-pulse aspect-[4/3]" />
               <div className="p-3 space-y-2">
                 <div className="h-4 bg-gray-100 rounded animate-pulse" />
                 <div className="h-4 bg-gray-100 rounded w-2/3 animate-pulse" />
@@ -102,34 +103,50 @@ export default function BestSellers({ dict }: { dict: Dict }) {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-4">
           {items.map((p) => (
             <article key={p.id} className="border rounded-xl overflow-hidden shadow-sm bg-white flex flex-col">
-              <div className="relative h-36 bg-gray-50">
-                <img src={p.imageSrc} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
-                {(() => {
-                  const sold = Number(p.sold_qty ?? 0) // ← sin any
-                  return sold > 0 ? (
-                    <span className="absolute top-2 left-2 text-[11px] bg-orange-500 text-white px-2 py-0.5 rounded-full">
-                      {locale === 'en' ? `Sold ${sold}+` : `Vendidos ${sold}+`}
-                    </span>
-                  ) : null
-                })()}
-              </div>
-              <div className="p-3 flex flex-col">
-                <h3 className="text-sm font-semibold text-gray-900 line-clamp-2">{p.name}</h3>
-                {p.description ? (
-                  <p className="text-xs text-gray-600 mt-1 line-clamp-2">{p.description}</p>
-                ) : <span className="mt-1" />}
-                <div className="mt-2 text-green-700 font-semibold text-sm">{fmt.format(p.price)}</div>
+            <Link href={`/${locale}/product/${p.id}`} className="relative bg-white aspect-[4/3] block">
+              <img
+                src={p.imageSrc}
+                alt={p.name}
+                loading="lazy"
+                className="absolute inset-0 w-full h-full object-contain p-2"
+              />
+              {(() => {
+                const sold = Number(p.sold_qty ?? 0)
+                return sold > 0 ? (
+                  <span className="absolute top-2 left-2 text-[11px] bg-orange-500 text-white px-2 py-0.5 rounded-full">
+                    {locale === 'en' ? `Sold ${sold}+` : `Vendidos ${sold}+`}
+                  </span>
+                ) : null
+              })()}
+            </Link>
+          
+            <div className="p-3 flex-1 flex flex-col">
+              <Link href={`/${locale}/product/${p.id}`}>
+                <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 hover:underline">
+                  {p.name}
+                </h3>
+              </Link>
+          
+              {p.description ? (
+                <p className="text-xs text-gray-600 mt-1 line-clamp-3">{p.description}</p>
+              ) : <span className="mt-1" />}
+          
+              <div className="mt-auto">
+                <div className="text-green-700 font-semibold text-sm">{fmt.format(p.price)}</div>
                 <button
                   onClick={() => handleAdd(p)}
-                  className="mt-3 bg-green-600 text-white text-sm py-2 rounded hover:bg-green-700 transition"
+                  className="mt-3 w-full bg-green-600 text-white text-sm py-2 rounded hover:bg-green-700 transition"
                 >
                   {t.addToCart}
                 </button>
               </div>
-            </article>
+            </div>
+          </article>
+          
           ))}
         </div>
       )}
     </section>
   )
+  
 }

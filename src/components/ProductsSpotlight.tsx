@@ -10,6 +10,7 @@ import { useCart } from '@/context/CartContext'
 import { checkCustomerAuth } from '@/lib/auth'
 import type { Dict } from '@/types/Dict'
 import Image from 'next/image'
+import Link from 'next/link'
 
 export default function ProductsSpotlight({ dict }: { dict: Dict }) {
   const { locale } = useParams() as { locale: string }
@@ -42,11 +43,11 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     () =>
       location
         ? ({
-            country: location.country,
-            province: location.province,
-            municipality: location.municipality,
-            area_type: location.area_type,
-          } as DeliveryLocation)
+          country: location.country,
+          province: location.province,
+          municipality: location.municipality,
+          area_type: location.area_type,
+        } as DeliveryLocation)
         : undefined,
     [location?.country, location?.province, location?.municipality, location?.area_type]
   )
@@ -131,7 +132,7 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
         <div className="flex gap-4 overflow-hidden">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="w-56 flex-shrink-0 rounded-xl border shadow-sm overflow-hidden">
-              <div className="h-36 bg-gray-100 animate-pulse" />
+              <div className="bg-gray-100 animate-pulse aspect-[4/3]" />
               <div className="p-3 space-y-2">
                 <div className="h-4 bg-gray-100 rounded animate-pulse" />
                 <div className="h-4 bg-gray-100 rounded w-2/3 animate-pulse" />
@@ -141,7 +142,9 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <p className="text-gray-500">{locale === 'en' ? 'No products to show.' : 'No hay productos para mostrar.'}</p>
+        <p className="text-gray-500">
+          {locale === 'en' ? 'No products to show.' : 'No hay productos para mostrar.'}
+        </p>
       ) : (
         <div className="relative">
           <div
@@ -153,34 +156,48 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
             {items.map((p) => (
               <article
                 key={p.id}
-                className="w-56 flex-shrink-0 snap-start rounded-xl border shadow-sm overflow-hidden bg-white"
+                className="w-[calc(50%-0.5rem)] sm:w-56 flex-shrink-0 snap-start rounded-xl border shadow-sm bg-white flex flex-col overflow-hidden"
               >
-                <div className="relative h-36 bg-gray-50">
+                {/* Imagen click → detalle */}
+                <Link
+                  href={`/${locale}/product/${p.id}`}
+                  className="relative aspect-[4/3] bg-gray-50 rounded-t-xl overflow-hidden block"
+                >
                   <Image
                     src={p.imageSrc}
                     alt={p.name}
                     fill
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 224px"
-                    className="object-cover"
+                    className="object-contain p-2"
                     priority={false}
                   />
-                </div>
-                <div className="p-3 flex flex-col">
-                  <h3 className="text-sm font-semibold text-gray-900 line-clamp-2">{p.name}</h3>
+                </Link>
+
+                <div className="p-3 flex-1 flex flex-col">
+                  <Link href={`/${locale}/product/${p.id}`}>
+                    <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 hover:underline">
+                      {p.name}
+                    </h3>
+                  </Link>
+
                   {p.description ? (
-                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">{p.description}</p>
+                    <p className="text-xs text-gray-600 mt-1 line-clamp-3">{p.description}</p>
                   ) : (
                     <span className="mt-1" />
                   )}
-                  <div className="mt-2 text-green-700 font-semibold text-sm">{fmt.format(p.price)}</div>
-                  <button
-                    onClick={() => handleAdd(p)}
-                    className="mt-3 bg-green-600 text-white text-sm py-2 rounded hover:bg-green-700 transition"
-                  >
-                    {t.addToCart}
-                  </button>
+
+                  <div className="mt-auto">
+                    <div className="text-green-700 font-semibold text-sm">{fmt.format(p.price)}</div>
+                    <button
+                      onClick={() => handleAdd(p)}
+                      className="mt-3 w-full bg-green-600 text-white text-sm py-2 rounded hover:bg-green-700 transition"
+                    >
+                      {t.addToCart}
+                    </button>
+                  </div>
                 </div>
               </article>
+
             ))}
           </div>
 
@@ -201,4 +218,5 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
       )}
     </section>
   )
+
 }

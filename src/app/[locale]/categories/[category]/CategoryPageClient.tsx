@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { checkCustomerAuth } from '@/lib/auth'
 import { getProductsByCategory, type DeliveryLocation } from '@/lib/products'
 import { useLocation } from '@/context/LocationContext'
+import Link from 'next/link'
 
 type Product = {
   id: number
@@ -89,7 +90,7 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
       toast.success(`${product.name} ${dict.cart?.added || 'added to cart'}`, { position: 'bottom-center' })
     } catch {
       toast.error(params.locale === 'en' ? 'At the moment, you can’t add products to the cart.' : 'En este momento no se pueden agregar productos al carrito.', { position: 'bottom-center' })
-      }
+    }
   }
 
   const filteredProducts = useMemo(() => {
@@ -139,7 +140,7 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
           </button>
         </div>
       )}
-      
+
       <h1 className="text-2xl font-bold mb-2">
         {dict.categories.list[params.category as keyof typeof dict.categories.list] || params.category}
       </h1>
@@ -159,36 +160,57 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {filteredProducts.map((product) => (
-            <div key={product.id} className="border p-2 rounded shadow-sm flex flex-col">
-              <img
-                src={product.imageSrc}
-                alt={product.name}
-                className="w-full h-40 object-cover mb-2 md:object-contain"
-              />
-              <h2 className="text-base text-center font-semibold text-gray-800 line-clamp-2 mb-1">
-                {product.name}
-              </h2>
-
-              {/* Descripción breve */}
-              {product.description ? (
-                <p className="text-xs text-gray-600 line-clamp-2 mb-2 text-center px-1">
-                  {product.description}
-                </p>
-              ) : (
-                <div className="h-1" />
-              )}
-
-              <p className="text-green-700 text-center font-semibold text-sm mb-2">
-                {fmt.format(product.price)}
-              </p>
-              <button
-                onClick={() => handleAddToCart(product)}
-                className="mt-auto bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+            <article
+              key={product.id}
+              className="rounded shadow-sm border bg-white flex flex-col overflow-hidden"
+            >
+              {/* Imagen click → detalle, con ratio fijo y sin recorte */}
+              <Link
+                href={`/${params.locale}/product/${product.id}`}
+                className="relative aspect-[4/3] bg-gray-50 block"
               >
-                {dict.cart?.addToCart || 'Add to cart'}
-              </button>
-            </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={product.imageSrc}
+                  alt={product.name}
+                  className="absolute inset-0 w-full h-full object-contain p-2"
+                  loading="lazy"
+                />
+              </Link>
+
+              {/* Contenido */}
+              <div className="p-2 flex-1 flex flex-col">
+                <Link href={`/${params.locale}/product/${product.id}`}>
+                  <h2 className="text-sm text-center font-semibold text-gray-800 line-clamp-2 hover:underline">
+                    {product.name}
+                  </h2>
+                </Link>
+
+                {/* Descripción breve */}
+                {product.description ? (
+                  <p className="text-xs text-gray-600 line-clamp-3 mt-1 text-center px-1">
+                    {product.description}
+                  </p>
+                ) : (
+                  <span className="mt-1" />
+                )}
+
+                {/* Footer pegado abajo: precio + botón */}
+                <div className="mt-auto pt-2">
+                  <p className="text-green-700 text-center font-semibold text-sm">
+                    {fmt.format(product.price)}
+                  </p>
+                  <button
+                    onClick={() => handleAddToCart(product)}
+                    className="mt-2 w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+                  >
+                    {dict.cart?.addToCart || 'Add to cart'}
+                  </button>
+                </div>
+              </div>
+            </article>
           ))}
+
         </div>
       )}
     </div>

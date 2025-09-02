@@ -64,7 +64,7 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
     if (!isLoggedIn) {
       toast.error(
         dict?.cart?.login_required ||
-          (locale === 'en' ? 'You must be logged in to add products to your cart.' : 'Debes iniciar sesión para agregar productos.')
+          (locale === 'en' ? 'You must be logged in to add products to your cart.' : 'Debes iniciar sesión para agregar productos.'), { position: 'bottom-center' }
       )
       router.push(`/${locale}/login`)
     } else {

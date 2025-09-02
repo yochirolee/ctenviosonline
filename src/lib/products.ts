@@ -192,3 +192,16 @@ export async function searchProductsPaged(
     has_more: Boolean(data.has_more),
   }
 }
+
+// === Detalle de producto por ID ===
+export async function getProductById(id: number): Promise<SimplifiedProduct | null> {
+  try {
+    const res = await fetch(`${API_URL}/products/${id}`, { cache: 'no-store' })
+    if (!res.ok) return null
+    const raw: ProductFromAPI = await res.json()
+    return mapApiProduct(raw)
+  } catch {
+    return null
+  }
+}
+
