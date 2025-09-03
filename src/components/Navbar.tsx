@@ -41,8 +41,7 @@ export default function Navbar({ dict }: Props) {
       router.push(`${homePath}${hash}`)
     }
   }
-  const isTerms = pathname?.startsWith(`/${locale}/terms`)
-
+  
   return (
     <header
       id="navbar"
