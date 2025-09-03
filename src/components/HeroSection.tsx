@@ -53,7 +53,7 @@ export default function HeroCategories({ dict }: Props) {
   const ABOVE_THE_FOLD_N = 6
 
   return (
-    <section id="hero" className="py-8 px-4 md:px-12 lg:px-20 bg-white">
+    <section id="hero" className="py-8 px-4 md:px-12 lg:px-20 bg-white scroll-mt-24">
       {/* Faja de ubicación visible siempre */}
       <div className="mb-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
