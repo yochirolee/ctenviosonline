@@ -105,7 +105,7 @@ export default function Navbar({ dict }: Props) {
 
       {/* Derecha SIEMPRE: idioma + carrito + (login/logout) + menú móvil */}
       <div className="ml-auto lg:ml-0 flex items-center gap-2 sm:gap-3">
-        
+
         <LanguageSwitcher />
         <CartIcon />
 
@@ -155,15 +155,51 @@ export default function Navbar({ dict }: Props) {
               >
                 <X className="h-5 w-5" />
               </button>
-            </div>
+              </div>
+              {!loading && (
+                customer ? (
+                  <div className="px-3 py-3 border-b bg-green-50/60">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-600 text-white text-sm font-semibold">
+                        {(customer.first_name?.[0] || customer.email?.[0] || 'U').toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">
+                          {customer.first_name ? `Hola, ${customer.first_name}` : 'Cuenta activa'}
+                        </p>
+                        <p className="text-xs text-gray-600 truncate">{customer.email}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="px-3 py-3 border-b">
+                    <Link
+                      href={`/${locale}/login`}
+                      onClick={() => setMobileOpen(false)}
+                      className="inline-flex w-full items-center justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700 active:bg-green-800 transition"
+                    >
+                      {dict.common.login}
+                    </Link>
+                  </div>
+                )
+              )}
 
-            <ul className="flex-1 overflow-y-auto p-2 text-gray-800 font-medium">
+            <ul className="flex-1 overflow-y-auto p-2 text-gray-700 font-medium
+              [&>li>a]:block [&>li>a]:px-2 [&>li>a]:py-2 [&>li>a]:rounded
+              [&>li>button]:block [&>li>button]:w-full [&>li>button]:text-left [&>li>button]:px-2 [&>li>button]:py-2 [&>li>button]:rounded
+              [&_a]:text-gray-700 [&_button]:text-gray-700
+              [&_a:hover]:text-green-600 [&_button:hover]:text-green-600
+              [&_a:active]:bg-green-600 [&_a:active]:text-white
+              [&_button:active]:bg-green-600 [&_button:active]:text-white
+              [&_a:focus-visible]:outline-none [&_a:focus-visible]:ring-2 [&_a:focus-visible]:ring-green-500/30
+              [&_button:focus-visible]:outline-none [&_button:focus-visible]:ring-2 [&_button:focus-visible]:ring-green-500/30
+            ">
               {customer && (
                 <li>
                   <Link
                     href={`/${locale}/orders`}
                     onClick={() => setMobileOpen(false)}
-                    className={`block px-2 py-2 rounded hover:bg-gray-50 ${isOrders ? 'font-bold text-gray-900' : ''}`}
+                    className={`block rounded ${isOrders ? 'bg-green-50 text-green-700 font-semibold' : ''}`}
                   >
                     {ordersFull}
                   </Link>
@@ -175,7 +211,7 @@ export default function Navbar({ dict }: Props) {
                   <Link
                     href={`/${locale}/admin`}
                     onClick={() => setMobileOpen(false)}
-                    className={`block px-2 py-2 rounded hover:bg-gray-50 ${isAdmin ? 'font-bold text-gray-900' : ''}`}
+                    className={`block rounded ${isAdmin ? 'bg-green-50 text-green-700 font-semibold' : ''}`}
                   >
                     Admin
                   </Link>
@@ -187,7 +223,7 @@ export default function Navbar({ dict }: Props) {
                   <Link
                     href={`/${locale}/partner/orders`}
                     onClick={() => setMobileOpen(false)}
-                    className={`block px-2 py-2 rounded hover:bg-gray-50 ${isPartner ? 'font-bold text-gray-900' : ''}`}
+                    className={`block rounded ${isPartner ? 'bg-green-50 text-green-700 font-semibold' : ''}`}
                   >
                     Partner Orders
                   </Link>
@@ -198,7 +234,7 @@ export default function Navbar({ dict }: Props) {
               <li>
                 <button
                   onClick={() => goToSection('#hero')}
-                  className="block w-full text-left px-2 py-2 rounded hover:bg-gray-50"
+                  className="block w-full text-left rounded"
                 >
                   {locale === 'en' ? 'Products' : 'Productos'}
                 </button>
@@ -206,7 +242,7 @@ export default function Navbar({ dict }: Props) {
               <li>
                 <button
                   onClick={() => goToSection('#about')}
-                  className="block w-full text-left px-2 py-2 rounded hover:bg-gray-50"
+                  className="block w-full text-left rounded"
                 >
                   {locale === 'en' ? 'About' : 'Acerca de'}
                 </button>
@@ -233,7 +269,7 @@ export default function Navbar({ dict }: Props) {
                 <Link
                   href={`/${locale}/terms`}
                   onClick={() => setMobileOpen(false)}
-                  className="block px-2 py-2 rounded text-gray-700 hover:bg-green-600 hover:text-white transition"
+                  className="block rounded"
                 >
                   {locale === 'es' ? 'Términos y Condiciones' : 'Terms and Conditions'}
                 </Link>
@@ -245,9 +281,9 @@ export default function Navbar({ dict }: Props) {
                   <button
                     onClick={() => {
                       setMobileOpen(false)
-                      logout().catch(() => {})
+                      logout().catch(() => { })
                     }}
-                    className="block w-full text-left px-2 py-2 rounded hover:bg-gray-50"
+                    className="block w-full text-left rounded"
                   >
                     {dict.common.logout ?? 'Salir'}
                   </button>
@@ -255,7 +291,7 @@ export default function Navbar({ dict }: Props) {
                   <Link
                     href={`/${locale}/login`}
                     onClick={() => setMobileOpen(false)}
-                    className="block px-2 py-2 rounded text-gray-700 hover:bg-green-600 hover:text-white transition"
+                    className="block rounded"
                   >
                     {dict.common.login}
                   </Link>
