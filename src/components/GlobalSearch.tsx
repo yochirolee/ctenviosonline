@@ -23,6 +23,7 @@ export default function GlobalSearch(props: { dict: Dict }) {
 
 /** Componente interno con todos los hooks de contexto/estado/efectos */
 function GlobalSearchInner({ dict }: { dict: Dict }) {
+  const pathname = usePathname()
   const { locale } = useParams() as { locale: string }
   const { location } = useLocation()
   const { addItem } = useCart()
@@ -32,6 +33,13 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<SimplifiedProduct[]>([])
   const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    // al navegar, cierra y limpia
+    setOpen(false)
+    setQ('')
+    setResults([])
+  }, [pathname])
 
   const fmt = useMemo(
     () => new Intl.NumberFormat(locale || 'es', { style: 'currency', currency: 'USD' }),
