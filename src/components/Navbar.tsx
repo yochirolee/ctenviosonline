@@ -233,7 +233,7 @@ export default function Navbar({ dict }: Props) {
                 <Link
                   href={`/${locale}/terms`}
                   onClick={() => setMobileOpen(false)}
-                  className="block px-2 py-2 hover:text-green-600 transition"
+                  className="block px-2 py-2 rounded text-gray-700 hover:bg-green-600 hover:text-white transition"
                 >
                   {locale === 'es' ? 'Términos y Condiciones' : 'Terms and Conditions'}
                 </Link>
@@ -255,7 +255,7 @@ export default function Navbar({ dict }: Props) {
                   <Link
                     href={`/${locale}/login`}
                     onClick={() => setMobileOpen(false)}
-                    className="block px-2 py-2 rounded hover:bg-gray-50"
+                    className="block px-2 py-2 rounded text-gray-700 hover:bg-green-600 hover:text-white transition"
                   >
                     {dict.common.login}
                   </Link>

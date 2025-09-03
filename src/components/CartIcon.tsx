@@ -11,7 +11,7 @@ export default function CartIcon() {
     <button
       type="button"
       onClick={() => setIsCartOpen(true)}
-      className="relative ml-4"
+      className="relative ml-2 lg:ml-4"
       aria-label="Abrir carrito"
     >
       <ShoppingCart className="w-6 h-6 text-gray-800 hover:text-green-300" />
