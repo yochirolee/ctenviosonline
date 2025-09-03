@@ -41,6 +41,7 @@ export default function Navbar({ dict }: Props) {
       router.push(`${homePath}${hash}`)
     }
   }
+  const isTerms = pathname?.startsWith(`/${locale}/terms`)
 
   return (
     <header
@@ -155,44 +156,42 @@ export default function Navbar({ dict }: Props) {
               >
                 <X className="h-5 w-5" />
               </button>
-              </div>
-              {!loading && (
-                customer ? (
-                  <div className="px-3 py-3 border-b bg-green-50/60">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-600 text-white text-sm font-semibold">
-                        {(customer.first_name?.[0] || customer.email?.[0] || 'U').toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">
-                          {customer.first_name ? `Hola, ${customer.first_name}` : 'Cuenta activa'}
-                        </p>
-                        <p className="text-xs text-gray-600 truncate">{customer.email}</p>
-                      </div>
+            </div>
+            {!loading && (
+              customer ? (
+                <div className="px-3 py-3 border-b bg-green-50/60">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-600 text-white text-sm font-semibold">
+                      {(customer.first_name?.[0] || customer.email?.[0] || 'U').toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {customer.first_name ? `Hola, ${customer.first_name}` : 'Cuenta activa'}
+                      </p>
+                      <p className="text-xs text-gray-600 truncate">{customer.email}</p>
                     </div>
                   </div>
-                ) : (
-                  <div className="px-3 py-3 border-b">
-                    <Link
-                      href={`/${locale}/login`}
-                      onClick={() => setMobileOpen(false)}
-                      className="inline-flex w-full items-center justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700 active:bg-green-800 transition"
-                    >
-                      {dict.common.login}
-                    </Link>
-                  </div>
-                )
-              )}
-
-            <ul className="flex-1 overflow-y-auto p-2 text-gray-700 font-medium
-              [&>li>a]:block [&>li>a]:px-2 [&>li>a]:py-2 [&>li>a]:rounded
-              [&>li>button]:block [&>li>button]:w-full [&>li>button]:text-left [&>li>button]:px-2 [&>li>button]:py-2 [&>li>button]:rounded
-              [&_a]:text-gray-700 [&_button]:text-gray-700
-              [&_a:hover]:text-green-600 [&_button:hover]:text-green-600
-              [&_a:active]:bg-green-600 [&_a:active]:text-white
-              [&_button:active]:bg-green-600 [&_button:active]:text-white
-              [&_a:focus-visible]:outline-none [&_a:focus-visible]:ring-2 [&_a:focus-visible]:ring-green-500/30
-              [&_button:focus-visible]:outline-none [&_button:focus-visible]:ring-2 [&_button:focus-visible]:ring-green-500/30
+                </div>
+              ) : (
+                <div className="px-3 py-3 border-b">
+                  <Link
+                    href={`/${locale}/login`}
+                    onClick={() => setMobileOpen(false)}
+                    className="inline-flex w-full items-center justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700 active:bg-green-800 transition"
+                  >
+                    {dict.common.login}
+                  </Link>
+                </div>
+              )
+            )}
+            <ul className="flex-1 overflow-y-auto p-2 text-gray-700 font-medium active:transition-none
+            [&>li>a]:block [&>li>a]:px-3 [&>li>a]:py-2 [&>li>a]:rounded [&>li>a]:transition-colors
+            [&>li>button]:block [&>li>button]:w-full [&>li>button]:text-left [&>li>button]:px-3 [&>li>button]:py-2 [&>li>button]:rounded [&>li>button]:transition-colors
+            [&_a]:text-gray-700 [&_button]:text-gray-700
+            [&_a:active]:bg-green-600 [&_a:active]:!text-white
+            [&_button:active]:bg-green-600 [&_button:active]:!text-white
+            [&_a:focus-visible]:outline-none [&_a:focus-visible]:ring-2 [&_a:focus-visible]:ring-green-500/30
+            [&_button:focus-visible]:outline-none [&_button:focus-visible]:ring-2 [&_button:focus-visible]:ring-green-500/30            
             ">
               {customer && (
                 <li>
@@ -250,7 +249,7 @@ export default function Navbar({ dict }: Props) {
               <li>
                 <button
                   onClick={() => goToSection('#faq')}
-                  className="block w-full text-left px-2 py-2 rounded hover:bg-gray-50"
+                  className="block w-full text-left rounded"
                 >
                   FAQ
                 </button>
@@ -258,7 +257,7 @@ export default function Navbar({ dict }: Props) {
               <li>
                 <button
                   onClick={() => goToSection('#contact')}
-                  className="block w-full text-left px-2 py-2 rounded hover:bg-gray-50"
+                  className="block w-full text-left rounded"
                 >
                   {locale === 'en' ? 'Contact' : 'Contacto'}
                 </button>
