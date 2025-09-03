@@ -146,11 +146,11 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
       </h1>
 
       <input
-        type="text"
+        type="search"
         placeholder={dict.cart?.search || 'Search prod...'}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        className="mb-4 w-full md:w-1/2 px-3 py-2 border rounded"
+        className="mb-4 w-full md:w-1/2 px-3 py-2 border rounded text-base"
       />
 
       {loading ? (

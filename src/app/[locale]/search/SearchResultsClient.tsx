@@ -103,7 +103,7 @@ export default function SearchResultsClient({ locale, dict, initialQuery, initia
             placeholder={
               dict?.cart?.search || (locale === 'en' ? 'Search product...' : 'Buscar producto...')
             }
-            className="w-full border rounded-lg px-3 py-2 shadow-sm text-sm"
+            className="w-full border rounded-lg px-3 py-2 shadow-sm text-base md:text-sm"
           />
           <button
             type="submit"

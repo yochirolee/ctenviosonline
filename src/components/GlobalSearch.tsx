@@ -94,7 +94,7 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
               value={q}
               onChange={(e) => { setQ(e.target.value); setOpen(true) }}
               placeholder={dict?.cart?.search || (locale === 'en' ? 'Search product...' : 'Buscar producto...')}
-              className="w-full outline-none text-sm"
+              className="w-full outline-none text-base md:text-sm"
             />
             {q && (
               <button onClick={() => { setQ(''); setResults([]) }} className="p-1 text-gray-500 hover:text-gray-700" aria-label="Clear">
