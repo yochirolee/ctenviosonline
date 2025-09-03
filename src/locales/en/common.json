@@ -136,7 +136,7 @@
       "zipeu": "Zip is required"
     },
     "available": "Available: ",
-    "available_message": "Only available",
+    "available_message": "Only available ",
     "available_message2": "Reduce the amount to continue",
     "weight": "Weight: ",
     "weight_unit": " lb (per unit)",
@@ -300,6 +300,8 @@
       "checkout_session": "Checkout session",
       "paid_on": "Paid on",
       "view_payment_link": "View payment link",
+      "owner": "Provider",
+      "owner_name": "Name",
       "recipient": "Recipient",
       "email": "Email",
       "phone": "Phone",

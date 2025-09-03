@@ -262,7 +262,8 @@ export type Dict = {
       checkout_session: string
       paid_on: string
       view_payment_link: string
-
+      owner: string
+      owner_name: string
       recipient: string
       email: string
       phone: string

@@ -136,7 +136,7 @@
       "zipeu": "Còdigo postal requerido"
     },
     "available": "Disponibles: ",
-    "available_message": "Sola quedan",
+    "available_message": "Sola quedan ",
     "available_message2": "Reduce la cantidad para continuar",
     "weight": "Peso: ",
     "weight_unit": " lb (por unidad)",
@@ -302,7 +302,8 @@
       "checkout_session": "Sesión de checkout",
       "paid_on": "Pagado el",
       "view_payment_link": "Ver enlace del pago",
-
+      "owner": "Proveedor",
+      "owner_name": "Nombre",
       "recipient": "Destinatario",
       "email": "Email",
       "phone": "Teléfono",

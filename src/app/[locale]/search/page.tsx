@@ -2,6 +2,7 @@
 import { getDictionary } from '@/lib/dictionaries'
 import type { Dict } from '@/types/Dict'
 import SearchResultsClient from './SearchResultsClient'
+import BackButton from '@/components/BackButton'
 
 type Params = { locale: string }
 type SP = { q?: string | string[]; page?: string | string[] }
@@ -27,6 +28,7 @@ export default async function SearchPage({
 
   return (
     <div className="px-4 md:px-12 lg:px-20 py-6">
+      <BackButton label={locale === 'en' ? 'Back' : 'Atrás'} />
       <h1 className="text-2xl font-bold">
         {locale === 'en' ? 'Search results' : 'Resultados de búsqueda'}
       </h1>

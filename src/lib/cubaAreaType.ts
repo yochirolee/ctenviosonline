@@ -20,7 +20,14 @@ export const CAPITAL_MUNICIPIO: Record<string, string> = {
   
   // Si quieres tratar ciertos municipios de La Habana como “city”, ponlos aquí:
   export const HABANA_CIUDAD_MUNS = new Set<string>([
-    // 'Centro Habana','Plaza de la Revolución','Habana Vieja','Cerro','Diez de Octubre', ...
+    'Centro Habana',
+    'Plaza de la Revolución',
+    'Habana Vieja',
+    'Cerro',
+    'Diez de Octubre',
+    'Playa',
+    'Marianao',
+    'La Lisa',    
   ]);
   
   export function computeAreaType(province?: string, municipality?: string): 'city'|'municipio' {

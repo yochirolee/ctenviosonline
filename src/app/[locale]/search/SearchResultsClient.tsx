@@ -8,6 +8,7 @@ import { useCart } from '@/context/CartContext'
 import { checkCustomerAuth } from '@/lib/auth'
 import { searchProductsPaged, type DeliveryLocation, type SimplifiedProduct } from '@/lib/products'
 import type { Dict } from '@/types/Dict'
+import Link from 'next/link'
 
 type Props = {
   locale: string
@@ -75,7 +76,7 @@ export default function SearchResultsClient({ locale, dict, initialQuery, initia
         dict?.cart?.login_required ||
           (locale === 'en'
             ? 'You must be logged in to add products to your cart.'
-            : 'Debes iniciar sesión para agregar productos.')
+            : 'Debes iniciar sesión para agregar productos.'), { position: 'bottom-center' }
       )
       router.push(`/${locale}/login`)
       return
@@ -136,39 +137,53 @@ export default function SearchResultsClient({ locale, dict, initialQuery, initia
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-4">
               {items.map((p) => (
                 <article
-                  key={p.id}
-                  className="border rounded-xl overflow-hidden shadow-sm bg-white flex flex-col"
+                key={p.id}
+                className="border rounded-xl overflow-hidden shadow-sm bg-white flex flex-col"
+              >
+                {/* Imagen click → detalle, con ratio fijo y sin recorte */}
+                <Link
+                  href={`/${locale}/product/${p.id}`}
+                  className="relative aspect-[4/3] bg-gray-50 block"
                 >
-                  <div className="relative h-36 bg-gray-50">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={p.imageSrc}
-                      alt={p.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="p-3 flex flex-col grow">
-                    <h3 className="text-sm font-semibold text-gray-900 line-clamp-2">{p.name}</h3>
-                    {p.description ? (
-                      <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{p.description}</p>
-                    ) : (
-                      <span className="mt-0.5" />
-                    )}
-                    <div className="mt-auto pt-1">
-                      <div className="text-green-700 font-semibold text-sm">
-                        {fmt.format(p.price)}
-                      </div>
-                      <button
-                        onClick={() => handleAdd(p)}
-                        className="mt-2 w-full bg-green-600 text-white text-sm py-2 rounded hover:bg-green-700 transition"
-                      >
-                        {dict?.cart?.addToCart ||
-                          (locale === 'en' ? 'Add to Cart' : 'Agregar al carrito')}
-                      </button>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={p.imageSrc}
+                    alt={p.name}
+                    className="absolute inset-0 w-full h-full object-contain p-2"
+                    loading="lazy"
+                  />
+                </Link>
+              
+                <div className="p-3 flex flex-col grow">
+                  {/* Título click → detalle */}
+                  <Link href={`/${locale}/product/${p.id}`}>
+                    <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 hover:underline">
+                      {p.name}
+                    </h3>
+                  </Link>
+              
+                  {p.description ? (
+                    <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{p.description}</p>
+                  ) : (
+                    <span className="mt-0.5" />
+                  )}
+              
+                  {/* Footer pegado abajo: precio + botón */}
+                  <div className="mt-auto pt-1">
+                    <div className="text-green-700 font-semibold text-sm">
+                      {fmt.format(p.price)}
                     </div>
+                    <button
+                      onClick={() => handleAdd(p)}
+                      className="mt-2 w-full bg-green-600 text-white text-sm py-2 rounded hover:bg-green-700 transition"
+                    >
+                      {dict?.cart?.addToCart ||
+                        (locale === 'en' ? 'Add to Cart' : 'Agregar al carrito')}
+                    </button>
                   </div>
-                </article>
+                </div>
+              </article>
+              
               ))}
             </div>
 

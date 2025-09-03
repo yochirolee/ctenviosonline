@@ -82,6 +82,14 @@ type DeliveryMeta = {
   notes?: string
 }
 
+type OwnerContact = {
+  id?: number | string
+  name?: string | null
+  phone?: string | null
+  whatsapp?: string | null
+  email?: string | null
+}
+
 type Order = {
   id: number | string
   created_at?: string
@@ -99,6 +107,8 @@ type Order = {
     [k: string]: unknown
   }
   items?: Item[]
+  owner_id?: number | string
+  owner?: OwnerContact | null
 }
 
 type CustomerOrderListRow = {
@@ -129,6 +139,10 @@ export default function OrderDetailClient({
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     }
   }
+
+  const cleanDigits = (s?: string | null) => String(s || '').replace(/[^\d+]/g, '')
+
+  const getOwner = (o?: Order | null): OwnerContact | null => o?.owner ?? null
 
   const hasItemsArray = (x: unknown): x is { items: Item[] } =>
     typeof x === 'object' && x !== null && Array.isArray((x as { items?: unknown }).items)
@@ -245,10 +259,20 @@ export default function OrderDetailClient({
   }
 
   const delivery = order?.metadata?.delivery
-  const deliveredAt =
-    delivery?.delivered_at
-      ? new Date(delivery.delivered_at).toLocaleString(locale || 'es')
-      : null
+  const statusTimes = (order?.metadata as any)?.status_times || {} // backend partner escribe aquí
+
+  // ¿Está entregada?
+  const deliveredFlag =
+    (delivery?.delivered === true) || (order?.status === 'delivered')
+
+  // Fecha ISO (preferimos la de delivery, si no, la de status_times)
+  const deliveredAtIso: string | undefined =
+    delivery?.delivered_at || statusTimes?.delivered_at
+
+  const deliveredAt = deliveredAtIso
+    ? new Date(deliveredAtIso).toLocaleString(locale || 'es')
+    : null
+
 
   const statusLabel = (s?: string) => {
     if (!s) return '—'
@@ -457,12 +481,90 @@ export default function OrderDetailClient({
                 )}
               </>
             )}
+            {/* ---- Datos del Owner (Proveedor) ---- */}
+            {(() => {
+              const owner = getOwner(order)
+              if (!owner) return null
+              const tel = cleanDigits(owner.phone || undefined)
+              const wa = cleanDigits(owner.whatsapp || undefined)
+
+              return (
+                <div className="mt-4 rounded border border-emerald-200 bg-emerald-50 p-3">
+                  <div className="text-sm font-semibold text-emerald-900">
+                    {dict.order_detail.labels?.owner || 'Proveedor'}
+                  </div>
+
+                  {owner.name && (
+                    <div className="text-sm text-emerald-900">
+                      <span className="text-emerald-800/80">
+                        {dict.order_detail.labels?.owner_name || 'Nombre'}:
+                      </span>{' '}
+                      <span className="font-medium">{owner.name}</span>
+                    </div>
+                  )}
+
+                  {(owner.phone || owner.whatsapp || owner.email) && (
+                    <div className="mt-1 space-y-0.5 text-sm text-emerald-900">
+                      {owner.phone && (
+                        <div>
+                          <span className="text-emerald-800/80">
+                            {dict.order_detail.labels?.phone || 'Teléfono'}:
+                          </span>{' '}
+                          {tel ? (
+                            <a
+                              href={`tel:${tel}`}
+                              className="underline underline-offset-2 text-emerald-800 hover:text-emerald-900"
+                            >
+                              {owner.phone}
+                            </a>
+                          ) : (
+                            <span className="font-medium">{owner.phone}</span>
+                          )}
+                        </div>
+                      )}
+
+                      {owner.whatsapp && (
+                        <div>
+                          <span className="text-emerald-800/80">WhatsApp:</span>{' '}
+                          {wa ? (
+                            <a
+                              href={`https://wa.me/${wa.replace(/^\+/, '')}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline underline-offset-2 text-emerald-800 hover:text-emerald-900"
+                            >
+                              {owner.whatsapp}
+                            </a>
+                          ) : (
+                            <span className="font-medium">{owner.whatsapp}</span>
+                          )}
+                        </div>
+                      )}
+
+                      {owner.email && (
+                        <div>
+                          <span className="text-emerald-800/80">Email:</span>{' '}
+                          <a
+                            href={`mailto:${owner.email}`}
+                            className="underline underline-offset-2 text-emerald-800 hover:text-emerald-900"
+                          >
+                            {owner.email}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
           </div>
         </div>
       )}
 
       {/* Entrega */}
-      {delivery?.delivered && (
+      {/* Entrega */}
+      {deliveredFlag && (
         <div className="bg-white border rounded">
           <div className="p-4 border-b font-semibold">{dict.order_detail.delivery_title}</div>
           <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -473,14 +575,14 @@ export default function OrderDetailClient({
                   {dict.order_detail.labels.delivered}
                 </span>
               </div>
+
               {deliveredAt && (
                 <div>
-                  <span className="text-gray-600">
-                    {dict.order_detail.labels.delivery_date}:
-                  </span>{' '}
+                  <span className="text-gray-600">{dict.order_detail.labels.delivery_date}:</span>{' '}
                   <span className="font-medium">{deliveredAt}</span>
                 </div>
               )}
+
               {delivery?.notes && (
                 <div>
                   <span className="text-gray-600">{dict.order_detail.labels.notes}:</span>{' '}
@@ -516,6 +618,7 @@ export default function OrderDetailClient({
           </div>
         </div>
       )}
+
 
       {/* Productos */}
       {order.items && order.items.length > 0 && (

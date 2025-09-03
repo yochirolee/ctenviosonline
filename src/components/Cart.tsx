@@ -309,11 +309,6 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
 
                       <p className="mt-0.5 text-xs text-gray-500">{dict.cart.subtotaldetails}</p>
 
-                      <div className="flex justify-between text-base font-semibold text-gray-900 pt-2">
-                        <p>{dict.checkout.total ?? 'Total'}</p>
-                        <p>${((subtotalCents + taxCents) / 100).toFixed(2)}</p>
-                      </div>
-
                       <div className="mt-4">
                         <Link
                           href={`/${locale}/checkout`}
