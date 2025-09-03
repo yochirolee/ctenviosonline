@@ -22,6 +22,16 @@ type Item = {
   image_url?: string
 }
 
+const hasItemsArray = (x: unknown): x is { items: Item[] } =>
+  typeof x === 'object' && x !== null && Array.isArray((x as { items?: unknown }).items)
+
+const extractItems = (payload: unknown): Item[] => {
+  if (!payload) return []
+  if (Array.isArray(payload)) return payload as Item[]
+  if (hasItemsArray(payload)) return payload.items
+  return []
+}
+
 type Shipping = {
   country?: 'CU' | 'US'
   first_name?: string
@@ -117,6 +127,12 @@ type CustomerOrderListRow = {
   items?: Item[]
 }
 
+type StatusTimes = {
+  shipped_at?: string
+  delivered_at?: string
+  [k: string]: unknown
+}
+
 export default function OrderDetailClient({
   locale,
   id,
@@ -144,17 +160,7 @@ export default function OrderDetailClient({
 
   const getOwner = (o?: Order | null): OwnerContact | null => o?.owner ?? null
 
-  const hasItemsArray = (x: unknown): x is { items: Item[] } =>
-    typeof x === 'object' && x !== null && Array.isArray((x as { items?: unknown }).items)
-
-  const extractItems = (payload: unknown): Item[] => {
-    if (!payload) return []
-    if (Array.isArray(payload)) return payload as Item[]
-    if (hasItemsArray(payload)) return payload.items
-    return []
-  }
-
-  useEffect(() => {
+   useEffect(() => {
     const run = async () => {
       try {
         // 1) Traer la orden base
@@ -259,7 +265,7 @@ export default function OrderDetailClient({
   }
 
   const delivery = order?.metadata?.delivery
-  const statusTimes = (order?.metadata as any)?.status_times || {} // backend partner escribe aquí
+  const statusTimes = (order?.metadata?.status_times as StatusTimes | undefined) ?? {}
 
   // ¿Está entregada?
   const deliveredFlag =
@@ -267,7 +273,7 @@ export default function OrderDetailClient({
 
   // Fecha ISO (preferimos la de delivery, si no, la de status_times)
   const deliveredAtIso: string | undefined =
-    delivery?.delivered_at || statusTimes?.delivered_at
+  delivery?.delivered_at || statusTimes.delivered_at
 
   const deliveredAt = deliveredAtIso
     ? new Date(deliveredAtIso).toLocaleString(locale || 'es')
