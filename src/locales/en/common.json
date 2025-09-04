@@ -15,15 +15,15 @@
     "title": "About Us",
     "description": "Welcome to ",
     "description2": "CTEnvios Online",
-    "description3": ", your digital store for sending packages to Cuba easily, quickly, and securely. We created this platform so you can manage your shipments from the comfort of your home, with full transparency, real-time tracking, and convenient payment options. Our goal is to help you stay connected with your loved ones by offering a reliable and accessible service from anywhere in the United States. At CTEnvios Online, making your delivery experience simple is our top priority.",
+    "description3": ", your digital store to send packages in the United States and Cuba easily, quickly, and securely. We created this platform so you can manage your shipments from the comfort of your home, with full transparency, real-time tracking, and convenient payment options. Our goal is to help you stay connected with your loved ones by providing a reliable and affordable service from anywhere in the United States. At CTEnvios Online, making your shipment a simple experience is our priority.",
     "stats": [
       {
         "name": "Registered Users",
-        "value": "5,000+"
+        "value": "2,000+"
       },
       {
         "name": "Orders Processed",
-        "value": "20,000+"
+        "value": "5,000+"
       },
       {
         "name": "On-Time Delivery Rate",
@@ -221,7 +221,7 @@
     "confirm_logout_title": "Log out?",
     "confirm_logout_message": "You will need to log in again to continue shopping.",
     "cancel": "Cancel",
-     "orders": "My orders"
+    "orders": "My orders"
   },
   "spotlight": {
     "title": "Popular right now",

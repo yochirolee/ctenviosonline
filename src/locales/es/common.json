@@ -15,15 +15,15 @@
     "title": "Sobre Nosotros",
     "description": "Bienvenido a ",
     "description2": "CTEnvios Online",
-    "description3": ", tu tienda digital para enviar paquetes a Cuba de forma fácil, rápida y segura. Hemos creado esta plataforma para que puedas gestionar tus envíos desde la comodidad de tu hogar, con total transparencia, seguimiento en tiempo real y opciones de pago convenientes. Nuestro objetivo es facilitar la conexión con tus seres queridos, brindando un servicio confiable y accesible desde cualquier lugar de Estados Unidos. En CTEnvios Online, convertir tu envío en una experiencia simple es nuestra prioridad.",
+    "description3": ", tu tienda digital para enviar paquetes en Estados Unidos y Cuba de forma fácil, rápida y segura. Hemos creado esta plataforma para que puedas gestionar tus envíos desde la comodidad de tu hogar, con total transparencia, seguimiento en tiempo real y opciones de pago convenientes. Nuestro objetivo es facilitar la conexión con tus seres queridos, brindando un servicio confiable y accesible desde cualquier lugar de Estados Unidos. En CTEnvios Online, convertir tu envío en una experiencia simple es nuestra prioridad.",
     "stats": [
       {
         "name": "Usuarios Registrados",
-        "value": "5,000+"
+        "value": "2,000+"
       },
       {
         "name": "Pedidos Procesados",
-        "value": "20,000+"
+        "value": "5000+"
       },
       {
         "name": "Tasa de Entrega Puntual",
@@ -279,7 +279,6 @@
     "error_title": "Error",
     "not_found": "No encontramos la orden.",
     "back_to_orders": "Volver a mis pedidos",
-
     "order_label": "Orden",
     "payment_title": "Pago",
     "shipping_title": "Envío",
@@ -287,7 +286,6 @@
     "products_title": "Productos",
     "back_to_history": "Volver al historial",
     "continue_shopping": "Seguir comprando",
-
     "labels": {
       "provider": "Proveedor",
       "mode": "Modo",
@@ -311,7 +309,6 @@
       "city_state_zip": "Ciudad/Estado/ZIP",
       "municipality_province": "Municipio/Provincia",
       "ci": "CI",
-
       "delivery_state": "Estado de entrega",
       "delivered": "Entregado",
       "delivery_date": "Fecha de entrega",
@@ -320,7 +317,6 @@
       "view_full_size": "Ver en tamaño completo",
       "no_photo": "Sin foto adjunta."
     },
-
     "totals": {
       "subtotal": "Subtotal (artículos):",
       "taxes": "Impuestos:",
@@ -329,14 +325,11 @@
       "card_fee_label": "Cargo por tarjeta",
       "total_with_card": "Total con tarjeta:"
     },
-
     "product_fallback": "Producto",
-
     "errors": {
       "load_failed": "No se pudo cargar la orden.",
       "network": "Error de red."
     },
-
     "statuses": {
       "pending": "Pendiente",
       "paid": "Pagado",
