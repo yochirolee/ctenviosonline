@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { useCustomer } from '@/context/CustomerContext'
@@ -15,6 +15,12 @@ type Dict = {
 type Props = {
   locale: string
   dict: Dict
+}
+
+// Extiende el tipo del customer para campos opcionales que tu backend podría devolver
+type CustomerExtras = {
+  phone?: string
+  address?: string
 }
 
 export default function AccountPageClient({ locale, dict }: Props) {
@@ -32,16 +38,13 @@ export default function AccountPageClient({ locale, dict }: Props) {
   const firstErrorKeyRef = useRef<string | null>(null)
 
   // ====== iOS viewport fix (altura estable con teclado) ======
-  const [svh, setSvh] = useState<number | null>(null)
   useEffect(() => {
     const apply = () => {
-      // visualViewport está en iOS modernos; fallback a innerHeight
-      const h = (globalThis as any).visualViewport?.height || window.innerHeight
-      setSvh(h)
+      const h = window.visualViewport?.height ?? window.innerHeight
       document.documentElement.style.setProperty('--svh', `${h}px`)
     }
     apply()
-    const vv = (globalThis as any).visualViewport
+    const vv: VisualViewport | null = window.visualViewport ?? null
     vv?.addEventListener('resize', apply)
     vv?.addEventListener('scroll', apply)
     window.addEventListener('orientationchange', apply)
@@ -55,12 +58,12 @@ export default function AccountPageClient({ locale, dict }: Props) {
   // Precarga desde el contexto
   useEffect(() => {
     if (!loading && customer) {
+      const c = customer as unknown as CustomerExtras
       setForm({
         first_name: customer.first_name || '',
-        last_name:  customer.last_name  || '',
-        // si en tu backend/Customer tienes phone/address planos, ajústalo aquí
-        phone:      (customer as any).phone || '',
-        address:    (customer as any).address || '',
+        last_name: customer.last_name || '',
+        phone: c.phone || '',
+        address: c.address || '',
       })
     }
   }, [loading, customer])
@@ -73,12 +76,11 @@ export default function AccountPageClient({ locale, dict }: Props) {
   const validate = () => {
     const errs: Record<string, string> = {}
     if (!form.first_name.trim()) errs.first_name = locale === 'en' ? 'First name is required' : 'El nombre es obligatorio'
-    if (!form.last_name.trim())  errs.last_name  = locale === 'en' ? 'Last name is required'  : 'Los apellidos son obligatorios'
+    if (!form.last_name.trim()) errs.last_name = locale === 'en' ? 'Last name is required' : 'Los apellidos son obligatorios'
     if (form.phone && !/^[0-9+\-\s()]{7,}$/.test(form.phone)) {
       errs.phone = locale === 'en' ? 'Enter a valid phone' : 'Introduce un teléfono válido'
     }
     setErrors(errs)
-    // guarda la primera clave con error para hacer scroll luego
     firstErrorKeyRef.current = Object.keys(errs)[0] || null
     return Object.keys(errs).length === 0
   }
@@ -86,7 +88,6 @@ export default function AccountPageClient({ locale, dict }: Props) {
   const handleSave = async () => {
     const ok = validate()
     if (!ok) {
-      // Espera al siguiente tick para asegurar que el error se pintó y tiene altura/offset correctos
       requestAnimationFrame(() => {
         const first = firstErrorKeyRef.current
         if (first) {
@@ -98,7 +99,7 @@ export default function AccountPageClient({ locale, dict }: Props) {
     }
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
     if (!token) {
-      toast.error(locale === 'en' ? 'Please log in again.' : 'Inicia sesión de nuevo.')
+      toast.error(locale === 'en' ? 'Please log in again.' : 'Inicia sesión de nuevo.', { position: 'bottom-center' })
       router.push(`/${locale}/login`)
       return
     }
@@ -115,13 +116,13 @@ export default function AccountPageClient({ locale, dict }: Props) {
       })
       if (!r.ok) {
         const msg = locale === 'en' ? 'Could not update your profile.' : 'No se pudo actualizar tu perfil.'
-        toast.error(msg)
+        toast.error(msg, { position: 'bottom-center' })
         return
       }
       await refreshCustomer()
-      toast.success(locale === 'en' ? 'Profile updated.' : 'Perfil actualizado.')
+      toast.success(locale === 'en' ? 'Profile updated.' : 'Perfil actualizado.', { position: 'bottom-center' })
     } catch {
-      toast.error(locale === 'en' ? 'Error updating profile.' : 'Error actualizando el perfil.')
+      toast.error(locale === 'en' ? 'Error updating profile.' : 'Error actualizando el perfil.', { position: 'bottom-center' })
     } finally {
       setSaving(false)
     }
@@ -263,7 +264,6 @@ export default function AccountPageClient({ locale, dict }: Props) {
               value={form.address}
               onChange={onChange}
             />
-            {/* Reserva ligera por si muestras errores aquí más adelante */}
             <div className="min-h-[1px]" />
           </div>
         </div>
