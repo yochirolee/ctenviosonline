@@ -5,35 +5,52 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { useCustomer } from '@/context/CustomerContext'
 import { toast } from 'sonner'
+import type { Dict } from '@/types/Dict'
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
 
 type Props = {
   locale: string
-  dict: any
+  dict: Dict
+}
+
+type FormState = {
+  first_name: string
+  last_name: string
+  phone: string
+  address: string
+}
+
+type Errors = Record<string, string>
+
+// Para no usar `any`: extendemos el shape esperado del customer con campos opcionales
+type CustomerExtra = {
+  phone?: string
+  address?: string
 }
 
 export default function AccountPageClient({ locale, dict }: Props) {
   const router = useRouter()
   const { customer, loading, refreshCustomer } = useCustomer()
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormState>({
     first_name: '',
     last_name: '',
     phone: '',
     address: '',
   })
   const [saving, setSaving] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [errors, setErrors] = useState<Errors>({})
 
   // Precarga desde el contexto
   useEffect(() => {
     if (!loading && customer) {
+      const extra = customer as unknown as CustomerExtra
       setForm({
         first_name: customer.first_name || '',
-        last_name:  customer.last_name  || '',
-        phone:      (customer as any).phone || '',
-        address:    (customer as any).address || '',
+        last_name: customer.last_name || '',
+        phone: extra.phone || '',
+        address: extra.address || '',
       })
     }
   }, [loading, customer])
@@ -43,27 +60,33 @@ export default function AccountPageClient({ locale, dict }: Props) {
     setForm(prev => ({ ...prev, [name]: value }))
   }
 
-  const validate = () => {
-    const errs: Record<string, string> = {}
-    if (!form.first_name.trim()) errs.first_name = locale === 'en' ? 'First name is required' : 'El nombre es obligatorio'
-    if (!form.last_name.trim())  errs.last_name  = locale === 'en' ? 'Last name is required'  : 'Los apellidos son obligatorios'
-    // Teléfono básico (opcional: valida longitud según tu caso de uso)
+  const validate = (): { ok: boolean; firstKey?: string } => {
+    const errs: Errors = {}
+    if (!form.first_name.trim()) {
+      errs.first_name = locale === 'en' ? 'First name is required' : 'El nombre es obligatorio'
+    }
+    if (!form.last_name.trim()) {
+      errs.last_name = locale === 'en' ? 'Last name is required' : 'Los apellidos son obligatorios'
+    }
+    // Teléfono básico (opcional: ajusta a tu caso)
     if (form.phone && !/^[0-9+\-\s()]{7,}$/.test(form.phone)) {
       errs.phone = locale === 'en' ? 'Enter a valid phone' : 'Introduce un teléfono válido'
     }
     setErrors(errs)
-    return Object.keys(errs).length === 0
+    const firstKey = Object.keys(errs)[0]
+    return { ok: Object.keys(errs).length === 0, firstKey }
   }
 
   const handleSave = async () => {
-    if (!validate()) {
-      const first = Object.keys(errors)[0]
-      if (first) {
-        const el = document.getElementById(first)
+    const { ok, firstKey } = validate()
+    if (!ok) {
+      if (firstKey) {
+        const el = document.getElementById(firstKey)
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }
       return
     }
+
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
     if (!token) {
       toast.error(locale === 'en' ? 'Please log in again.' : 'Inicia sesión de nuevo.')
@@ -211,6 +234,7 @@ export default function AccountPageClient({ locale, dict }: Props) {
               {locale === 'en' ? 'Address' : 'Dirección'}
             </label>
             <textarea
+              id="address"
               name="address"
               className="input min-h-[84px]"
               value={form.address}
@@ -225,7 +249,11 @@ export default function AccountPageClient({ locale, dict }: Props) {
             className="inline-flex items-center gap-2 px-4 py-2 rounded bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-60"
           >
             <Save size={16} />
-            <span>{saving ? (locale === 'en' ? 'Saving…' : 'Guardando…') : (locale === 'en' ? 'Save changes' : 'Guardar cambios')}</span>
+            <span>
+              {saving
+                ? (locale === 'en' ? 'Saving…' : 'Guardando…')
+                : (locale === 'en' ? 'Save changes' : 'Guardar cambios')}
+            </span>
           </button>
         </div>
       </div>
