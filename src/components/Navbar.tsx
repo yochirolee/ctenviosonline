@@ -9,7 +9,7 @@ import { useCustomer } from '@/context/CustomerContext'
 import type { Dict } from '@/types/Dict'
 import ConfirmLogoutButton from '@/components/ConfirmLogoutButton'
 import { LogIn, LogOut, Menu, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 type Props = { dict: Dict }
 
@@ -23,6 +23,7 @@ export default function Navbar({ dict }: Props) {
   const isOrders = pathname?.startsWith(`/${locale}/orders`)
   const isAdmin = pathname?.startsWith(`/${locale}/admin`)
   const isPartner = pathname?.startsWith(`/${locale}/partner/orders`)
+  const isAccount = pathname?.startsWith(`/${locale}/account`)
   const role = customer?.metadata?.role
 
   const navLinkBase =
@@ -30,6 +31,9 @@ export default function Navbar({ dict }: Props) {
   const navLinkActive = '!font-bold !text-gray-900'
 
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Para enfoque inicial en el primer link del drawer
+  const firstLinkRef = useRef<HTMLAnchorElement>(null)
 
   const goToSection = (hash: string) => {
     const homePath = `/${locale}`
@@ -41,7 +45,35 @@ export default function Navbar({ dict }: Props) {
       router.push(`${homePath}${hash}`)
     }
   }
-  
+
+  // 1) Bloquear scroll del body cuando el drawer está abierto
+  useEffect(() => {
+    if (!mobileOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [mobileOpen])
+
+  // 2) Cerrar drawer si cambia la ruta
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
+
+  // 3) Cerrar con tecla Esc
+  useEffect(() => {
+    if (!mobileOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mobileOpen])
+
+  // 4) Enfocar primer link al abrir
+  useEffect(() => {
+    if (mobileOpen) firstLinkRef.current?.focus()
+  }, [mobileOpen])
+
   return (
     <header
       id="navbar"
@@ -64,6 +96,16 @@ export default function Navbar({ dict }: Props) {
       {/* Links desktop (centrales) */}
       <nav className="hidden lg:flex items-center gap-2 ml-auto mr-4">
         {!loading && customer && (
+          <Link
+            href={`/${locale}/account`}
+            className={`${navLinkBase} ${isAccount ? navLinkActive : ''}`}
+            aria-current={isAccount ? 'page' : undefined}
+          >
+            {locale === 'en' ? 'My profile' : 'Mi perfil'}
+          </Link>
+        )}
+
+        {!loading && customer && (
           <>
             <Link
               href={`/${locale}/orders`}
@@ -73,12 +115,20 @@ export default function Navbar({ dict }: Props) {
               {ordersFull}
             </Link>
             {(role === 'owner' || role === 'admin') && (
-              <Link href={`/${locale}/admin`} className={`${navLinkBase} ${isAdmin ? navLinkActive : ''}`}>
+              <Link
+                href={`/${locale}/admin`}
+                className={`${navLinkBase} ${isAdmin ? navLinkActive : ''}`}
+                aria-current={isAdmin ? 'page' : undefined}
+              >
                 Admin
               </Link>
             )}
             {(role === 'owner' || role === 'delivery') && (
-              <Link href={`/${locale}/partner/orders`} className={`${navLinkBase} ${isPartner ? navLinkActive : ''}`}>
+              <Link
+                href={`/${locale}/partner/orders`}
+                className={`${navLinkBase} ${isPartner ? navLinkActive : ''}`}
+                aria-current={isPartner ? 'page' : undefined}
+              >
                 Partner Orders
               </Link>
             )}
@@ -87,10 +137,10 @@ export default function Navbar({ dict }: Props) {
 
         {/* Secciones ancla */}
         <Link href={`/${locale}#hero`} className={navLinkBase}>
-          {locale === 'en' ? 'Products' : 'Productos'}
+          {locale === 'en' ? 'See Products' : 'Ver Productos'}
         </Link>
         <Link href={`/${locale}#about`} className={navLinkBase}>
-          {locale === 'en' ? 'About' : 'Acerca de'}
+          {locale === 'en' ? 'About us' : 'Acerca de nosotros'}
         </Link>
         <Link href={`/${locale}#faq`} className={navLinkBase}>
           FAQ
@@ -103,9 +153,8 @@ export default function Navbar({ dict }: Props) {
         </Link>
       </nav>
 
-      {/* Derecha SIEMPRE: idioma + carrito + (login/logout) + menú móvil */}
+      {/* Derecha: idioma + carrito + (login/logout) + menú móvil */}
       <div className="ml-auto lg:ml-0 flex items-center gap-2 sm:gap-3">
-
         <LanguageSwitcher />
         <CartIcon />
 
@@ -137,6 +186,8 @@ export default function Navbar({ dict }: Props) {
           className="lg:hidden p-2 text-gray-700 hover:bg-gray-100 rounded"
           onClick={() => setMobileOpen(true)}
           aria-label="Abrir menú"
+          aria-controls="mobile-drawer"
+          aria-expanded={mobileOpen}
         >
           <Menu className="h-6 w-6" />
         </button>
@@ -144,8 +195,17 @@ export default function Navbar({ dict }: Props) {
 
       {/* Menú móvil (overlay) */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 lg:hidden">
-          <div className="absolute right-0 top-0 w-72 h-full bg-white shadow-lg flex flex-col">
+        <div
+          className="fixed inset-0 z-50 bg-black/40 lg:hidden"
+          role="presentation"
+          onClick={(e) => { if (e.currentTarget === e.target) setMobileOpen(false) }}
+        >
+          <div
+            id="mobile-drawer"
+            role="dialog"
+            aria-modal="true"
+            className="absolute right-0 top-0 w-72 h-full bg-white shadow-lg flex flex-col"
+          >
             <div className="flex items-center justify-between p-4 border-b">
               <Image src="/ctelogo.png" alt="CTEnvios Logo" width={40} height={40} className="object-contain" />
               <button
@@ -156,6 +216,7 @@ export default function Navbar({ dict }: Props) {
                 <X className="h-5 w-5" />
               </button>
             </div>
+
             {!loading && (
               customer ? (
                 <div className="px-3 py-3 border-b bg-green-50/60">
@@ -183,21 +244,38 @@ export default function Navbar({ dict }: Props) {
                 </div>
               )
             )}
-            <ul className="flex-1 overflow-y-auto p-2 text-gray-700 font-medium active:transition-none
-            [&>li>a]:block [&>li>a]:px-3 [&>li>a]:py-2 [&>li>a]:rounded [&>li>a]:transition-colors
-            [&>li>button]:block [&>li>button]:w-full [&>li>button]:text-left [&>li>button]:px-3 [&>li>button]:py-2 [&>li>button]:rounded [&>li>button]:transition-colors
-            [&_a]:text-gray-700 [&_button]:text-gray-700
-            [&_a:active]:bg-green-600 [&_a:active]:!text-white
-            [&_button:active]:bg-green-600 [&_button:active]:!text-white
-            [&_a:focus-visible]:outline-none [&_a:focus-visible]:ring-2 [&_a:focus-visible]:ring-green-500/30
-            [&_button:focus-visible]:outline-none [&_button:focus-visible]:ring-2 [&_button:focus-visible]:ring-green-500/30            
-            ">
+
+            <ul
+              className="flex-1 overflow-y-auto p-2 text-gray-700 font-medium active:transition-none
+              [&>li>a]:block [&>li>a]:px-3 [&>li>a]:py-2 [&>li>a]:rounded [&>li>a]:transition-colors
+              [&>li>button]:block [&>li>button]:w-full [&>li>button]:text-left [&>li>button]:px-3 [&>li>button]:py-2 [&>li>button]:rounded [&>li>button]:transition-colors
+              [&_a]:text-gray-700 [&_button]:text-gray-700
+              [&_a:active]:bg-green-600 [&_a:active]:!text-white
+              [&_button:active]:bg-green-600 [&_button:active]:!text-white
+              [&_a:focus-visible]:outline-none [&_a:focus-visible]:ring-2 [&_a:focus-visible]:ring-green-500/30
+              [&_button:focus-visible]:outline-none [&_button:focus-visible]:ring-2 [&_button:focus-visible]:ring-green-500/30"
+            >
+              {customer && (
+                <li>
+                  <Link
+                    ref={firstLinkRef}
+                    href={`/${locale}/account`}
+                    onClick={() => setMobileOpen(false)}
+                    className={`block w-full text-left rounded ${isAccount ? 'bg-green-50 text-green-700 font-semibold' : ''}`}
+                    aria-current={isAccount ? 'page' : undefined}
+                  >
+                    {locale === 'en' ? 'My profile' : 'Mi perfil'}
+                  </Link>
+                </li>
+              )}
+
               {customer && (
                 <li>
                   <Link
                     href={`/${locale}/orders`}
                     onClick={() => setMobileOpen(false)}
                     className={`block rounded ${isOrders ? 'bg-green-50 text-green-700 font-semibold' : ''}`}
+                    aria-current={isOrders ? 'page' : undefined}
                   >
                     {ordersFull}
                   </Link>
@@ -210,6 +288,7 @@ export default function Navbar({ dict }: Props) {
                     href={`/${locale}/admin`}
                     onClick={() => setMobileOpen(false)}
                     className={`block rounded ${isAdmin ? 'bg-green-50 text-green-700 font-semibold' : ''}`}
+                    aria-current={isAdmin ? 'page' : undefined}
                   >
                     Admin
                   </Link>
@@ -222,6 +301,7 @@ export default function Navbar({ dict }: Props) {
                     href={`/${locale}/partner/orders`}
                     onClick={() => setMobileOpen(false)}
                     className={`block rounded ${isPartner ? 'bg-green-50 text-green-700 font-semibold' : ''}`}
+                    aria-current={isPartner ? 'page' : undefined}
                   >
                     Partner Orders
                   </Link>

@@ -241,9 +241,28 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
   // ===== Validación =====
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const validate = () => {
     const newErrors: { [key: string]: string } = {}
     let firstErrorField: string | null = null
+
+
+    // ✅ Email del COMPRADOR (facturación) — REQUERIDO
+    if (!buyer.email || !EMAIL_RE.test(buyer.email)) {
+      newErrors.buyer_email = (dict.checkout.errors.email)
+        || (locale === 'en'
+          ? 'Billing email is required and must be valid'
+          : 'El email de facturación es obligatorio y debe ser válido')
+      if (!firstErrorField) firstErrorField = 'billing_email' // 👈 id del input
+    }
+
+    // ✅ Email del RECEPTOR (envío) — OPCIONAL (solo validar si viene algo)
+    if (formData.email && !EMAIL_RE.test(formData.email)) {
+      newErrors.email = dict.checkout.errors.email
+      if (!firstErrorField) firstErrorField = 'email' // 👈 id del input de envío
+    }
 
     // ===== Comunes =====
     if (!formData.nombre) {
@@ -254,12 +273,6 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     if (!formData.apellidos) {
       newErrors.apellidos = dict.checkout.errors.apellidos
       if (!firstErrorField) firstErrorField = 'apellidos'
-    }
-
-    // Email
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = dict.checkout.errors.email
-      if (!firstErrorField) firstErrorField = 'email'
     }
 
     if (isCU) {
@@ -392,17 +405,17 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         const shipping =
           isCU
             ? {
-                country: 'CU',
-                province: location!.province,
-                municipality: location!.municipality,
-                area_type: computeAreaType(location!.province!, location!.municipality!),
-              }
+              country: 'CU',
+              province: location!.province,
+              municipality: location!.municipality,
+              area_type: computeAreaType(location!.province!, location!.municipality!),
+            }
             : {
-                country: 'US',
-                state: formData.state,
-                city: formData.city,
-                zip: formData.zip,
-              }
+              country: 'US',
+              state: formData.state,
+              city: formData.city,
+              zip: formData.zip,
+            }
 
         const r = await fetch(`${API_URL}/shipping/quote`, {
           method: 'POST',
@@ -469,7 +482,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       clearTimeout(t)
       controller.abort()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartId, isCU, isUS, location?.province, location?.municipality, location?.country, formData.state, formData.city, formData.zip, readyToQuote])
 
   const grandTotalCents = subtotalCents + taxCents + shippingQuoteCents
@@ -577,31 +590,31 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       const shipping =
         isCU
           ? {
-              country: 'CU',
-              first_name: formData.nombre,
-              last_name: formData.apellidos,
-              phone: `+53${formData.telefono}`,
-              email: formData.email,
-              province: location!.province,
-              municipality: location!.municipality,
-              address: formData.direccion || '', // “Dirección exacta”
-              area_type: computeAreaType(location!.province!, location!.municipality!),
-              instructions: formData.instrucciones || undefined,
-              ci: formData.ci,
-            }
+            country: 'CU',
+            first_name: formData.nombre,
+            last_name: formData.apellidos,
+            phone: `+53${formData.telefono}`,
+            email: formData.email || buyer.email,
+            province: location!.province,
+            municipality: location!.municipality,
+            address: formData.direccion || '', // “Dirección exacta”
+            area_type: computeAreaType(location!.province!, location!.municipality!),
+            instructions: formData.instrucciones || undefined,
+            ci: formData.ci,
+          }
           : {
-              country: 'US',
-              first_name: formData.nombre,
-              last_name: formData.apellidos,
-              phone: `+1${formData.telefono.replace(/\D/g, '')}`,
-              email: formData.email,
-              address_line1: formData.address1,
-              address_line2: formData.address2 || undefined,
-              city: formData.city,
-              state: formData.state,
-              zip: formData.zip,
-              instructions: formData.instrucciones || undefined,
-            }
+            country: 'US',
+            first_name: formData.nombre,
+            last_name: formData.apellidos,
+            phone: `+1${formData.telefono.replace(/\D/g, '')}`,
+            email: formData.email || buyer.email,
+            address_line1: formData.address1,
+            address_line2: formData.address2 || undefined,
+            city: formData.city,
+            state: formData.state,
+            zip: formData.zip,
+            instructions: formData.instrucciones || undefined,
+          }
 
       const res = await fetch(`${API_URL}/checkout/${cartId}`, {
         method: 'POST',
@@ -732,31 +745,31 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     const shipping =
       isCU
         ? {
-            country: 'CU',
-            first_name: formData.nombre,
-            last_name: formData.apellidos,
-            phone: `+53${formData.telefono}`,
-            email: formData.email,
-            province: location!.province,
-            municipality: location!.municipality,
-            address: formData.direccion || '',
-            area_type: computeAreaType(location!.province!, location!.municipality!),
-            instructions: formData.instrucciones || undefined,
-            ci: formData.ci,
-          }
+          country: 'CU',
+          first_name: formData.nombre,
+          last_name: formData.apellidos,
+          phone: `+53${formData.telefono}`,
+          email: formData.email || buyer.email,
+          province: location!.province,
+          municipality: location!.municipality,
+          address: formData.direccion || '',
+          area_type: computeAreaType(location!.province!, location!.municipality!),
+          instructions: formData.instrucciones || undefined,
+          ci: formData.ci,
+        }
         : {
-            country: 'US',
-            first_name: formData.nombre,
-            last_name: formData.apellidos,
-            phone: `+1${formData.telefono.replace(/\D/g, '')}`,
-            email: formData.email,
-            address_line1: formData.address1,
-            address_line2: formData.address2 || undefined,
-            city: formData.city,
-            state: formData.state,
-            zip: formData.zip,
-            instructions: formData.instrucciones || undefined,
-          }
+          country: 'US',
+          first_name: formData.nombre,
+          last_name: formData.apellidos,
+          phone: `+1${formData.telefono.replace(/\D/g, '')}`,
+          email: formData.email || buyer.email,
+          address_line1: formData.address1,
+          address_line2: formData.address2 || undefined,
+          city: formData.city,
+          state: formData.state,
+          zip: formData.zip,
+          instructions: formData.instrucciones || undefined,
+        }
 
     setStartingDirect(true)
     try {
@@ -934,10 +947,14 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             <div>
               <label className="block text-sm font-medium text-gray-700">{dict.checkout.email}</label>
               <input
+                id="billing_email"
                 className="input"
                 value={buyer.email}
                 onChange={(e) => setBuyer(b => ({ ...b, email: e.target.value }))}
               />
+              {errors.buyer_email && (
+                <p className="text-red-500 text-xs mt-1">{errors.buyer_email}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">
@@ -1007,7 +1024,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
               {errors.telefono && <p className="text-red-500 text-xs mt-1">{errors.telefono}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">{dict.checkout.email}</label>
+              <label className="block text-sm font-medium text-gray-700">{dict.checkout.email} <span className="text-gray-500">({locale === 'en' ? 'optional' : 'opcional'})</span></label>
               <input id="email" name="email" value={formData.email} onChange={handleChange} className="input" />
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
             </div>
