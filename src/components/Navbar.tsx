@@ -207,7 +207,14 @@ export default function Navbar({ dict }: Props) {
             className="absolute right-0 top-0 w-72 h-full bg-white shadow-lg flex flex-col"
           >
             <div className="flex items-center justify-between p-4 border-b">
-              <Image src="/ctelogo.png" alt="CTEnvios Logo" width={40} height={40} className="object-contain" />
+              <Image
+                src="/ctelogo.png"
+                alt="CTEnvios Logo"
+                width={40}
+                height={40}
+                className="object-contain w-10 h-10 lg:w-14 lg:h-14"
+                style={{ height: 'auto', width: 'auto' }}
+              />
               <button
                 onClick={() => setMobileOpen(false)}
                 className="p-2 text-gray-700 hover:bg-gray-100 rounded"
@@ -322,7 +329,7 @@ export default function Navbar({ dict }: Props) {
                   onClick={() => goToSection('#about')}
                   className="block w-full text-left rounded"
                 >
-                  {locale === 'en' ? 'About' : 'Acerca de'}
+                  {locale === 'en' ? 'About us' : 'Acerca de nosotros'}
                 </button>
               </li>
               <li>

@@ -1,56 +1,66 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { useCustomer } from '@/context/CustomerContext'
 import { toast } from 'sonner'
-import type { Dict } from '@/types/Dict'
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
+
+type Dict = {
+  common?: { back?: string }
+}
 
 type Props = {
   locale: string
   dict: Dict
 }
 
-type FormState = {
-  first_name: string
-  last_name: string
-  phone: string
-  address: string
-}
-
-type Errors = Record<string, string>
-
-// Para no usar `any`: extendemos el shape esperado del customer con campos opcionales
-type CustomerExtra = {
-  phone?: string
-  address?: string
-}
-
 export default function AccountPageClient({ locale, dict }: Props) {
   const router = useRouter()
   const { customer, loading, refreshCustomer } = useCustomer()
 
-  const [form, setForm] = useState<FormState>({
+  const [form, setForm] = useState({
     first_name: '',
     last_name: '',
     phone: '',
     address: '',
   })
   const [saving, setSaving] = useState(false)
-  const [errors, setErrors] = useState<Errors>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const firstErrorKeyRef = useRef<string | null>(null)
+
+  // ====== iOS viewport fix (altura estable con teclado) ======
+  const [svh, setSvh] = useState<number | null>(null)
+  useEffect(() => {
+    const apply = () => {
+      // visualViewport está en iOS modernos; fallback a innerHeight
+      const h = (globalThis as any).visualViewport?.height || window.innerHeight
+      setSvh(h)
+      document.documentElement.style.setProperty('--svh', `${h}px`)
+    }
+    apply()
+    const vv = (globalThis as any).visualViewport
+    vv?.addEventListener('resize', apply)
+    vv?.addEventListener('scroll', apply)
+    window.addEventListener('orientationchange', apply)
+    return () => {
+      vv?.removeEventListener('resize', apply)
+      vv?.removeEventListener('scroll', apply)
+      window.removeEventListener('orientationchange', apply)
+    }
+  }, [])
 
   // Precarga desde el contexto
   useEffect(() => {
     if (!loading && customer) {
-      const extra = customer as unknown as CustomerExtra
       setForm({
         first_name: customer.first_name || '',
-        last_name: customer.last_name || '',
-        phone: extra.phone || '',
-        address: extra.address || '',
+        last_name:  customer.last_name  || '',
+        // si en tu backend/Customer tienes phone/address planos, ajústalo aquí
+        phone:      (customer as any).phone || '',
+        address:    (customer as any).address || '',
       })
     }
   }, [loading, customer])
@@ -60,33 +70,32 @@ export default function AccountPageClient({ locale, dict }: Props) {
     setForm(prev => ({ ...prev, [name]: value }))
   }
 
-  const validate = (): { ok: boolean; firstKey?: string } => {
-    const errs: Errors = {}
-    if (!form.first_name.trim()) {
-      errs.first_name = locale === 'en' ? 'First name is required' : 'El nombre es obligatorio'
-    }
-    if (!form.last_name.trim()) {
-      errs.last_name = locale === 'en' ? 'Last name is required' : 'Los apellidos son obligatorios'
-    }
-    // Teléfono básico (opcional: ajusta a tu caso)
+  const validate = () => {
+    const errs: Record<string, string> = {}
+    if (!form.first_name.trim()) errs.first_name = locale === 'en' ? 'First name is required' : 'El nombre es obligatorio'
+    if (!form.last_name.trim())  errs.last_name  = locale === 'en' ? 'Last name is required'  : 'Los apellidos son obligatorios'
     if (form.phone && !/^[0-9+\-\s()]{7,}$/.test(form.phone)) {
       errs.phone = locale === 'en' ? 'Enter a valid phone' : 'Introduce un teléfono válido'
     }
     setErrors(errs)
-    const firstKey = Object.keys(errs)[0]
-    return { ok: Object.keys(errs).length === 0, firstKey }
+    // guarda la primera clave con error para hacer scroll luego
+    firstErrorKeyRef.current = Object.keys(errs)[0] || null
+    return Object.keys(errs).length === 0
   }
 
   const handleSave = async () => {
-    const { ok, firstKey } = validate()
+    const ok = validate()
     if (!ok) {
-      if (firstKey) {
-        const el = document.getElementById(firstKey)
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }
+      // Espera al siguiente tick para asegurar que el error se pintó y tiene altura/offset correctos
+      requestAnimationFrame(() => {
+        const first = firstErrorKeyRef.current
+        if (first) {
+          const el = document.getElementById(first)
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      })
       return
     }
-
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
     if (!token) {
       toast.error(locale === 'en' ? 'Please log in again.' : 'Inicia sesión de nuevo.')
@@ -139,8 +148,13 @@ export default function AccountPageClient({ locale, dict }: Props) {
     )
   }
 
+  const wrapperStyle: React.CSSProperties = { minHeight: 'calc(var(--svh, 100svh))' }
+
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-6">
+    <div
+      className="max-w-3xl mx-auto p-4 space-y-6 [overscroll-behavior-y:contain]"
+      style={wrapperStyle}
+    >
       <button
         onClick={() => router.back()}
         className="inline-flex items-center gap-2 text-sm text-emerald-700 hover:text-emerald-800 transition"
@@ -163,16 +177,16 @@ export default function AccountPageClient({ locale, dict }: Props) {
           </h2>
         </div>
         <div className="px-4 py-4 space-y-4">
-          <div>
+          <div className="no-anchor">
             <label className="block text-sm font-medium text-gray-700">
               Email (login)
             </label>
             <input
-              className="input bg-gray-100 cursor-not-allowed"
+              className="input bg-gray-100 cursor-not-allowed text-base"
               value={customer.email}
               readOnly
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 mt-1 min-h-[18px]">
               {locale === 'en'
                 ? 'Email is used to sign in and cannot be changed here.'
                 : 'El email se usa para iniciar sesión y no puede cambiarse aquí.'}
@@ -189,59 +203,71 @@ export default function AccountPageClient({ locale, dict }: Props) {
           </h2>
         </div>
         <div className="px-4 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
+          <div className="no-anchor">
             <label className="block text-sm font-medium text-gray-700">
               {locale === 'en' ? 'First name' : 'Nombre'}
             </label>
             <input
               id="first_name"
               name="first_name"
-              className="input"
+              className="input text-base"
               value={form.first_name}
               onChange={onChange}
             />
-            {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name}</p>}
+            <p className="text-red-500 text-xs mt-1 min-h-[18px]">
+              {errors.first_name || ''}
+            </p>
           </div>
-          <div>
+
+          <div className="no-anchor">
             <label className="block text-sm font-medium text-gray-700">
               {locale === 'en' ? 'Last name' : 'Apellidos'}
             </label>
             <input
               id="last_name"
               name="last_name"
-              className="input"
+              className="input text-base"
               value={form.last_name}
               onChange={onChange}
             />
-            {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name}</p>}
+            <p className="text-red-500 text-xs mt-1 min-h-[18px]">
+              {errors.last_name || ''}
+            </p>
           </div>
-          <div className="md:col-span-2">
+
+          <div className="md:col-span-2 no-anchor">
             <label className="block text-sm font-medium text-gray-700">
               {locale === 'en' ? 'Phone' : 'Teléfono'}
             </label>
             <input
               id="phone"
               name="phone"
-              className="input"
+              className="input text-base"
               value={form.phone}
               onChange={onChange}
               placeholder={locale === 'en' ? 'e.g. +1 305 555 1234' : 'ej: +53 5 123 4567'}
+              inputMode="tel"
             />
-            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+            <p className="text-red-500 text-xs mt-1 min-h-[18px]">
+              {errors.phone || ''}
+            </p>
           </div>
-          <div className="md:col-span-2">
+
+          <div className="md:col-span-2 no-anchor">
             <label className="block text-sm font-medium text-gray-700">
               {locale === 'en' ? 'Address' : 'Dirección'}
             </label>
             <textarea
-              id="address"
               name="address"
-              className="input min-h-[84px]"
+              className="input min-h-[84px] text-base"
               value={form.address}
               onChange={onChange}
             />
+            {/* Reserva ligera por si muestras errores aquí más adelante */}
+            <div className="min-h-[1px]" />
           </div>
         </div>
+
         <div className="px-4 pb-4">
           <button
             onClick={handleSave}
@@ -250,9 +276,7 @@ export default function AccountPageClient({ locale, dict }: Props) {
           >
             <Save size={16} />
             <span>
-              {saving
-                ? (locale === 'en' ? 'Saving…' : 'Guardando…')
-                : (locale === 'en' ? 'Save changes' : 'Guardar cambios')}
+              {saving ? (locale === 'en' ? 'Saving…' : 'Guardando…') : (locale === 'en' ? 'Save changes' : 'Guardar cambios')}
             </span>
           </button>
         </div>
