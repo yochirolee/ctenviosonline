@@ -7,6 +7,7 @@ import {
   partnerAssign,
   partnerSetStatus,
   type PartnerOrder,
+  partnerMarkDeliveredWithPhoto, // 👈 IMPORTA la nueva función
 } from '@/lib/partnerApi'
 import { getMe } from '@/lib/adminApi'
 import { toast } from 'sonner'
@@ -32,6 +33,12 @@ export default function PartnerOrdersScreen() {
   const [items, setItems] = useState<PartnerOrder[]>([])
   const [loading, setLoading] = useState(false)
 
+  // estado para el flujo de foto
+  const [deliverForId, setDeliverForId] = useState<number | null>(null)
+  const [deliverPhoto, setDeliverPhoto] = useState<File | null>(null)
+  const [deliverNotes, setDeliverNotes] = useState('')
+  const [sending, setSending] = useState(false)
+
   useEffect(() => {
     getMe().then(setMe).catch(() => setMe(null))
   }, [])
@@ -55,6 +62,9 @@ export default function PartnerOrdersScreen() {
   }, [load])
 
   const role = me?.metadata?.role
+  const isDelivery = role === 'delivery'
+  const isOwner = role === 'owner' || role === 'admin'
+
   const claim = async (id: number) => {
     try {
       await partnerAssign(id, 'take')
@@ -85,13 +95,29 @@ export default function PartnerOrdersScreen() {
     }
   }
 
+  // marcar delivered con foto (usa /deliver/partner/:id/mark-delivered)
+  const markWithPhoto = async (id: number) => {
+    if (sending) return
+    setSending(true)
+    try {
+      await partnerMarkDeliveredWithPhoto(id, { photo: deliverPhoto, notes: deliverNotes })
+      toast.success(`Orden #${id} marcada como delivered`)
+      // limpia UI
+      setDeliverForId(null)
+      setDeliverPhoto(null)
+      setDeliverNotes('')
+      await load()
+    } catch {
+      toast.error('No se pudo actualizar el estado (foto)')
+    } finally {
+      setSending(false)
+    }
+  }
+
   const fmtName = (o: PartnerOrder) =>
     [o.first_name, o.last_name].filter(Boolean).join(' ') || '—'
   const fmtTotal = (n: number | null | undefined) =>
     typeof n === 'number' ? `$${n.toFixed(2)}` : '—'
-
-  const isDelivery = role === 'delivery'
-  const isOwner = role === 'owner' || role === 'admin'
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -176,6 +202,11 @@ export default function PartnerOrdersScreen() {
           items.map((o) => {
             const assigneeId = o.metadata?.delivery_assignee_id
             const assignedToMe = String(assigneeId || '') === String(me?.id || '')
+
+            // Flags por-orden
+            const canPhotoDeliver = (isDelivery && assignedToMe) || isOwner
+            const showDeliverUI = canPhotoDeliver && o.status === 'shipped' && deliverForId === o.id
+
             return (
               <div
                 key={o.id}
@@ -203,7 +234,7 @@ export default function PartnerOrdersScreen() {
                   </div>
                 </div>
 
-                <div className="mt-2 sm:mt-0 flex flex-wrap gap-2 w-full sm:w-auto">
+                <div className="mt-2 sm:mt-0 flex flex-col gap-2 w-full sm:w-auto">
                   {/* Botones delivery */}
                   {isDelivery && scope === 'available' && !assigneeId && o.status !== 'delivered' && (
                     <button
@@ -213,56 +244,88 @@ export default function PartnerOrdersScreen() {
                       Tomar orden
                     </button>
                   )}
-                  {isDelivery && assignedToMe && (
-                    <>
-                      {o.status === 'paid' && (
-                        <button
-                          onClick={() => mark(o.id, 'shipped')}
-                          className="px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                        >
-                          Marcar shipped
-                        </button>
-                      )}
-                      {o.status === 'shipped' && (
-                        <button
-                          onClick={() => mark(o.id, 'delivered')}
-                          className="px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700"
-                        >
-                          Marcar delivered
-                        </button>
-                      )}
-                      {o.status !== 'delivered' && (
-                        <button
-                          onClick={() => release(o.id)}
-                          className="px-3 py-2 rounded bg-gray-200"
-                        >
-                          Liberar
-                        </button>
-                      )}
-                    </>
+
+                  {isDelivery && assignedToMe && o.status === 'paid' && (
+                    <button
+                      onClick={() => mark(o.id, 'shipped')}
+                      className="px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                    >
+                      Marcar shipped
+                    </button>
                   )}
 
-                  {/* Botones owner/admin */}
-                  {isOwner && (
-                    <>
-                      {o.status === 'paid' && (
-                        <button
-                          onClick={() => mark(o.id, 'shipped')}
-                          className="px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                        >
-                          Marcar shipped
-                        </button>
-                      )}
-                      {o.status === 'shipped' && (
-                        <button
-                          onClick={() => mark(o.id, 'delivered')}
-                          className="px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700"
-                        >
-                          Marcar delivered
-                        </button>
-                      )}
-                    </>
+                  {/* Botón para abrir UI de foto (delivery asignado o owner/admin) */}
+                  {((isDelivery && assignedToMe) || isOwner) && o.status === 'shipped' && !showDeliverUI && (
+                    <button
+                      onClick={() => setDeliverForId(o.id)}
+                      className="px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700"
+                    >
+                      Marcar delivered (con foto)
+                    </button>
                   )}
+
+                  {/* Bloque de foto + notas */}
+                  {showDeliverUI && (
+                    <div className="border rounded p-3 space-y-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={(e) => setDeliverPhoto(e.target.files?.[0] || null)}
+                      />
+                      <textarea
+                        className="w-full border rounded p-2 text-sm"
+                        placeholder="Notas (opcional)"
+                        rows={2}
+                        value={deliverNotes}
+                        onChange={(e) => setDeliverNotes(e.target.value)}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => markWithPhoto(o.id)}
+                          disabled={sending}
+                          className="px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
+                        >
+                          {sending ? 'Enviando…' : 'Subir foto y marcar delivered'}
+                        </button>
+                        <button
+                          onClick={() => { setDeliverForId(null); setDeliverPhoto(null); setDeliverNotes('') }}
+                          className="px-3 py-2 rounded bg-gray-200"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Liberar (solo delivery) */}
+                  {isDelivery && assignedToMe && o.status !== 'delivered' && (
+                    <button
+                      onClick={() => release(o.id)}
+                      className="px-3 py-2 rounded bg-gray-200"
+                    >
+                      Liberar
+                    </button>
+                  )}
+
+                  {/* Acciones owner/admin extra (sin foto) */}
+                  {isOwner && o.status === 'paid' && (
+                    <button
+                      onClick={() => mark(o.id, 'shipped')}
+                      className="px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                    >
+                      Marcar shipped
+                    </button>
+                  )}
+                  {/* Si quieres forzar foto para delivered de owner/admin, no muestres este botón:
+                  {isOwner && o.status === 'shipped' && !showDeliverUI && (
+                    <button
+                      onClick={() => mark(o.id, 'delivered')}
+                      className="px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700"
+                    >
+                      Marcar delivered (sin foto)
+                    </button>
+                  )} */}
                 </div>
               </div>
             )

@@ -9,6 +9,27 @@ const authHeaders = (): HeadersInit => {
   return h;
 };
 
+// Headres para JSON
+const jsonHeaders = (): HeadersInit => {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (typeof window !== 'undefined') {
+    const t = localStorage.getItem('token');
+    if (t) h.Authorization = `Bearer ${t}`;
+  }
+  return h;
+};
+
+// Headers SOLO de auth (sin Content-Type)
+const authOnlyHeaders = (): HeadersInit => {
+  const h: Record<string, string> = {};
+  if (typeof window !== 'undefined') {
+    const t = localStorage.getItem('token');
+    if (t) h.Authorization = `Bearer ${t}`;
+  }
+  return h;
+};
+
+
 export type PartnerOrderMetadata = {
   /** id del mensajero asignado (puede venir como número o string) */
   delivery_assignee_id?: number | string | null;
@@ -66,7 +87,7 @@ export async function partnerAssign(
 ): Promise<{ ok: true }> {
   const res = await fetch(`${API_URL}/partner/orders/${orderId}/assign`, {
     method: 'PATCH',
-    headers: authHeaders(),
+    headers: jsonHeaders(),
     body: JSON.stringify({ action }),
   });
   if (!res.ok) throw new Error('FETCH_ERROR');
@@ -79,9 +100,34 @@ export async function partnerSetStatus(
 ): Promise<{ ok: true }> {
   const res = await fetch(`${API_URL}/partner/orders/${orderId}/status`, {
     method: 'PATCH',
-    headers: authHeaders(),
+    headers: jsonHeaders(),
     body: JSON.stringify({ status }),
   });
   if (!res.ok) throw new Error('FETCH_ERROR');
   return res.json() as Promise<{ ok: true }>;
 }
+
+export async function partnerMarkDeliveredWithPhoto(
+  id: number,
+  opts: { photo?: File | null; notes?: string }
+) {
+  const fd = new FormData();
+  if (opts.notes) fd.append('notes', opts.notes);
+  fd.append('client_tx_id', crypto.randomUUID());
+  if (opts.photo) fd.append('photo', opts.photo); // clave 'photo' (coincide con multer)
+
+  const r = await fetch(`${API_URL}/partner/orders/${id}/mark-delivered`, {
+    method: 'POST',
+    body: fd,                       
+    headers: authOnlyHeaders(),     
+  });
+  if (!r.ok) {
+    let msg = 'fail'
+    try { const j = await r.json(); msg = j?.message || msg } catch { }
+    throw new Error(msg)
+  }
+  return r.json();
+}
+
+
+
