@@ -16,7 +16,6 @@ type Props = { dict: Dict; params?: { locale: string } }
 
 import {
   encargosListMine,
-  encargosRemove,
   encargosQuote,
   encargosCheckoutStart,
   encargosStartDirect,
@@ -55,7 +54,6 @@ const US_STATES = [
   { code: 'WI', name: 'Wisconsin' }, { code: 'WY', name: 'Wyoming' },
 ]
 
-
 // ===== helpers =====
 function parsePrice(raw: string | number | null | undefined): number | null {
   if (raw == null) return null
@@ -90,7 +88,6 @@ type UnavailableLine = {
 type EncargosQuoteResp =
   | { ok: true; shipping_total_cents: number; breakdown?: QuoteBreakdownLine[] }
   | { ok: false; message?: string; unavailable?: UnavailableLine[] }
-
 
 function buildAvailabilityErrorMsg(unavailable: UnavailableLine[], locLabel?: string) {
   if (!Array.isArray(unavailable) || unavailable.length === 0) {
@@ -226,7 +223,6 @@ export default function EncargosCheckoutClient({ dict, params }: Props) {
       })()
     return () => { cancelled = true }
   }, [])
-
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -441,17 +437,6 @@ export default function EncargosCheckoutClient({ dict, params }: Props) {
     (readyToQuote && quoteOk !== true) ||
     !acceptedTerms
 
-  // ===== Acciones =====
-  const handleRemove = async (id: number) => {
-    try {
-      await encargosRemove(id)
-      setItems(prev => prev.filter(x => x.id !== id))
-      toast.success('Eliminado del listado de encargos.')
-    } catch (e: unknown) {
-      toast.error(errMsg(e) || 'No se pudo iniciar el checkout.')
-    }
-  }
-
   const fmt = new Intl.NumberFormat(locale || 'es', { style: 'currency', currency })
 
   const handleCheckoutLink = async () => {
@@ -592,8 +577,8 @@ export default function EncargosCheckoutClient({ dict, params }: Props) {
       setShowCardModal(false)
       const sid = pay.sessionId ?? directSession.id
       router.push(`/${locale}/checkout/success?sessionId=${sid}`)
-    } catch (e: any) {
-      toast.error(e?.message || 'Error procesando el pago.')
+    } catch (e: unknown) {
+      toast.error(errMsg(e) || 'Error procesando el pago.')
     } finally {
       setCardPaying(false)
     }
@@ -839,7 +824,7 @@ export default function EncargosCheckoutClient({ dict, params }: Props) {
       {/* Resumen del pedido */}
       <h1 className="text-2xl font-bold">{dict.checkout.title}</h1>
       <div className="rounded-xl border bg-white shadow-sm">
-        <div className="border-b px-4 py-3 sm:px-6">
+        <div className="border-b px_4 py-3 sm:px-6">
           <h3 className="text-base font-semibold text-gray-800">{dict.checkout.title}</h3>
         </div>
 
@@ -849,7 +834,8 @@ export default function EncargosCheckoutClient({ dict, params }: Props) {
           ) : items.length > 0 ? (
             items.map((it) => {
               const amount = parsePrice(it.price_estimate)
-              const money = amount != null ? fmtCurrency(amount, locale, (it.currency || 'USD') as any) : '—'
+              const currencyCode: string = it.currency ?? 'USD'
+              const money = amount != null ? fmtCurrency(amount, locale, currencyCode) : '—'
               return (
                 <div key={it.id} className="flex items-center gap-3">
                   <div className="relative w-16 h-16 border rounded bg-white flex-shrink-0">
@@ -867,7 +853,6 @@ export default function EncargosCheckoutClient({ dict, params }: Props) {
                     </div>
                     <div className="text-sm font-semibold text-gray-800 mt-1">{money}</div>
                   </div>
-
                 </div>
               )
             })
@@ -958,15 +943,6 @@ export default function EncargosCheckoutClient({ dict, params }: Props) {
         <span>{startingDirect ? dict.common.loading : `${dict.checkout.directPay}`}</span>
       </button>
 
-      {/* Pago por link */}
-      <button
-        onClick={handleCheckoutLink}
-        disabled={payDisabled}
-        className="w-full bg-green-600 text-white py-3 rounded hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed flex justify-center items-center space-x-2"
-      >
-        <CreditCard size={18} />
-        <span>{isPaying ? dict.common.loading : `${dict.checkout.pay}`}</span>
-      </button>
     </div>
   )
 }
