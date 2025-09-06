@@ -17,7 +17,6 @@ type Props = { dict: Dict; params?: { locale: string } }
 import {
   encargosListMine,
   encargosQuote,
-  encargosCheckoutStart,
   encargosStartDirect,
   encargosPayDirect,
   getCustomerProfile,
@@ -439,62 +438,7 @@ export default function EncargosCheckoutClient({ dict, params }: Props) {
 
   const fmt = new Intl.NumberFormat(locale || 'es', { style: 'currency', currency })
 
-  const handleCheckoutLink = async () => {
-    const { ok, firstErrorField } = validate()
-    if (!ok) {
-      if (firstErrorField) {
-        const el = document.getElementById(firstErrorField)
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            ; (el as HTMLInputElement).focus()
-        }
-      }
-      return
-    }
-    if (readyToQuote && quoteOk !== true) {
-      toast.error(quoteError || 'No se puede entregar a esa dirección.')
-      return
-    }
-    setIsPaying(true)
-    try {
-      const start = await encargosCheckoutStart({
-        shipping: buildShipping(),
-        locale,
-        terms: { accepted: true, url: `/${locale}/terms`, accepted_at: new Date().toISOString(), version: 'v1' },
-        payer: {
-          first_name: buyer.first_name || formData.nombre,
-          last_name: buyer.last_name || formData.apellidos,
-          email: buyer.email || formData.email,
-          phone: buyer.phone ? `+1${buyer.phone.replace(/\D/g, '')}` : undefined,
-          address: buyer.address || undefined,
-          zip: buyer.zip || undefined,
-        },
-        billing: {
-          first_name: buyer.first_name || formData.nombre,
-          last_name: buyer.last_name || formData.apellidos,
-          email: buyer.email || formData.email,
-          phone: buyer.phone ? `+1${buyer.phone.replace(/\D/g, '')}` : undefined,
-          address: buyer.address || undefined,
-          zip: buyer.zip || undefined,
-        },
-      })
-      if (start?.payUrl) {
-        window.location.assign(start.payUrl)
-        return
-      }
-      if (start?.sessionId) {
-        router.push(`/${locale}/checkout/success?sessionId=${start.sessionId}`)
-        return
-      }
-      toast.error('Respuesta inesperada del servidor.')
-    } catch (e: unknown) {
-      toast.error(errMsg(e) || 'No se pudo iniciar el checkout.')
-    } finally {
-      setIsPaying(false)
-    }
-  }
-
-  const handleStartDirect = async () => {
+   const handleStartDirect = async () => {
     const { ok, firstErrorField } = validate()
     if (!ok) {
       if (firstErrorField) {
