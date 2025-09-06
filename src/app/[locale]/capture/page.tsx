@@ -29,13 +29,24 @@ function extractExternalId(u: string, source: string) {
   }
 }
 
-export default function Capture({ searchParams }: { searchParams: { url?: string } }) {
-  const target = searchParams?.url
-  if (!target) redirect('../encargos')
+type Params = { locale: string }
+type Search = { url?: string }
 
-  const source = detectSource(target)
-  const externalId = extractExternalId(target, source)
-  const back = encodeURIComponent(target)
+export default async function CapturePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<Params>
+  searchParams: Promise<Search>
+}) {
+  const { locale } = await params
+  const { url } = await searchParams
 
-  redirect(`./capture/confirm?source=${source}&id=${externalId ?? ''}&back=${back}`)
+  if (!url) redirect(`/${locale}/encargos`)
+
+  const source = detectSource(url)
+  const externalId = extractExternalId(url, source)
+  const back = encodeURIComponent(url)
+
+  redirect(`/${locale}/encargos/capture/confirm?source=${source}&id=${externalId ?? ''}&back=${back}`)
 }
