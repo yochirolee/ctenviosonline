@@ -376,5 +376,29 @@
       "zip_invalid": "Invalid ZIP",
       "name_required": "Name is required"
     }
-  }
+  },
+  "encargos": {
+  "open_button": "Mis encargos",
+  "drawer_title": "Mis encargos",
+  "empty": "No tienes encargos aún.",
+  "total_items": "artículos",
+  "subtotal": "Subtotal",  
+  "clear_all": "Clear All",
+  "remove": "Eliminar",
+  "remove_confirm": "¿Eliminar este encargo?",
+  "removed_toast": "Eliminado del listado de encargos.",
+  "remove_error_toast": "No se pudo eliminar.",
+  "proceed_to_checkout": "Proceder al pago",
+  "loading": "Cargando…",
+  "view_in_source_generic": "Ver producto",
+  "view_in_amazon": "Ver en Amazon",
+  "view_in_shein": "Ver en SHEIN",
+  "vendor_amazon": "Amazon",
+  "vendor_shein": "SHEIN",
+  "vendor_external": "Externo",
+  "id_label": "ID",
+  "open_drawer_aria": "Abrir encargos",
+  "close_drawer_aria": "Cerrar encargos",
+  "added_toast": "Agregado a tus encargos."
+}
 }

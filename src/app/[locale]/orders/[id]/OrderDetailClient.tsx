@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { useCustomer } from '@/context/CustomerContext'
 import type { Dict } from '@/types/Dict'
+import Thumb from '@/components/Thumb'
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
 
@@ -15,7 +16,7 @@ const FEE_RATE = Number.isFinite(CARD_FEE_PCT) ? CARD_FEE_PCT / 100 : 0
 const round2 = (n: number) => Math.round((Number(n || 0) + Number.EPSILON) * 100) / 100
 
 type Item = {
-  product_id: number
+  product_id: number | null
   product_name?: string
   quantity: number
   unit_price: number
@@ -160,10 +161,23 @@ export default function OrderDetailClient({
 
   const getOwner = (o?: Order | null): OwnerContact | null => o?.owner ?? null
 
-   useEffect(() => {
+  useEffect(() => {
     const run = async () => {
       try {
-        // 1) Traer la orden base
+        // 1) Intentar el endpoint que trae items con fallback desde metadata (encargos)
+        const rDetail = await fetch(`${API_URL}/orders/${id}/detail`, {
+          headers: authHeaders(),
+          cache: 'no-store',
+        })
+        if (rDetail.ok) {
+          const d = await rDetail.json().catch(() => null) as { order?: Order; items?: Item[] } | null
+          if (d?.order) {
+            setOrder({ ...d.order, items: Array.isArray(d.items) ? d.items : [] })
+            return
+          }
+        }
+
+        // 2) Fallback: /orders/:id (puede no traer items en encargos)
         const res = await fetch(`${API_URL}/orders/${id}`, {
           headers: authHeaders(),
           cache: 'no-store',
@@ -173,12 +187,9 @@ export default function OrderDetailClient({
           setErr(dict.order_detail.errors.load_failed)
           return
         }
-
         let ord: Order = base
 
-        // 2) (ELIMINADO) No llamar /admin/orders/:id/detail ni /orders/:id/detail
-
-        // 3) Si aún no hay items, reconstruir desde el listado del cliente
+        // 3) Segundo fallback: intentar reconstruir items desde listado del cliente
         if ((!ord.items || ord.items.length === 0) && customer?.id) {
           try {
             const r3 = await fetch(`${API_URL}/customers/${customer.id}/orders`, {
@@ -190,16 +201,12 @@ export default function OrderDetailClient({
               if (Array.isArray(list)) {
                 const typedList = list as CustomerOrderListRow[]
                 const targetIdNum = Number(ord.id)
-                const match = typedList.find(
-                  (o) => Number(o.order_id ?? o.id) === targetIdNum
-                )
+                const match = typedList.find((o) => Number(o.order_id ?? o.id) === targetIdNum)
                 const itemsFromList = extractItems(match)
                 if (itemsFromList.length) ord = { ...ord, items: itemsFromList }
               }
             }
-          } catch {
-            /* noop */
-          }
+          } catch { /* noop */ }
         }
 
         setOrder(ord)
@@ -273,7 +280,7 @@ export default function OrderDetailClient({
 
   // Fecha ISO (preferimos la de delivery, si no, la de status_times)
   const deliveredAtIso: string | undefined =
-  delivery?.delivered_at || statusTimes.delivered_at
+    delivery?.delivered_at || statusTimes.delivered_at
 
   const deliveredAt = deliveredAtIso
     ? new Date(deliveredAtIso).toLocaleString(locale || 'es')
@@ -634,13 +641,7 @@ export default function OrderDetailClient({
             {order.items.map((it, idx) => (
               <li key={`${it.product_id}-${idx}`} className="p-4 flex items-center gap-3">
                 {it.image_url ? (
-                  <img
-                    src={it.image_url}
-                    alt={
-                      it.product_name || `${dict.order_detail.product_fallback} ${it.product_id}`
-                    }
-                    className="w-12 h-12 object-cover rounded border"
-                  />
+                   <Thumb src={it.image_url} alt={it.product_name || `Producto ${it.product_id}`} size={48} />
                 ) : (
                   <div className="w-12 h-12 rounded border bg-gray-100" />
                 )}

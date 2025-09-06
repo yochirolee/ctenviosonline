@@ -8,8 +8,9 @@ import CartIcon from '@/components/CartIcon'
 import { useCustomer } from '@/context/CustomerContext'
 import type { Dict } from '@/types/Dict'
 import ConfirmLogoutButton from '@/components/ConfirmLogoutButton'
-import { LogIn, LogOut, Menu, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import EncargosIcon from '@/components/EncargosIcon' 
+import { LogIn, LogOut, Menu, X, ClipboardList } from 'lucide-react'
 
 type Props = { dict: Dict }
 
@@ -73,6 +74,11 @@ export default function Navbar({ dict }: Props) {
   useEffect(() => {
     if (mobileOpen) firstLinkRef.current?.focus()
   }, [mobileOpen])
+
+  const openEncargosDrawer = () => {
+    setMobileOpen(false)
+    try { window.dispatchEvent(new CustomEvent('encargos:open')) } catch {}
+  }
 
   return (
     <header
@@ -156,6 +162,7 @@ export default function Navbar({ dict }: Props) {
       {/* Derecha: idioma + carrito + (login/logout) + menú móvil */}
       <div className="ml-auto lg:ml-0 flex items-center gap-2 sm:gap-3">
         <LanguageSwitcher />
+        <EncargosIcon />
         <CartIcon />
 
         {/* Login/Logout (desktop) */}
@@ -262,6 +269,16 @@ export default function Navbar({ dict }: Props) {
               [&_a:focus-visible]:outline-none [&_a:focus-visible]:ring-2 [&_a:focus-visible]:ring-green-500/30
               [&_button:focus-visible]:outline-none [&_button:focus-visible]:ring-2 [&_button:focus-visible]:ring-green-500/30"
             >
+              <li>
+                <button
+                  onClick={openEncargosDrawer}
+                  className="!flex items-center gap-2 w-full text-left rounded px-3 py-2 hover:bg-gray-100"
+                >
+                  <ClipboardList className="h-4 w-4" />
+                  {locale === 'en' ? 'Requests (Encargos)' : 'Encargos'}
+                </button>
+              </li>
+
               {customer && (
                 <li>
                   <Link

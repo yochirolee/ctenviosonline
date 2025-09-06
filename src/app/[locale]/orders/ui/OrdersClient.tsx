@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCustomer } from '@/context/CustomerContext'
 import { ArrowLeft } from 'lucide-react'
+import Thumb from '@/components/Thumb'
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
 
@@ -254,10 +255,11 @@ export default function OrdersClient({ locale, dict }: { locale: string; dict: D
                 {o.items.map((it, idx) => (
                   <div key={`${o.order_id}-${it.product_id}-${idx}`} className="flex gap-3">
                     {it.image_url ? (
-                      <img
+                      <Thumb
                         src={it.image_url}
                         alt={it.product_name || `${dict.orders.product_fallback} ${it.product_id}`}
-                        className="w-14 h-14 object-cover rounded border"
+                        size={56}            // 56px = w-14 h-14
+                      // unoptimized        // descomenta si aún no agregaste los dominios en next.config.js
                       />
                     ) : (
                       <div className="w-14 h-14 rounded border bg-gray-100" />

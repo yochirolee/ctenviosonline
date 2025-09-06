@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { getCategories } from '@/lib/products'
 import { useLocation } from '@/context/LocationContext'
 import type { Dict } from '@/types/Dict'
+import TuAmazonCard from '@/components/TuAmazonCard'
 
 type Category = { slug: string; image?: string }
 type Props = { dict: Dict }
@@ -93,6 +94,7 @@ export default function HeroCategories({ dict }: Props) {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <TuAmazonCard />
         {cats.map((cat, idx) => (
           <Link
             key={cat.slug}

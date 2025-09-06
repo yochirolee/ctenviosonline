@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import AdminGuard from '@/components/admin/AdminGuard'
-import { getAdminOrderDetail } from '@/lib/adminApi'
+import { getAdminOrderDetail, type AdminOrderDetail, type AdminOrderItem } from '@/lib/adminApi'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 
 type DeliveryMeta = {
@@ -42,7 +42,7 @@ type ShippingIntl = {
 }
 
 type Shipping = ShippingUS | ShippingIntl
-const isUS = (s: Shipping): s is ShippingUS => s?.country === 'US';
+const isUS = (s: Shipping | null | undefined): s is ShippingUS => s?.country === 'US';
 type BmsPayTx = {
   InvoiceNumber?: string
   Id?: string
@@ -83,7 +83,7 @@ export default function AdminOrderDetailPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
-  const [data, setData] = useState<Awaited<ReturnType<typeof getAdminOrderDetail>> | null>(null)
+  const [data, setData] = useState<AdminOrderDetail | null>(null)
 
   const fmt = useMemo(
     () => new Intl.NumberFormat(locale || 'es', { style: 'currency', currency: 'USD' }),
@@ -124,7 +124,8 @@ export default function AdminOrderDetailPage() {
     )
   }
 
-  const { order, items } = data
+  const { order, items } = data as AdminOrderDetail
+  const itemsList: AdminOrderItem[] = items
 
   const md = (order.metadata ?? {}) as OrderMetadata
   const shipping = md.shipping ?? null
@@ -271,66 +272,71 @@ export default function AdminOrderDetailPage() {
         </div>
 
         {/* Envío (si existe) */}
+        {/* Envío (si existe) */}
         {shipping && (
-          <div className="p-4 text-sm space-y-1">
-            <div>
-              <span className="text-gray-600">Destinatario:</span>{' '}
-              <span className="font-medium">
-                {(shipping.first_name ?? '')} {(shipping.last_name ?? '')}
-              </span>
-            </div>
-
-            <div>
-              <span className="text-gray-600">Tel/Email:</span>{' '}
-              <span className="font-medium">
-                {(shipping.phone ?? '')} · {(shipping.email ?? '')}
-              </span>
-            </div>
-
-            {isUS(shipping) ? (
-              <>
-                <div>
-                  <span className="text-gray-600">Dirección:</span>{' '}
-                  <span className="font-medium">
-                    {(shipping.address_line1 ?? '')}
-                    {shipping.address_line2 ? `, ${shipping.address_line2}` : ''}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Ciudad/Estado/ZIP:</span>{' '}
-                  <span className="font-medium">
-                    {(shipping.city ?? '')}, {(shipping.state ?? '')} {(shipping.zip ?? '')}
-                  </span>
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <span className="text-gray-600">Dirección:</span>{' '}
-                  <span className="font-medium">{shipping.address ?? ''}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Municipio/Provincia:</span>{' '}
-                  <span className="font-medium">
-                    {(shipping.municipality ?? '')}, {(shipping.province ?? '')}
-                  </span>
-                </div>
-                {shipping.ci && (
-                  <div>
-                    <span className="text-gray-600">CI:</span>{' '}
-                    <span className="font-medium">{shipping.ci}</span>
-                  </div>
-                )}
-              </>
-            )}
-
-            {shipping.instructions && (
-              <div className="text-gray-600">
-                Notas: <span className="font-medium">{shipping.instructions}</span>
+          <div className="bg-white border rounded">
+            <div className="p-4 border-b font-semibold">Envío</div>
+            <div className="p-4 text-sm space-y-1">
+              <div>
+                <span className="text-gray-600">Destinatario:</span>{' '}
+                <span className="font-medium">
+                  {(shipping.first_name ?? '')} {(shipping.last_name ?? '')}
+                </span>
               </div>
-            )}
+
+              <div>
+                <span className="text-gray-600">Tel/Email:</span>{' '}
+                <span className="font-medium">
+                  {(shipping.phone ?? '')} · {(shipping.email ?? '')}
+                </span>
+              </div>
+
+              {isUS(shipping) ? (
+                <>
+                  <div>
+                    <span className="text-gray-600">Dirección:</span>{' '}
+                    <span className="font-medium">
+                      {(shipping.address_line1 ?? '')}
+                      {shipping.address_line2 ? `, ${shipping.address_line2}` : ''}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Ciudad/Estado/ZIP:</span>{' '}
+                    <span className="font-medium">
+                      {(shipping.city ?? '')}, {(shipping.state ?? '')} {(shipping.zip ?? '')}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <span className="text-gray-600">Dirección:</span>{' '}
+                    <span className="font-medium">{shipping.address ?? ''}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Municipio/Provincia:</span>{' '}
+                    <span className="font-medium">
+                      {(shipping.municipality ?? '')}, {(shipping.province ?? '')}
+                    </span>
+                  </div>
+                  {shipping.ci && (
+                    <div>
+                      <span className="text-gray-600">CI:</span>{' '}
+                      <span className="font-medium">{shipping.ci}</span>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {shipping.instructions && (
+                <div className="text-gray-600">
+                  Notas: <span className="font-medium">{shipping.instructions}</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
+
 
 
         {/* Entrega */}
@@ -398,18 +404,37 @@ export default function AdminOrderDetailPage() {
           {items?.length ? (
             <>
               <ul className="divide-y">
-                {items.map((it, idx) => (
-                  <li key={`${it.product_id}-${idx}`} className="p-4 flex items-center gap-3">
+                {itemsList.map((it, idx) => (
+                  <li key={`${idx}-${it.product_id ?? it.external_id ?? 'encargo'}`} className="p-4 flex items-center gap-3">
                     {it.image_url ? (
-                      <img src={it.image_url} alt={it.product_name || `Prod ${it.product_id}`} className="w-12 h-12 object-cover rounded border" />
+                      <img
+                        src={it.image_url}
+                        alt={it.product_name || `Prod ${it.product_id ?? ''}`}
+                        className="w-12 h-12 object-contain bg-white rounded border p-0.5"
+                      />
                     ) : (
                       <div className="w-12 h-12 rounded border bg-gray-100" />
                     )}
                     <div className="flex-1">
-                      <div className="text-sm font-medium">{it.product_name || `Producto #${it.product_id}`}</div>
+                      <div className="text-sm font-medium">
+                        {it.product_name || `Producto #${it.product_id ?? ''}`}
+                        {it.source_url && (
+                          <a
+                            href={it.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="ml-2 text-xs text-green-700 underline"
+                            title="Ver en origen"
+                          >
+                            Ver en origen
+                          </a>
+                        )}
+                      </div>
                       <div className="text-xs text-gray-600">x{it.quantity}</div>
                     </div>
-                    <div className="text-sm font-semibold">{fmt.format(Number(it.unit_price) * Number(it.quantity))}</div>
+                    <div className="text-sm font-semibold">
+                      {fmt.format(Number(it.unit_price) * Number(it.quantity))}
+                    </div>
                   </li>
                 ))}
               </ul>

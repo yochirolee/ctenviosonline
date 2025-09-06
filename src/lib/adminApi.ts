@@ -303,36 +303,30 @@ export async function updateOrderStatus(id: number, status: string): Promise<Ord
 }
 
 /* ========== Order detail (ADMIN) ========== */
+export type AdminOrderItem = {
+  product_id: number | null
+  product_name?: string | null
+  image_url?: string | null
+  source_url?: string | null   
+  external_id?: string | null  
+  quantity: number
+  unit_price: number
+}
+
 export type AdminOrderDetail = {
   order: {
     id: number
     created_at: string
     status: string
     payment_method: string | null
-    customer: { id: number | null; email: string | null; name: string | null; phone?: string | null; address?: string | null}
     pricing: { subtotal: number; tax: number; total: number }
     card_fee_pct: number
     card_fee: number
     total_with_fee: number
     metadata?: Record<string, unknown> | null
+    customer?: { id?: number; email?: string | null; name?: string | null; phone?: string | null; address?: string | null }
   }
-  items: Array<{
-    product_id: number
-    product_name?: string
-    image_url?: string | null
-    quantity: number
-    unit_price: number
-  }>
-}
-
-/** Detalle completo de una orden (admin) */
-export async function getAdminOrderDetail(id: number): Promise<AdminOrderDetail> {
-  const r = await fetch(`${API_URL}/admin/orders/${id}/detail`, {
-    headers: authHeaders(),
-    cache: 'no-store',
-  })
-  if (!r.ok) throw new Error('orderDetail')
-  return r.json()
+  items: AdminOrderItem[]
 }
 
 //admin customers
@@ -373,4 +367,13 @@ export async function deleteCustomerAdmin(id: number) {
   })
   if (!res.ok) throw new Error('Error eliminando cliente')
   return res.json()
+}
+
+export async function getAdminOrderDetail(id: number): Promise<AdminOrderDetail> {
+  const r = await fetch(`${API_URL}/admin/orders/${id}/detail`, {
+    headers: authHeaders(),
+    cache: 'no-store',
+  });
+  if (!r.ok) throw new Error('orderDetail');
+  return r.json() as Promise<AdminOrderDetail>;
 }

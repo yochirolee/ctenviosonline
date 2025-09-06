@@ -333,5 +333,29 @@ export type Dict = {
       zip_invalid: string
       name_required: string
     }
+  },
+  encargos: {
+    open_button: string
+    drawer_title: string
+    empty: string
+    total_items: string
+    subtotal: string
+    remove: string
+    clear_all: string
+    remove_confirm: string
+    removed_toast: string
+    remove_error_toast: string
+    proceed_to_checkout: string
+    loading: string
+    view_in_source_generic: string
+    view_in_amazon: string
+    view_in_shein: string
+    vendor_amazon: string
+    vendor_shein: string
+    vendor_external: string
+    id_label: string
+    open_drawer_aria: string
+    close_drawer_aria: string
+    added_toast: string
   }
 }

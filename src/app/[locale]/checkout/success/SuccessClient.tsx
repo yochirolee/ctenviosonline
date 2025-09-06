@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import type { Dict } from '@/types/Dict'
+import Thumb from '@/components/Thumb'
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
 
@@ -46,7 +47,7 @@ type Order = {
   id: number | string
   created_at?: string
   status?: 'pending' | 'paid' | 'failed' | string
-  metadata?: { shipping?: ShippingMeta; [k: string]: unknown }
+  metadata?: { shipping?: ShippingMeta;[k: string]: unknown }
   items?: OrderItem[]
   [k: string]: unknown
 }
@@ -107,17 +108,23 @@ export default function SuccessClient({
     return Number.isFinite(n) ? n : 0
   }
 
-  const cleanLocal = () => {
+  const cleanLocal = (opts?: { keepCart?: boolean }) => {
     if (cleanedRef.current) return
     cleanedRef.current = true
     try {
-      // 🧹 Carrito y señales
-      localStorage.removeItem('cart')
-      localStorage.removeItem('cart_completed')
+      // 🧹 Señales comunes (siempre)
       localStorage.setItem('cart_last_update', String(Date.now()))
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('medusa_')) localStorage.removeItem(key)
-      })
+
+      if (opts?.keepCart) {
+        // 🔒 NO tocar carrito ni claves de medusa cuando es flujo Encargos
+      } else {
+        // 🧹 Carrito y señales (solo cuando NO es Encargos)
+        localStorage.removeItem('cart')
+        localStorage.removeItem('cart_completed')
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith('medusa_')) localStorage.removeItem(key)
+        })
+      }
 
       // 🧹 Checkout (todas las variantes conocidas)
       localStorage.removeItem('checkout_form_v2')
@@ -133,8 +140,14 @@ export default function SuccessClient({
       localStorage.removeItem('formData')
       localStorage.removeItem('shippingInfo')
 
-      // ❗️No tocamos delivery_location_v2 (el banner debe persistir)
-    } catch {}
+      // 🧹 Solo clave(s) de Encargos en localStorage (por si existiera cache local)
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('encargo') || key.startsWith('encargos')) {
+          localStorage.removeItem(key)
+        }
+      })
+
+    } catch { }
 
     // Notificar a la UI
     if (typeof window !== 'undefined') {
@@ -197,7 +210,7 @@ export default function SuccessClient({
       return { paid: !!(c as { paid?: unknown }).paid, orders: ids }
     }
 
-    const afterPaid = async (ids: number[]) => {
+    const afterPaid = async (ids: number[], opts?: { isEncargos?: boolean }) => {
       setPaid(true)
       setCreatedOrders(ids)
       // Traer items de cada orden (para miniaturas estilo Amazon)
@@ -207,7 +220,7 @@ export default function SuccessClient({
         if (d) bundles.push({ order: d.order, items: d.items ?? [] })
       }
       setOrdersDetail(bundles)
-      cleanLocal()
+      cleanLocal({ keepCart: opts?.isEncargos === true })
       setLoading(false)
       stopPolling()
     }
@@ -220,13 +233,19 @@ export default function SuccessClient({
         // 1) Intentar leer la checkout session (flujo directo ideal)
         const session = await readCheckoutSession(sessionId)
         if (session) {
+          const flow = String(
+            (session as any)?.snapshot?.kind ||
+            (session as any)?.metadata?.flow ||
+            ''
+          ).toLowerCase()
+          const isEncargos = (flow === 'encargos')
           const status = String(session.status || '').toLowerCase()
 
           if (status === 'paid') {
             const ids = Array.isArray(session.created_order_ids)
               ? session.created_order_ids.map(Number).filter(Number.isFinite)
               : []
-            await afterPaid(ids)
+            await afterPaid(ids, { isEncargos })
             return
           }
 
@@ -256,7 +275,7 @@ export default function SuccessClient({
           // 2) Fallback a confirm del link (compat)
           const lf = await confirmViaLinkFallback(sessionId)
           if (lf.paid) {
-            await afterPaid(lf.orders)
+            await afterPaid(lf.orders, { isEncargos: false })
             return
           }
         }
@@ -518,12 +537,8 @@ export default function SuccessClient({
                     {thumbs.length > 0 ? (
                       <>
                         {thumbs.map((src, i) => (
-                          <img
-                            key={`${order.id}-${i}`}
-                            src={src}
-                            alt={`Producto ${i + 1}`}
-                            className="w-14 h-14 object-cover rounded border"
-                          />
+                           <Thumb key={`${order.id}-${i}`} src={src} size={56} />
+                         
                         ))}
                         {items.length > thumbs.length && (
                           <div className="text-sm text-gray-600">
