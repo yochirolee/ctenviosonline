@@ -5,16 +5,19 @@ import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { requireCustomerAuth } from '@/lib/requireAuth'
 import { encargosCapture } from '@/lib/api'
-import { ExternalLink, PencilLine } from 'lucide-react'
-import { Info } from 'lucide-react'
+import { ExternalLink, PencilLine, Info } from 'lucide-react'
 import BackButton from '@/components/BackButton'
-
 
 /* --- helpers --- */
 function fmtPrice(raw: string | null | undefined) {
   if (!raw) return ''
   if (/^\s*[$€£]/.test(raw)) return raw.trim()
-  const n = Number(String(raw).replace(/[^\d.,-]/g, '').replace(/\.(?=\d{3,})/g, '').replace(',', '.'))
+  const n = Number(
+    String(raw)
+      .replace(/[^\d.,-]/g, '')
+      .replace(/\.(?=\d{3,})/g, '')
+      .replace(',', '.')
+  )
   if (!Number.isFinite(n)) return String(raw)
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
 }
@@ -31,15 +34,33 @@ export default function ConfirmCapture() {
   const router = useRouter()
   const { locale } = useParams() as { locale: string }
 
-  const idParam = sp.get('id')
+  // Acepta ?asin=... o ?id=... (compat)
+  const asinParam = sp.get('asin') || sp.get('id') || null
   const back = sp.get('back') || ''
 
   const sourceUrl = useMemo(() => {
-    try { return decodeURIComponent(back) } catch { return '' }
+    try {
+      return decodeURIComponent(back)
+    } catch {
+      return ''
+    }
   }, [back])
 
+  const sourceUrlIsValid = useMemo(() => {
+    try {
+      new URL(sourceUrl)
+      return true
+    } catch {
+      return false
+    }
+  }, [sourceUrl])
+
   const initialHost = useMemo(() => {
-    try { return new URL(sourceUrl).hostname.replace(/^www\./, '') } catch { return '' }
+    try {
+      return new URL(sourceUrl).hostname.replace(/^www\./, '')
+    } catch {
+      return ''
+    }
   }, [sourceUrl])
 
   const [resolvedHost, setResolvedHost] = useState<string>(initialHost)
@@ -49,10 +70,10 @@ export default function ConfirmCapture() {
   const vendorLabel = useMemo(() => {
     if (source === 'amazon') return 'Amazon'
     if (source === 'shein') return 'SHEIN'
-    return (hostname || 'la tienda')
+    return hostname || 'la tienda'
   }, [source, hostname])
 
-  const [externalId, setExternalId] = useState<string | null>(idParam)
+  const [externalId, setExternalId] = useState<string | null>(asinParam)
   const [title, setTitle] = useState('')
   const [image, setImage] = useState('')
   const [price, setPrice] = useState('')
@@ -66,33 +87,44 @@ export default function ConfirmCapture() {
 
   /* --- intentar resolver metadatos si no vinieron --- */
   useEffect(() => {
-    const needsResolve = !externalId && !!sourceUrl
+    // Si no hay URL válida, pero sí ASIN → construimos URL canónica de Amazon
+    const urlForResolve =
+      sourceUrlIsValid ? sourceUrl : externalId ? `https://www.amazon.com/dp/${externalId}` : ''
+
+    // Resolver si:
+    // - hay una URL (real o canónica) y NO tenemos externalId, o
+    // - faltan título/imagen (o precio, opcional) y tenemos una URL para resolver
+    const needsResolve = !!urlForResolve && (!externalId || !title || !image)
+
     if (!needsResolve) return
-      ; (async () => {
-        try {
-          setLoading(true)
-          const r = await fetch('/api/encargos/resolve', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: sourceUrl }),
-          })
-          const data = await r.json().catch(() => null)
-          if (data?.ok) {
-            try {
-              const h = new URL(data.finalUrl || sourceUrl).hostname.replace(/^www\./, '')
-              setResolvedHost(h)
-            } catch { }
-            if (data.external_id && !externalId) setExternalId(data.external_id)
-            if (data.title && !title) setTitle(data.title)
-            if (data.image && !image) setImage(data.image)
-            if (data.price && !price) setPrice(String(data.price))
+
+    ;(async () => {
+      try {
+        setLoading(true)
+        const r = await fetch('/api/encargos/resolve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: urlForResolve }),
+        })
+        const data = await r.json().catch(() => null)
+        if (data?.ok) {
+          try {
+            const h = new URL(data.finalUrl || urlForResolve).hostname.replace(/^www\./, '')
+            setResolvedHost(h)
+          } catch {
+            /* noop */
           }
-        } finally {
-          setLoading(false)
+          if (data.external_id && !externalId) setExternalId(data.external_id)
+          if (data.title && !title) setTitle(data.title)
+          if (data.image && !image) setImage(data.image)
+          if (data.price && !price) setPrice(String(data.price))
         }
-      })()
+      } finally {
+        setLoading(false)
+      }
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [externalId, sourceUrl])
+  }, [externalId, sourceUrl, sourceUrlIsValid, title, image, price])
 
   /* --- guardar --- */
   const save = async () => {
@@ -112,21 +144,22 @@ export default function ConfirmCapture() {
     try {
       await encargosCapture(body)
       // notificar otros componentes e abrir drawer
-      try { window.dispatchEvent(new CustomEvent('encargos:changed', { detail: { type: 'updated' } })) } catch { }
-      try { window.dispatchEvent(new CustomEvent('encargos:open')) } catch { }
+      try {
+        window.dispatchEvent(new CustomEvent('encargos:changed', { detail: { type: 'updated' } }))
+      } catch {}
+      try {
+        window.dispatchEvent(new CustomEvent('encargos:open'))
+      } catch {}
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'No se pudo guardar el encargo.'
       alert(msg)
     }
   }
 
-
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 md:py-10">
-      <BackButton
-        label={locale === 'en' ? 'Back' : 'Atrás'}
-        fallbackHref={`/${locale}/amazon`}
-      />
+      <BackButton label={locale === 'en' ? 'Back' : 'Atrás'} fallbackHref={`/${locale}/amazon`} />
+
       {/* Tarjeta principal */}
       <article className="rounded-2xl overflow-hidden border shadow-sm bg-white">
         {/* Franja superior con color Amazon y logo a la derecha en desktop */}
@@ -172,9 +205,7 @@ export default function ConfirmCapture() {
                     unoptimized
                   />
                 ) : (
-                  <div className="absolute inset-0 grid place-items-center text-gray-400">
-                    Sin imagen
-                  </div>
+                  <div className="absolute inset-0 grid place-items-center text-gray-400">Sin imagen</div>
                 )}
               </div>
 
@@ -224,15 +255,12 @@ export default function ConfirmCapture() {
                     <Info className="h-4 w-4 mt-0.5 text-emerald-700 flex-shrink-0" />
                     <p>
                       <strong>Importante:</strong> Puedes pagar ahora. Antes de comprar al proveedor verificamos la
-                      <strong> disponibilidad</strong> y que el <strong>precio/peso</strong> coincidan con lo pagado.
-                      Si hay diferencias relevantes (precio, variante, peso o envío), te <strong>contactaremos </strong>
-                      para aprobar el cambio. Si no te conviene, podrás pedir un
-                      <strong> reembolso inmediato</strong>.
+                      <strong> disponibilidad</strong> y que el <strong>precio/peso</strong> coincidan con lo pagado. Si hay
+                      diferencias relevantes (precio, variante, peso o envío), te <strong>contactaremos</strong> para aprobar
+                      el cambio. Si no te conviene, podrás pedir un <strong>reembolso inmediato</strong>.
                     </p>
                   </div>
                 </div>
-
-
 
                 <button
                   onClick={() => setShowEdit((s) => !s)}

@@ -39,7 +39,7 @@ export default function PasteAmazonUrlBox() {
     setErr(null)
     const asin = extractASIN(text)
     // 🔁 Mantiene tu redirect original que ya funcionaba:
-    router.push(`/${locale}/capture/confirm?${asin ? `asin=${asin}&` : ''}back=${encodeURIComponent(text)}`)
+    router.push(    `/${locale}/capture/confirm?${asin ? `asin=${asin}&` : ''}back=${encodeURIComponent(text)}`)
   }
 
   return (
