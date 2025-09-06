@@ -18,6 +18,11 @@ const authHeaders = (): HeadersInit => {
   return h
 }
 
+type SessionSnapshot = { kind?: string } | null | undefined
+type SessionMetadata = { flow?: string } | null | undefined
+const hasKind = (x: unknown): x is { kind?: string } =>
+  !!x && typeof x === 'object' && 'kind' in x
+
 type OrderItem = {
   product_id: number
   product_name?: string
@@ -64,7 +69,8 @@ type CheckoutSession = {
   id: number | string
   status: string
   created_order_ids?: number[]
-  snapshot?: unknown
+  snapshot?: SessionSnapshot          // <— antes era unknown
+  metadata?: SessionMetadata          // <— añade metadata.flow
   payment?: PaymentInfo
   processed_at?: string
 }
@@ -233,11 +239,12 @@ export default function SuccessClient({
         // 1) Intentar leer la checkout session (flujo directo ideal)
         const session = await readCheckoutSession(sessionId)
         if (session) {
-          const flow = String(
-            (session as any)?.snapshot?.kind ||
-            (session as any)?.metadata?.flow ||
+          const flowSrc =
+            (hasKind(session.snapshot) ? session.snapshot.kind : undefined) ??
+            session.metadata?.flow ??
             ''
-          ).toLowerCase()
+
+          const flow = String(flowSrc || '').toLowerCase()
           const isEncargos = (flow === 'encargos')
           const status = String(session.status || '').toLowerCase()
 
@@ -537,8 +544,8 @@ export default function SuccessClient({
                     {thumbs.length > 0 ? (
                       <>
                         {thumbs.map((src, i) => (
-                           <Thumb key={`${order.id}-${i}`} src={src} size={56} />
-                         
+                          <Thumb key={`${order.id}-${i}`} src={src} size={56} />
+
                         ))}
                         {items.length > thumbs.length && (
                           <div className="text-sm text-gray-600">

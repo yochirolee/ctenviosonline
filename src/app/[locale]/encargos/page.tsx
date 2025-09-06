@@ -21,13 +21,13 @@ function parsePrice(raw: string | number | null | undefined): number | null {
   return Number.isFinite(n2) ? n2 : null
 }
 
-function sourceLabel(s?: string) {
+function sourceLabel(s?: string): string {
   if (s === 'amazon') return 'Amazon'
   if (s === 'shein') return 'SHEIN'
   return 'Externo'
 }
 
-function viewText(s?: string) {
+function viewText(s?: string): string {
   if (s === 'amazon') return 'Ver en Amazon'
   if (s === 'shein') return 'Ver en SHEIN'
   return 'Ver producto'
@@ -67,8 +67,9 @@ export default function EncargosPage() {
       await encargosRemove(id)
       setItems(prev => prev.filter(x => x.id !== id))
       toast.success('Eliminado del listado de encargos.')
-    } catch (e: any) {
-      toast.error(e?.message || 'No se pudo eliminar.')
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'No se pudo eliminar.'
+      toast.error(message)
     }
   }
 
@@ -96,8 +97,12 @@ export default function EncargosPage() {
           <div className="space-y-3">
             {items.map((it) => {
               const amount = parsePrice(it.price_estimate)
+              const currency = (it.currency ?? 'USD') as string
               const money = amount != null
-                ? new Intl.NumberFormat(locale || 'es', { style: 'currency', currency: (it.currency || 'USD') as any }).format(amount)
+                ? new Intl.NumberFormat(locale || 'es', {
+                    style: 'currency',
+                    currency,
+                  }).format(amount)
                 : '—'
 
               return (

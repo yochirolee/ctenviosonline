@@ -2,9 +2,9 @@
 
 import type { Dict } from '@/types/Dict'
 import { useRouter, useParams } from 'next/navigation'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
-import { ArrowLeft, CreditCard, Trash } from 'lucide-react'
+import { ArrowLeft, CreditCard } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLocation } from '@/context/LocationContext'
 import CardPaymentModal from '@/components/CardPaymentModal'
@@ -21,15 +21,18 @@ import {
   encargosCheckoutStart,
   encargosStartDirect,
   encargosPayDirect,
-  getCustomerProfile, 
+  getCustomerProfile,
   type EncargoItem,
   type Shipping,
-  type AreaTypeCU, 
+  type AreaTypeCU,
 } from '@/lib/api'
 
 // ====== Constantes ======
 const CARD_FEE_PCT = Number(process.env.NEXT_PUBLIC_CARD_FEE_PCT ?? '3')
 const FEE_RATE = Number.isFinite(CARD_FEE_PCT) ? CARD_FEE_PCT / 100 : 0
+
+const errMsg = (e: unknown) =>
+  e instanceof Error ? e.message : typeof e === 'string' ? e : undefined
 
 // --- Estados Unidos ---
 const US_STATES = [
@@ -52,6 +55,7 @@ const US_STATES = [
   { code: 'WI', name: 'Wisconsin' }, { code: 'WY', name: 'Wyoming' },
 ]
 
+
 // ===== helpers =====
 function parsePrice(raw: string | number | null | undefined): number | null {
   if (raw == null) return null
@@ -68,7 +72,25 @@ function fmtCurrency(n: number, locale: string, currency: string = 'USD') {
   return new Intl.NumberFormat(locale || 'es', { style: 'currency', currency }).format(n)
 }
 
-type UnavailableLine = { owner_name?: string; title: string; requested?: number; available?: number }
+type QuoteBreakdownLine = {
+  owner_id: number | null
+  owner_name: string
+  mode: 'fixed' | 'by_weight' | string
+  weight_lb: number
+  shipping_cents: number
+}
+
+type UnavailableLine = {
+  owner_name?: string
+  title: string
+  requested?: number
+  available?: number
+}
+
+type EncargosQuoteResp =
+  | { ok: true; shipping_total_cents: number; breakdown?: QuoteBreakdownLine[] }
+  | { ok: false; message?: string; unavailable?: UnavailableLine[] }
+
 
 function buildAvailabilityErrorMsg(unavailable: UnavailableLine[], locLabel?: string) {
   if (!Array.isArray(unavailable) || unavailable.length === 0) {
@@ -116,14 +138,14 @@ export default function EncargosCheckoutClient({ dict, params }: Props) {
         // void reloadItems()
       }
     }
-  
+
     window.addEventListener('encargos:changed', onChanged as EventListener)
     return () => window.removeEventListener('encargos:changed', onChanged as EventListener)
   }, [])
 
   // Forzar login al entrar
   useEffect(() => {
-    ;(async () => {
+    ; (async () => {
       const ok = await requireCustomerAuth(router, locale)
       if (!ok) return
     })()
@@ -183,27 +205,27 @@ export default function EncargosCheckoutClient({ dict, params }: Props) {
   })
 
   // Precargar desde API del customer (igual que en checkout original)
-useEffect(() => {
-  let cancelled = false
-  ;(async () => {
-    try {
-      const profile = await getCustomerProfile()
-      if (!profile || cancelled) return
+  useEffect(() => {
+    let cancelled = false
+      ; (async () => {
+        try {
+          const profile = await getCustomerProfile()
+          if (!profile || cancelled) return
 
-      setBuyer(prev => ({
-        first_name: profile.first_name ?? prev.first_name,
-        last_name:  profile.last_name  ?? prev.last_name,
-        email:      profile.email      ?? prev.email,
-        phone:      profile.phone      ?? prev.phone,       // sin +1
-        address:    profile.address    ?? prev.address,
-        zip:        profile.zip        ?? prev.zip,
-      }))    
-    } catch {
-      // noop
-    }
-  })()
-  return () => { cancelled = true }
-}, [])
+          setBuyer(prev => ({
+            first_name: profile.first_name ?? prev.first_name,
+            last_name: profile.last_name ?? prev.last_name,
+            email: profile.email ?? prev.email,
+            phone: profile.phone ?? prev.phone,       // sin +1
+            address: profile.address ?? prev.address,
+            zip: profile.zip ?? prev.zip,
+          }))
+        } catch {
+          // noop
+        }
+      })()
+    return () => { cancelled = true }
+  }, [])
 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -299,10 +321,8 @@ useEffect(() => {
   const [quoteOk, setQuoteOk] = useState<boolean | null>(null)
   const [quoteError, setQuoteError] = useState<string | null>(null)
   const [shippingQuoteCents, setShippingQuoteCents] = useState(0)
-  const [shippingBreakdown, setShippingBreakdown] = useState<
-    Array<{ owner_id: number | null, owner_name: string, mode: string, weight_lb: number, shipping_cents: number }>
-  >([])
-  const [unavailableOwners, setUnavailableOwners] = useState<{ owner_id: number, owner_name: string }[]>([])
+  const [shippingBreakdown, setShippingBreakdown] = useState<QuoteBreakdownLine[]>([])
+  const [unavailableOwners, setUnavailableOwners] = useState<{ owner_name: string }[]>([])
 
   // helper: construir shipping (CU/US)
   function buildShipping(): Shipping {
@@ -349,40 +369,44 @@ useEffect(() => {
     }
     let cancelled = false
     setQuoting(true)
-    ;(async () => {
-      try {
-        const q = await encargosQuote(buildShipping())
-        if (cancelled) return
-        if (q.ok === false) {
-          const locLabel = isCU
-            ? [location?.municipality, location?.province].filter(Boolean).join(', ')
-            : [formData.city, formData.state, formData.zip].filter(Boolean).join(', ')
+      ; (async () => {
+        try {
+          const q = (await encargosQuote(buildShipping())) as EncargosQuoteResp
+          if (cancelled) return
+          if (q.ok === false) {
+            const locLabel = isCU
+              ? [location?.municipality, location?.province].filter(Boolean).join(', ')
+              : [formData.city, formData.state, formData.zip].filter(Boolean).join(', ')
+            setQuoteOk(false)
+            setQuoteError(
+              q.message ||
+              buildAvailabilityErrorMsg(q.unavailable ?? [], locLabel) ||
+              dict.checkout.quote_not_available
+            )
+            setUnavailableOwners(
+              Array.isArray(q.unavailable)
+                ? q.unavailable.flatMap(u => (u.owner_name ? [{ owner_name: u.owner_name }] : []))
+                : []
+            )
+            setShippingQuoteCents(0)
+            setShippingBreakdown([])
+            return
+          }
+          setQuoteOk(true)
+          setQuoteError(null)
+          setUnavailableOwners([])
+          setShippingQuoteCents(Number(q.shipping_total_cents || 0))
+          setShippingBreakdown(Array.isArray(q.breakdown) ? q.breakdown : [])
+        } catch {
+          if (cancelled) return
           setQuoteOk(false)
-          setQuoteError(
-            q.message ||
-            buildAvailabilityErrorMsg((q.unavailable || []) as any, locLabel) ||
-            dict.checkout.quote_not_available
-          )
-          setUnavailableOwners(Array.isArray(q.unavailable) ? q.unavailable as any : [])
+          setQuoteError(dict.checkout.quote_not_available)
           setShippingQuoteCents(0)
           setShippingBreakdown([])
-          return
+        } finally {
+          if (!cancelled) setQuoting(false)
         }
-        setQuoteOk(true)
-        setQuoteError(null)
-        setUnavailableOwners([])
-        setShippingQuoteCents(Number(q.shipping_total_cents || 0))
-        setShippingBreakdown(Array.isArray(q.breakdown) ? q.breakdown : [])
-      } catch {
-        if (cancelled) return
-        setQuoteOk(false)
-        setQuoteError(dict.checkout.quote_not_available)
-        setShippingQuoteCents(0)
-        setShippingBreakdown([])
-      } finally {
-        if (!cancelled) setQuoting(false)
-      }
-    })()
+      })()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCU, isUS, readyToQuote, location?.province, location?.municipality, formData.state, formData.city, formData.zip])
@@ -423,8 +447,8 @@ useEffect(() => {
       await encargosRemove(id)
       setItems(prev => prev.filter(x => x.id !== id))
       toast.success('Eliminado del listado de encargos.')
-    } catch (e: any) {
-      toast.error(e?.message || 'No se pudo eliminar.')
+    } catch (e: unknown) {
+      toast.error(errMsg(e) || 'No se pudo iniciar el checkout.')
     }
   }
 
@@ -437,7 +461,7 @@ useEffect(() => {
         const el = document.getElementById(firstErrorField)
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          ;(el as HTMLInputElement).focus()
+            ; (el as HTMLInputElement).focus()
         }
       }
       return
@@ -454,19 +478,19 @@ useEffect(() => {
         terms: { accepted: true, url: `/${locale}/terms`, accepted_at: new Date().toISOString(), version: 'v1' },
         payer: {
           first_name: buyer.first_name || formData.nombre,
-          last_name:  buyer.last_name  || formData.apellidos,
-          email:      buyer.email      || formData.email,
-          phone:      buyer.phone ? `+1${buyer.phone.replace(/\D/g, '')}` : undefined,
-          address:    buyer.address || undefined,
-          zip:        buyer.zip || undefined,
+          last_name: buyer.last_name || formData.apellidos,
+          email: buyer.email || formData.email,
+          phone: buyer.phone ? `+1${buyer.phone.replace(/\D/g, '')}` : undefined,
+          address: buyer.address || undefined,
+          zip: buyer.zip || undefined,
         },
         billing: {
           first_name: buyer.first_name || formData.nombre,
-          last_name:  buyer.last_name  || formData.apellidos,
-          email:      buyer.email      || formData.email,
-          phone:      buyer.phone ? `+1${buyer.phone.replace(/\D/g, '')}` : undefined,
-          address:    buyer.address || undefined,
-          zip:        buyer.zip || undefined,
+          last_name: buyer.last_name || formData.apellidos,
+          email: buyer.email || formData.email,
+          phone: buyer.phone ? `+1${buyer.phone.replace(/\D/g, '')}` : undefined,
+          address: buyer.address || undefined,
+          zip: buyer.zip || undefined,
         },
       })
       if (start?.payUrl) {
@@ -478,8 +502,8 @@ useEffect(() => {
         return
       }
       toast.error('Respuesta inesperada del servidor.')
-    } catch (e: any) {
-      toast.error(e?.message || 'No se pudo iniciar el checkout.')
+    } catch (e: unknown) {
+      toast.error(errMsg(e) || 'No se pudo iniciar el checkout.')
     } finally {
       setIsPaying(false)
     }
@@ -492,7 +516,7 @@ useEffect(() => {
         const el = document.getElementById(firstErrorField)
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          ;(el as HTMLInputElement).focus()
+            ; (el as HTMLInputElement).focus()
         }
       }
       return
@@ -510,19 +534,19 @@ useEffect(() => {
         terms: { accepted: true, url: `/${locale}/terms`, accepted_at: new Date().toISOString(), version: 'v1' },
         payer: {
           first_name: buyer.first_name || formData.nombre,
-          last_name:  buyer.last_name  || formData.apellidos,
-          email:      buyer.email      || formData.email,
-          phone:      buyer.phone ? `+1${buyer.phone.replace(/\D/g, '')}` : undefined,
-          address:    buyer.address || undefined,
-          zip:        buyer.zip || undefined,
+          last_name: buyer.last_name || formData.apellidos,
+          email: buyer.email || formData.email,
+          phone: buyer.phone ? `+1${buyer.phone.replace(/\D/g, '')}` : undefined,
+          address: buyer.address || undefined,
+          zip: buyer.zip || undefined,
         },
         billing: {
           first_name: buyer.first_name || formData.nombre,
-          last_name:  buyer.last_name  || formData.apellidos,
-          email:      buyer.email      || formData.email,
-          phone:      buyer.phone ? `+1${buyer.phone.replace(/\D/g, '')}` : undefined,
-          address:    buyer.address || undefined,
-          zip:        buyer.zip || undefined,
+          last_name: buyer.last_name || formData.apellidos,
+          email: buyer.email || formData.email,
+          phone: buyer.phone ? `+1${buyer.phone.replace(/\D/g, '')}` : undefined,
+          address: buyer.address || undefined,
+          zip: buyer.zip || undefined,
         },
       })
 
@@ -532,8 +556,8 @@ useEffect(() => {
       }
       setDirectSession({ id: String(r.sessionId), amount: Number(r.amount) })
       setShowCardModal(true)
-    } catch (e: any) {
-      toast.error(e?.message || 'Error iniciando el pago directo.')
+    } catch (e: unknown) {
+      toast.error(errMsg(e) || 'Error iniciando el pago directo.')
     } finally {
       setStartingDirect(false)
     }
@@ -596,7 +620,7 @@ useEffect(() => {
               type="button"
               className="underline text-emerald-800 hover:text-emerald-900"
               onClick={() => {
-                try { window.dispatchEvent(new CustomEvent('location:open')) } catch {}
+                try { window.dispatchEvent(new CustomEvent('location:open')) } catch { }
                 window.scrollTo({ top: 0, behavior: 'smooth' })
               }}
             >
@@ -610,7 +634,7 @@ useEffect(() => {
             <button
               type="button"
               className="underline text-emerald-800 hover:text-emerald-900"
-              onClick={() => { try { window.dispatchEvent(new CustomEvent('location:open')) } catch {} window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+              onClick={() => { try { window.dispatchEvent(new CustomEvent('location:open')) } catch { } window.scrollTo({ top: 0, behavior: 'smooth' }) }}
             >
               {dict.location_banner.location_selected}
             </button>
@@ -657,7 +681,7 @@ useEffect(() => {
                 {locale === 'en' ? 'Buyer phone (US)' : 'Teléfono del comprador (EE. UU.)'}
               </label>
               <input className="input" placeholder={locale === 'en' ? '10 digits' : '10 dígitos'} value={buyer.phone}
-                     onChange={(e) => setBuyer(b => ({ ...b, phone: e.target.value }))} />
+                onChange={(e) => setBuyer(b => ({ ...b, phone: e.target.value }))} />
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700">
@@ -780,8 +804,8 @@ useEffect(() => {
               {quoteError}
               {unavailableOwners.length > 0 && (
                 <ul className="mt-1 list-disc pl-5">
-                  {unavailableOwners.map(u => (
-                    <li key={u.owner_id}>
+                  {unavailableOwners.map((u, i) => (
+                    <li key={`${u.owner_name}-${i}`}>
                       {dict.checkout.provider_unavailable}{u.owner_name}
                     </li>
                   ))}
@@ -843,7 +867,7 @@ useEffect(() => {
                     </div>
                     <div className="text-sm font-semibold text-gray-800 mt-1">{money}</div>
                   </div>
-                 
+
                 </div>
               )
             })
