@@ -1,12 +1,50 @@
+// src/app/api/encargos/resolve/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL!
 
+// ===== Tipos mínimos =====
+type ResolveIn = { url: string }
+
+type BackendResolveOut = {
+  ok: boolean
+  finalUrl?: string
+  external_id?: string | null
+  asin?: string | null
+  title?: string | null
+  image?: string | null
+  image_url?: string | null
+  price?: string | number | null
+  price_estimate?: string | number | null
+  currency?: string
+  compare_at_price?: string | number | null
+  source?: string | null
+  error?: string
+  message?: string
+}
+
+type ApiOut =
+  | {
+      ok: true
+      finalUrl: string
+      external_id: string | null
+      asin: string | null
+      title: string | null
+      image: string | null
+      price: string | number | null
+      currency: string
+      compare_at_price: string | number | null
+      source: string | null
+    }
+  | { ok: false; error: string }
+
 export async function POST(req: NextRequest) {
   try {
-    const { url } = await req.json().catch(() => ({} as any))
-    if (!url || typeof url !== 'string') {
-      return NextResponse.json({ ok: false, error: 'url_required' }, { status: 400 })
+    const body = (await req.json().catch(() => ({}))) as Partial<ResolveIn>
+    const url = typeof body.url === 'string' ? body.url : undefined
+    if (!url) {
+      const out: ApiOut = { ok: false, error: 'url_required' }
+      return NextResponse.json(out, { status: 400 })
     }
 
     // Reenvía al backend
@@ -14,41 +52,39 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
-      // no-store para evitar cachear resoluciones
       cache: 'no-store',
     })
 
     const text = await r.text()
-    let data: any = null
-    try { data = text ? JSON.parse(text) : null } catch { data = null }
+    let data: BackendResolveOut | null = null
+    try {
+      data = text ? (JSON.parse(text) as BackendResolveOut) : null
+    } catch {
+      data = null
+    }
 
     if (!r.ok || !data) {
-      return NextResponse.json(
-        { ok: false, error: (data?.error || text || 'upstream_error') },
-        { status: r.status || 502 }
-      )
+      const out: ApiOut = { ok: false, error: (data?.error || text || 'upstream_error') }
+      return NextResponse.json(out, { status: r.status || 502 })
     }
 
     // Normaliza campos de salida
-    // - finalUrl: URL final tras redirecciones (ej: a.co → amazon.com/dp/ASIN)
-    // - external_id: ASIN u otro ID (si el backend devuelve 'asin', lo mapeamos)
-    // - title, image, price, currency (si existe)
-    const payload = {
+    const payload: ApiOut = {
       ok: true,
       finalUrl: data.finalUrl || url,
-      external_id: data.external_id || data.asin || null,
-      asin: data.asin ?? null, // compat si quieres usarlo en Amazon
+      external_id: data.external_id ?? data.asin ?? null,
+      asin: data.asin ?? null,
       title: data.title ?? null,
-      image: data.image ?? data.image_url ?? null,
-      price: data.price ?? data.price_estimate ?? null,
+      image: (data.image as string | null) ?? (data.image_url as string | null) ?? null,
+      price: (data.price as string | number | null) ?? (data.price_estimate as string | number | null) ?? null,
       currency: data.currency ?? 'USD',
-      compare_at_price: data.compare_at_price ?? null,  // <-- añade
-      // opcional: fuente detectada si tu backend la envía
-      source: data.source || null,
+      compare_at_price: (data.compare_at_price as string | number | null) ?? null,
+      source: (data.source as string | null) ?? null,
     }
 
     return NextResponse.json(payload, { status: 200 })
-  } catch (e) {
-    return NextResponse.json({ ok: false, error: 'resolve_proxy_failed' }, { status: 500 })
+  } catch (_err: unknown) {
+    const out: ApiOut = { ok: false, error: 'resolve_proxy_failed' }
+    return NextResponse.json(out, { status: 500 })
   }
 }
