@@ -421,7 +421,7 @@ export default function EncargosCheckoutClient({ dict, params }: Props) {
   const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   // ===== Pago (link / directo) =====
-  const [isPaying, setIsPaying] = useState(false)
+  const [isPaying] = useState(false)
   const [showCardModal, setShowCardModal] = useState(false)
   const [startingDirect, setStartingDirect] = useState(false)
   const [cardPaying, setCardPaying] = useState(false)
