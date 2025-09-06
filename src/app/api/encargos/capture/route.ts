@@ -33,7 +33,6 @@ type BackendCaptureOut = {
 
 type ApiResOk = { ok: true; id: number | null }
 type ApiResErr = { ok: false; message: string }
-type ApiRes = ApiResOk | ApiResErr
 
 // mapea camelCase → snake_case para el backend
 function toBackendPayload(p: Partial<CaptureIn>): BackendCaptureIn {

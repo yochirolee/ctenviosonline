@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(payload, { status: 200 })
-  } catch (_err: unknown) {
+  } catch {
     const out: ApiOut = { ok: false, error: 'resolve_proxy_failed' }
     return NextResponse.json(out, { status: 500 })
   }
