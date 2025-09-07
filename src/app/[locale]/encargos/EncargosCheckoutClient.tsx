@@ -2,7 +2,7 @@
 
 import type { Dict } from '@/types/Dict'
 import { useRouter, useParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { ArrowLeft, CreditCard } from 'lucide-react'
 import { toast } from 'sonner'
@@ -54,6 +54,11 @@ const US_STATES = [
 ]
 
 // ===== helpers =====
+
+// === Persistencia LS para Encargos ===
+const LS_FORM_KEY = 'encargos_checkout_form_v1'
+const LS_BUYER_KEY = 'encargos_buyer_v1'
+
 function parsePrice(raw: string | number | null | undefined): number | null {
   if (raw == null) return null
   if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null
@@ -222,6 +227,30 @@ export default function EncargosCheckoutClient({ dict, params }: Props) {
       })()
     return () => { cancelled = true }
   }, [])
+
+  const loadedRef = useRef(false)
+  useEffect(() => {
+    if (loadedRef.current) return
+    loadedRef.current = true
+    try {
+      const raw = localStorage.getItem(LS_FORM_KEY)
+      if (raw) setFormData(prev => ({ ...prev, ...(JSON.parse(raw) || {}) }))
+    } catch { }
+    try {
+      const rawBuyer = localStorage.getItem(LS_BUYER_KEY)
+      if (rawBuyer) setBuyer(prev => ({ ...prev, ...(JSON.parse(rawBuyer) || {}) }))
+    } catch { }
+  }, [])
+
+  // Guarda incremental del formulario
+  useEffect(() => {
+    try { localStorage.setItem(LS_FORM_KEY, JSON.stringify(formData)) } catch { }
+  }, [formData])
+
+  // (opcional) guarda incremental del buyer
+  useEffect(() => {
+    try { localStorage.setItem(LS_BUYER_KEY, JSON.stringify(buyer)) } catch { }
+  }, [buyer])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -438,7 +467,7 @@ export default function EncargosCheckoutClient({ dict, params }: Props) {
 
   const fmt = new Intl.NumberFormat(locale || 'es', { style: 'currency', currency })
 
-   const handleStartDirect = async () => {
+  const handleStartDirect = async () => {
     const { ok, firstErrorField } = validate()
     if (!ok) {
       if (firstErrorField) {

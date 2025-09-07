@@ -114,17 +114,27 @@ export default function SuccessClient({
     return Number.isFinite(n) ? n : 0
   }
 
-  const cleanLocal = (opts?: { keepCart?: boolean }) => {
+  // Claves de shipping que siempre conservamos (cart y encargos)
+  const SHIPPING_WHITELIST = new Set<string>([
+    'shippingInfo',           // tu llave mencionada
+    'checkout_form_v2',       // form moderno
+    'checkout_country_v1',    // país elegido
+    'checkout_prefill_v1',    // datos prellenados
+    'last_checkout_country',  // compat
+    'checkout_draft_v1',      // borrador
+  ]);
+
+  const cleanLocal = (opts?: { keepCart?: boolean; keepShipping?: boolean }) => {
     if (cleanedRef.current) return
     cleanedRef.current = true
     try {
-      // 🧹 Señales comunes (siempre)
+      // Señal de “hubo cambios”
       localStorage.setItem('cart_last_update', String(Date.now()))
 
+      // 1) Carrito
       if (opts?.keepCart) {
-        // 🔒 NO tocar carrito ni claves de medusa cuando es flujo Encargos
+        // No tocar carrito ni medusa_*
       } else {
-        // 🧹 Carrito y señales (solo cuando NO es Encargos)
         localStorage.removeItem('cart')
         localStorage.removeItem('cart_completed')
         Object.keys(localStorage).forEach((key) => {
@@ -132,34 +142,57 @@ export default function SuccessClient({
         })
       }
 
-      // 🧹 Checkout (todas las variantes conocidas)
-      localStorage.removeItem('checkout_form_v2')
-      localStorage.removeItem('checkout_country_v1')
-
-      // Legacy/compat
-      localStorage.removeItem('checkout_form_v1')
-      localStorage.removeItem('checkout_form')
-      localStorage.removeItem('checkout_form_data')
-      localStorage.removeItem('checkout_prefill_v1')
-      localStorage.removeItem('last_checkout_country')
-      localStorage.removeItem('checkout_draft_v1')
-      localStorage.removeItem('formData')
-      localStorage.removeItem('shippingInfo')
-
-      // 🧹 Solo clave(s) de Encargos en localStorage (por si existiera cache local)
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('encargo') || key.startsWith('encargos')) {
-          localStorage.removeItem(key)
+      // 2) Checkout / formularios
+      //   - Si keepShipping es true → NO borrar nada de la whitelist.
+      //   - Si keepShipping es false → limpiamos todo lo no-whitelist.
+      //   (En cualquier caso, respetamos siempre los keys de SHIPPING_WHITELIST)
+      const DELETE_THESE = [
+        'checkout_form_v1',
+        'checkout_form',
+        'checkout_form_data',
+        'formData',
+      ];
+      for (const k of DELETE_THESE) {
+        if (!SHIPPING_WHITELIST.has(k) && !opts?.keepShipping) {
+          localStorage.removeItem(k)
         }
-      })
+      }
 
-    } catch { }
+      // 3) Encargos cache
+      //    Si quieres conservar también algún shipping específico de encargos,
+      //    añádelo a la whitelist con el nombre exacto.
+      if (!opts?.keepShipping) {
+        Object.keys(localStorage).forEach((key) => {
+          const isEncargosKey = key.startsWith('encargo') || key.startsWith('encargos')
+          if (isEncargosKey && !SHIPPING_WHITELIST.has(key)) {
+            localStorage.removeItem(key)
+          }
+        })
+      }
 
-    // Notificar a la UI
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('cart:updated', { detail: { cleared: true, items: 0 } }))
+      // 4) Notificaciones UI
+      if (typeof window !== 'undefined') {
+        // Carrito normal: solo emite cleared si realmente lo limpiamos
+        window.dispatchEvent(new CustomEvent('cart:updated', {
+          detail: { cleared: !opts?.keepCart, items: !opts?.keepCart ? 0 : undefined }
+        }))
+      
+        // 🔔 Estándar único que escucha EncargosIcon:
+        window.dispatchEvent(new CustomEvent('encargos:changed', {
+          detail: { type: 'cleared' } // <- EncargosIcon baja a 0 inmediatamente
+        }))
+      
+        // (Opcional) eventos adicionales si otros componentes los usan
+        window.dispatchEvent(new CustomEvent('encargos:completed'))
+        window.dispatchEvent(new CustomEvent('encargos:updated'))
+        window.dispatchEvent(new CustomEvent('navbar:refresh'))
+      }
+    } catch {
+      // no-op
     }
   }
+
+
 
   const fetchOrder = async (id: string | number): Promise<Order | null> => {
     const res = await fetch(`${API_URL}/orders/${id}`, { headers: authHeaders(), cache: 'no-store' })
@@ -219,17 +252,21 @@ export default function SuccessClient({
     const afterPaid = async (ids: number[], opts?: { isEncargos?: boolean }) => {
       setPaid(true)
       setCreatedOrders(ids)
-      // Traer items de cada orden (para miniaturas estilo Amazon)
       const bundles: Array<{ order: Order; items: OrderItem[] }> = []
       for (const id of ids) {
         const d = await fetchOrderDetail(id)
         if (d) bundles.push({ order: d.order, items: d.items ?? [] })
       }
       setOrdersDetail(bundles)
-      cleanLocal({ keepCart: opts?.isEncargos === true })
+    
+      // Mantener siempre shipping; en encargos además mantener carrito
+      cleanLocal({ keepCart: true, keepShipping: true })
+    
       setLoading(false)
       stopPolling()
     }
+    
+
 
     const tick = async () => {
       attempts++
@@ -368,7 +405,7 @@ export default function SuccessClient({
               if (ord) {
                 setOrder(ord)
                 setItems(Array.isArray(ord.items) ? ord.items : null)
-                if (ord.status === 'paid') cleanLocal()
+                if (ord.status === 'paid') cleanLocal({ keepShipping: true })
               }
             }
           } catch {

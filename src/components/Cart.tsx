@@ -319,13 +319,14 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
                         </Link>
                       </div>
 
-                      <div className="mt-2 flex justify-center text-sm text-gray-500">
-                        <button
+                      <div className="mt-4 flex justify-center text-sm text-gray-500">
+                        <Link
+                          href={`/${locale}`}
                           onClick={() => setIsCartOpen(false)}
                           className="font-medium text-green-600 hover:text-green-500"
                         >
                           {dict.cart.continue} →
-                        </button>
+                        </Link>
                       </div>
                     </div>
                   </>

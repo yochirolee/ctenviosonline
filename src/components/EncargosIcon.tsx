@@ -10,7 +10,7 @@ export default function EncargosIcon() {
 
   // Abre el drawer
   const openDrawer = () => {
-    try { window.dispatchEvent(new CustomEvent('encargos:open')) } catch {}
+    try { window.dispatchEvent(new CustomEvent('encargos:open')) } catch { }
   }
 
   // Carga/recarga el conteo
@@ -27,7 +27,6 @@ export default function EncargosIcon() {
     // carga inicial
     refreshCount()
 
-    // escucha cambios globales
     const onChanged = (ev: Event) => {
       const e = ev as CustomEvent<EncargosChangedDetail>
       const t = e.detail?.type
@@ -36,16 +35,27 @@ export default function EncargosIcon() {
       } else if (t === 'cleared') {
         setCount(0)
       } else {
-        // 'updated' u otros -> recargar
+        // 'updated' u otros -> recargar del backend
         void refreshCount()
       }
     }
 
+    const softRefresh = () => void refreshCount()
+
     window.addEventListener('encargos:changed', onChanged as EventListener)
+    // extras (por si otros componentes los disparan)
+    window.addEventListener('encargos:completed', softRefresh)
+    window.addEventListener('encargos:updated', softRefresh)
+    window.addEventListener('navbar:refresh', softRefresh)
+
     return () => {
       window.removeEventListener('encargos:changed', onChanged as EventListener)
+      window.removeEventListener('encargos:completed', softRefresh)
+      window.removeEventListener('encargos:updated', softRefresh)
+      window.removeEventListener('navbar:refresh', softRefresh)
     }
   }, [])
+
 
   const showBadge = (count ?? 0) > 0
 

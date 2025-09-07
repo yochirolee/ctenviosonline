@@ -9,8 +9,9 @@ import { useCustomer } from '@/context/CustomerContext'
 import type { Dict } from '@/types/Dict'
 import ConfirmLogoutButton from '@/components/ConfirmLogoutButton'
 import { useEffect, useRef, useState } from 'react'
-import EncargosIcon from '@/components/EncargosIcon' 
+import EncargosIcon from '@/components/EncargosIcon'
 import { LogIn, LogOut, Menu, X, ClipboardList } from 'lucide-react'
+
 
 type Props = { dict: Dict }
 
@@ -32,6 +33,22 @@ export default function Navbar({ dict }: Props) {
   const navLinkActive = '!font-bold !text-gray-900'
 
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // fuerza re-render cuando lleguen señales globales
+  const [navTick, setNavTick] = useState(0)
+  useEffect(() => {
+    const bump = () => setNavTick((t) => t + 1)
+    window.addEventListener('navbar:refresh', bump)
+    window.addEventListener('cart:updated', bump)
+    window.addEventListener('encargos:completed', bump)
+    // si tienes otros eventos internos, agrégalos aquí
+
+    return () => {
+      window.removeEventListener('navbar:refresh', bump)
+      window.removeEventListener('cart:updated', bump)
+      window.removeEventListener('encargos:completed', bump)
+    }
+  }, [])
 
   // Para enfoque inicial en el primer link del drawer
   const firstLinkRef = useRef<HTMLAnchorElement>(null)
@@ -77,7 +94,7 @@ export default function Navbar({ dict }: Props) {
 
   const openEncargosDrawer = () => {
     setMobileOpen(false)
-    try { window.dispatchEvent(new CustomEvent('encargos:open')) } catch {}
+    try { window.dispatchEvent(new CustomEvent('encargos:open')) } catch { }
   }
 
   return (
@@ -275,7 +292,7 @@ export default function Navbar({ dict }: Props) {
                   className="!flex items-center gap-2 w-full text-left rounded px-3 py-2 hover:bg-gray-100"
                 >
                   <ClipboardList className="h-4 w-4" />
-                  {locale === 'en' ? 'Requests (Encargos)' : 'Encargos'}
+                  {locale === 'en' ? 'Special Orders' : 'Encargos'}
                 </button>
               </li>
 

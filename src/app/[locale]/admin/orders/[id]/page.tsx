@@ -42,7 +42,8 @@ type ShippingIntl = {
 }
 
 type Shipping = ShippingUS | ShippingIntl
-const isUS = (s: Shipping | null | undefined): s is ShippingUS => s?.country === 'US';
+const isUS = (s: Shipping | null | undefined): s is ShippingUS => s?.country === 'US'
+
 type BmsPayTx = {
   InvoiceNumber?: string
   Id?: string
@@ -66,13 +67,31 @@ type DirectPay = {
   link?: string
 }
 
+type PricingCents = {
+  subtotal_cents?: number
+  tax_cents?: number
+  shipping_total_cents?: number
+  card_fee_cents?: number
+  total_with_card_cents?: number
+  charged_usd?: number
+}
+
+type SnapshotPricing = {
+  subtotal?: number
+  tax?: number
+  shipping?: number
+  total?: number
+  card_fee?: number
+}
+
 type OrderMetadata = {
   shipping?: Shipping | null
   bmspay_transaction?: BmsPayTx | null
   payment?: DirectPay | null
   checkout_session_id?: string
   session_id?: string
-  pricing?: { shipping?: number }
+  pricing?: { shipping?: number } & Partial<SnapshotPricing>
+  pricing_cents?: PricingCents
   shipping_by_owner?: Record<string, number>
   snapshot?: { shipping_by_owner?: Record<string, number> }
   delivery?: DeliveryMeta | null
@@ -127,13 +146,14 @@ export default function AdminOrderDetailPage() {
   const { order, items } = data as AdminOrderDetail
   const itemsList: AdminOrderItem[] = items
 
-  const md = (order.metadata ?? {}) as OrderMetadata
+  const md: OrderMetadata = (order.metadata ?? {}) as OrderMetadata
   const shipping = md.shipping ?? null
   const bms = md.bmspay_transaction ?? null
   const pay = md.payment ?? null
 
-  // Fallbacks robustos (ya existentes)
-  const payInvoice = pay?.invoice || bms?.InvoiceNumber || String(order.metadata?.session_id || '')
+  // Datos de pago: mantener comportamiento existente
+  const payInvoice =
+    pay?.invoice || bms?.InvoiceNumber || String(order.metadata?.session_id || '')
   const payLink = pay?.link || bms?.Link || null
 
   const delivery = (order.metadata?.delivery ?? null) as DeliveryMeta | null
@@ -141,34 +161,82 @@ export default function AdminOrderDetailPage() {
     ? new Date(delivery.delivered_at).toLocaleString()
     : null
 
-  // Envío (snapshot)
-  const shippingUsd: number = Number(md.pricing?.shipping ?? 0)
-
   // Desglose de envío por owner (opcional)
   const shippingByOwner: Record<string, number> | null =
     md.shipping_by_owner ?? md.snapshot?.shipping_by_owner ?? null
 
   // Derivados de pago (link/directo)
   const provider = pay?.provider || (bms ? 'bmspay' : order.payment_method || '—')
-  const mode = pay?.mode || (pay?.AuthorizationNumber || pay?.LastFour ? 'direct' : (payLink ? 'link' : undefined))
+  const mode =
+    pay?.mode || (pay?.AuthorizationNumber || pay?.LastFour ? 'direct' : (payLink ? 'link' : undefined))
   const authNum = pay?.AuthorizationNumber || null
   const serviceRef = pay?.ServiceReferenceNumber || bms?.ServiceReferenceNumber || null
   const utn = pay?.UserTransactionNumber || null
-  const cardMasked = (pay?.CardType || pay?.LastFour) ? `${pay.CardType || 'Card'} •••• ${pay.LastFour || '••••'}` : null
+  const cardMasked =
+    (pay?.CardType || pay?.LastFour) ? `${pay.CardType || 'Card'} •••• ${pay.LastFour || '••••'}` : null
   const checkoutSessionDisplay = md.checkout_session_id ?? md.session_id ?? null
 
   // Estado de aprobación (mostrar si disponible)
-  // - Preferimos verbiage "APPROVED" del pago directo si viene textual
-  // - Si bmspay_transaction.Status === 1 lo consideramos APPROVED
-  // - Si hubiera StatusText lo usamos como texto directo
   const statusTextRaw =
     (typeof pay?.verbiage === 'string' ? pay.verbiage : undefined) ||
     (typeof bms?.StatusText === 'string' ? bms.StatusText : undefined) ||
-    (typeof bms?.Status === 'number'
-      ? (bms.Status === 1 ? 'APPROVED' : undefined)
-      : undefined)
+    (typeof bms?.Status === 'number' ? (bms.Status === 1 ? 'APPROVED' : undefined) : undefined)
 
   const approvedDisplay = statusTextRaw && /approved/i.test(statusTextRaw) ? 'APPROVED' : (statusTextRaw || null)
+
+  // -------------------------
+  // CÁLCULO DE TOTALES ROBUSTO
+  // -------------------------
+  const pc: PricingCents | undefined = md.pricing_cents
+  const pr: SnapshotPricing = {
+    subtotal: md.pricing?.subtotal,
+    tax: md.pricing?.tax,
+    shipping: md.pricing?.shipping,
+    total: md.pricing?.total,
+    card_fee: md.pricing?.card_fee,
+  }
+
+  const fallbackPct = typeof order.card_fee_pct === 'number' ? order.card_fee_pct : 3
+
+  let calcSubtotal = 0
+  let calcTax = 0
+  let calcShipping = 0
+  let baseTotal = 0         // total sin fee
+  let cardFee = 0
+  let totalWithCard = 0
+
+  if (pc) {
+    const sub = (pc.subtotal_cents ?? 0) / 100
+    const tx = (pc.tax_cents ?? 0) / 100
+    const shp = (pc.shipping_total_cents ?? 0) / 100
+    const fee = (pc.card_fee_cents ?? 0) / 100
+    const twc = pc.total_with_card_cents != null
+      ? pc.total_with_card_cents / 100
+      : Number((sub + tx + shp + fee).toFixed(2))
+
+    calcSubtotal = sub
+    calcTax = tx
+    calcShipping = shp
+    cardFee = fee
+    baseTotal = Number((sub + tx + shp).toFixed(2))
+    totalWithCard = twc
+  } else if (pr.total != null && pr.card_fee != null) {
+    // total ya incluye el fee
+    calcSubtotal = Number(pr.subtotal ?? 0)
+    calcTax = Number(pr.tax ?? 0)
+    calcShipping = Number(pr.shipping ?? 0)
+    totalWithCard = Number(pr.total)
+    cardFee = Number(pr.card_fee)
+    baseTotal = Number((totalWithCard - cardFee).toFixed(2))
+  } else {
+    // Fallback: base a partir de subtotal+tax+shipping y fee por % configurado en orden
+    calcSubtotal = Number(pr.subtotal ?? 0)
+    calcTax = Number(pr.tax ?? 0)
+    calcShipping = Number(pr.shipping ?? 0)
+    baseTotal = Number((calcSubtotal + calcTax + calcShipping).toFixed(2))
+    cardFee = Number((baseTotal * (fallbackPct / 100)).toFixed(2))
+    totalWithCard = Number((baseTotal + cardFee).toFixed(2))
+  }
 
   return (
     <AdminGuard>
@@ -185,7 +253,7 @@ export default function AdminOrderDetailPage() {
 
         <h1 className="text-2xl font-bold">Orden #{order.id}</h1>
 
-        {/* Cliente (solo datos del cliente; SIN datos de pago aquí) */}
+        {/* Cliente */}
         <div className="bg-white border rounded">
           <div className="p-4 border-b font-semibold">Cliente</div>
           <div className="p-4 text-sm grid md:grid-cols-2 gap-4">
@@ -201,11 +269,11 @@ export default function AdminOrderDetailPage() {
           </div>
         </div>
 
-        {/* PAGO — TODO JUNTO */}
+        {/* Pago */}
         <div className="bg-white border rounded">
           <div className="p-4 border-b font-semibold">Pago</div>
           <div className="p-4 grid md:grid-cols-2 gap-4 text-sm">
-            {/* Columna 1: metadatos transaccionales */}
+            {/* Metadatos transaccionales */}
             <div>
               <div><span className="text-gray-600">Proveedor:</span> <span className="font-medium">{provider}</span></div>
               {mode && (<div><span className="text-gray-600">Modo:</span> <span className="font-medium">{mode}</span></div>)}
@@ -244,14 +312,14 @@ export default function AdminOrderDetailPage() {
               )}
             </div>
 
-            {/* Columna 2: totales */}
+            {/* Totales calculados de forma segura */}
             <div>
-              <div><span className="text-gray-600">Subtotal:</span> <span className="font-medium">{fmt.format(order.pricing.subtotal)}</span></div>
-              <div><span className="text-gray-600">Impuestos:</span> <span className="font-medium">{fmt.format(order.pricing.tax)}</span></div>
-              <div><span className="text-gray-600">Envío:</span> <span className="font-medium">{fmt.format(shippingUsd)}</span></div>
-              <div><span className="text-gray-600">Total (sin fee):</span> <span className="font-medium">{fmt.format(order.pricing.total)}</span></div>
-              <div><span className="text-gray-600">Cargo tarjeta ({order.card_fee_pct}%):</span> <span className="font-medium">{fmt.format(order.card_fee)}</span></div>
-              <div className="text-base"><span className="text-gray-600">Total con tarjeta:</span> <span className="font-semibold">{fmt.format(order.total_with_fee)}</span></div>
+              <div><span className="text-gray-600">Subtotal:</span> <span className="font-medium">{fmt.format(calcSubtotal)}</span></div>
+              <div><span className="text-gray-600">Impuestos:</span> <span className="font-medium">{fmt.format(calcTax)}</span></div>
+              <div><span className="text-gray-600">Envío:</span> <span className="font-medium">{fmt.format(calcShipping)}</span></div>
+              <div><span className="text-gray-600">Total (sin fee):</span> <span className="font-medium">{fmt.format(baseTotal)}</span></div>
+              <div><span className="text-gray-600">Cargo tarjeta ({order.card_fee_pct ?? 3}%):</span> <span className="font-medium">{fmt.format(cardFee)}</span></div>
+              <div className="text-base"><span className="text-gray-600">Total con tarjeta:</span> <span className="font-semibold">{fmt.format(totalWithCard)}</span></div>
               <div className="text-xs text-gray-500 mt-1">* El monto reportado por la pasarela normalmente no incluye el cargo por tarjeta.</div>
             </div>
           </div>
@@ -271,7 +339,6 @@ export default function AdminOrderDetailPage() {
           )}
         </div>
 
-        {/* Envío (si existe) */}
         {/* Envío (si existe) */}
         {shipping && (
           <div className="bg-white border rounded">
@@ -337,8 +404,6 @@ export default function AdminOrderDetailPage() {
           </div>
         )}
 
-
-
         {/* Entrega */}
         {delivery?.delivered && (
           <div className="bg-white border rounded">
@@ -401,7 +466,7 @@ export default function AdminOrderDetailPage() {
         {/* Productos */}
         <div className="bg-white border rounded">
           <div className="p-4 border-b font-semibold">Productos</div>
-          {items?.length ? (
+          {itemsList?.length ? (
             <>
               <ul className="divide-y">
                 {itemsList.map((it, idx) => (
@@ -439,16 +504,16 @@ export default function AdminOrderDetailPage() {
                 ))}
               </ul>
 
-              {/* Totales abajo (incluye Envío también) */}
+              {/* Totales abajo */}
               <div className="p-4 text-right text-sm space-y-1">
-                <div><span className="font-medium">Subtotal: </span><span>{fmt.format(order.pricing.subtotal)}</span></div>
-                <div><span className="font-medium">Impuestos: </span><span>{fmt.format(order.pricing.tax)}</span></div>
-                <div><span className="font-medium">Envío: </span><span>{fmt.format(shippingUsd)}</span></div>
-                <div><span className="font-medium">Total (sin fee): </span><span>{fmt.format(order.pricing.total)}</span></div>
-                <div><span className="font-medium">Cargo tarjeta ({order.card_fee_pct}%): </span><span>{fmt.format(order.card_fee)}</span></div>
+                <div><span className="font-medium">Subtotal: </span><span>{fmt.format(calcSubtotal)}</span></div>
+                <div><span className="font-medium">Impuestos: </span><span>{fmt.format(calcTax)}</span></div>
+                <div><span className="font-medium">Envío: </span><span>{fmt.format(calcShipping)}</span></div>
+                <div><span className="font-medium">Total (sin fee): </span><span>{fmt.format(baseTotal)}</span></div>
+                <div><span className="font-medium">Cargo tarjeta ({order.card_fee_pct ?? 3}%): </span><span>{fmt.format(cardFee)}</span></div>
                 <div className="text-base">
                   <span className="font-semibold">Total con tarjeta: </span>
-                  <span className="font-semibold">{fmt.format(order.total_with_fee)}</span>
+                  <span className="font-semibold">{fmt.format(totalWithCard)}</span>
                 </div>
               </div>
             </>

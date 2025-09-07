@@ -16,16 +16,22 @@ type Item = {
   image_url?: string
 }
 
+type PricingCentsLite = {
+  total_with_card_cents?: number
+  charged_usd?: number
+}
+
 type PricingMeta = {
   card_diff_pct?: number
   estimated_gateway_total?: number
   total?: number
   tax?: number
+  card_fee?: number            
 }
 
 type OrderMetadata = {
   pricing?: PricingMeta
-  // Si tu backend añade más cosas, quedan permitidas:
+  pricing_cents?: PricingCentsLite  
   [k: string]: unknown
 }
 
@@ -62,7 +68,7 @@ export default function OrdersClient({ locale, dict }: { locale: string; dict: D
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
-
+  const CARD_FEE_PCT = Number(process.env.NEXT_PUBLIC_CARD_FEE_PCT ?? '3')
   const headers = useMemo(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
     return {
@@ -101,25 +107,24 @@ export default function OrdersClient({ locale, dict }: { locale: string; dict: D
   const fmtUsd = (v: number | string) =>
     new Intl.NumberFormat(locale || 'es', { style: 'currency', currency: 'USD' }).format(Number(v || 0))
 
-  // Mismo criterio que en el detalle
   const bestTotalForOrder = (o: OrderRow) => {
     const pricing = o?.metadata?.pricing ?? {}
-    const pct = Number(pricing?.card_diff_pct ?? 3)
-
-    if (pricing?.estimated_gateway_total != null) {
-      return Number(pricing.estimated_gateway_total)
-    }
-    if (pricing?.total != null) {
-      const t = Number(pricing.total)
-      return Number((t * (1 + pct / 100)).toFixed(2))
-    }
-    const itemsTotal = o.items.reduce(
-      (s, it) => s + Number(it.unit_price) * Number(it.quantity),
-      0
-    )
-    const tax = Number(pricing?.tax || 0)
-    return Number(((itemsTotal + tax) * (1 + pct / 100)).toFixed(2))
+    const pc = o?.metadata?.pricing_cents
+  
+    if (pc?.total_with_card_cents != null) return pc.total_with_card_cents / 100
+    if (pc?.charged_usd != null) return Number(pc.charged_usd)
+  
+    if (pricing.total != null && pricing.card_fee != null) return Number(pricing.total)
+    if (pricing.estimated_gateway_total != null) return Number(pricing.estimated_gateway_total)
+  
+    const pct = Number(pricing.card_diff_pct ?? CARD_FEE_PCT)
+    const itemsTotal = o.items.reduce((s, it) => s + Number(it.unit_price) * Number(it.quantity), 0)
+    const tax = Number(pricing.tax || 0)
+    const base = itemsTotal + tax
+    return Number((base * (1 + pct / 100)).toFixed(2))
   }
+  
+  
 
   // Ordenar de más reciente a más antiguo
   const ordersSorted = [...orders].sort((a, b) => {

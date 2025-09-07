@@ -231,27 +231,69 @@ export default function OrderDetailClient({
   //   2) bmspay_transaction.Amount (gateway, sin fee)
   //   3) orders.total
   //   4) suma(items)+tax
-  const sumItems = (order?.items || []).reduce(
-    (s, it) => s + Number(it.unit_price) * Number(it.quantity),
-    0
-  )
-  const pricing = order?.metadata?.pricing
+  
   const payment = order?.metadata?.payment
   const bms = order?.metadata?.bmspay_transaction
 
-  const displaySubtotal = pricing?.subtotal ?? sumItems
-  const tax = pricing?.tax ?? undefined
-  const shippingUsd = Number(pricing?.shipping ?? 0) // envío explícito
+  const pricing = order?.metadata?.pricing as
+    | { subtotal?: number; tax?: number; total?: number; shipping?: number; card_fee?: number }
+    | undefined;
 
-  const totalPref =
-    pricing?.total ??
-    (bms?.Amount ? Number(bms.Amount) : undefined) ??
-    order?.total ??
-    sumItems + (tax || 0)
+  const pc = order?.metadata?.pricing_cents as
+    | {
+      subtotal_cents?: number;
+      tax_cents?: number;
+      shipping_total_cents?: number;
+      card_fee_cents?: number;
+      total_with_card_cents?: number;
+      charged_usd?: number;
+    }
+    | undefined;
 
-  const baseTotal = Number(totalPref || 0) // total sin fee
-  const cardFee = round2(baseTotal * FEE_RATE) // fee (aplica para link y directo)
-  const totalWithCardFee = round2(baseTotal + cardFee)
+  let displaySubtotal = 0;
+  let tax = 0;
+  let shippingUsd = 0;
+  let baseTotal = 0;          // total SIN fee
+  let cardFee = 0;
+  let totalWithCardFee = 0;
+
+  // 1) Preferir pricing_cents si está
+  if (pc) {
+    const sub = (pc.subtotal_cents ?? 0) / 100;
+    const tx = (pc.tax_cents ?? 0) / 100;
+    const shp = (pc.shipping_total_cents ?? 0) / 100;
+    const fee = (pc.card_fee_cents ?? 0) / 100;
+    const totalCardCents = pc.total_with_card_cents ?? Math.round((sub + tx + shp + fee) * 100);
+
+    displaySubtotal = sub;
+    tax = tx;
+    shippingUsd = shp;
+    baseTotal = Math.round((sub + tx + shp) * 100) / 100;
+    cardFee = fee;
+    totalWithCardFee = totalCardCents / 100;
+
+    // 2) Si no hay _cents_ pero sí pricing.total y pricing.card_fee → total ya incluye fee
+  } else if (pricing?.total != null && pricing?.card_fee != null) {
+    displaySubtotal = Number(pricing.subtotal ?? 0);
+    tax = Number(pricing.tax ?? 0);
+    shippingUsd = Number(pricing.shipping ?? 0);
+    totalWithCardFee = Number(pricing.total);
+    cardFee = Number(pricing.card_fee);
+    baseTotal = Math.round((totalWithCardFee - cardFee) * 100) / 100;
+
+    // 3) Fallback: calcula desde items + tax y aplica fee
+  } else {
+    const sumItems = (order?.items || []).reduce(
+      (s, it) => s + Number(it.unit_price) * Number(it.quantity),
+      0
+    );
+    displaySubtotal = Number(pricing?.subtotal ?? sumItems);
+    tax = Number(pricing?.tax ?? 0);
+    shippingUsd = Number(pricing?.shipping ?? 0);
+    baseTotal = Math.round((displaySubtotal + tax + shippingUsd) * 100) / 100;
+    cardFee = round2(baseTotal * FEE_RATE);
+    totalWithCardFee = round2(baseTotal + cardFee);
+  }
 
   const paidOn = bms?.PaidOn
   const provider = payment?.provider || (bms ? 'bmspay' : order?.payment_method || '—')
@@ -641,7 +683,7 @@ export default function OrderDetailClient({
             {order.items.map((it, idx) => (
               <li key={`${it.product_id}-${idx}`} className="p-4 flex items-center gap-3">
                 {it.image_url ? (
-                   <Thumb src={it.image_url} alt={it.product_name || `Producto ${it.product_id}`} size={48} />
+                  <Thumb src={it.image_url} alt={it.product_name || `Producto ${it.product_id}`} size={48} />
                 ) : (
                   <div className="w-12 h-12 rounded border bg-gray-100" />
                 )}

@@ -127,6 +127,7 @@ export default function EncargosDrawer({ dict }: Props) {
   const continueShopping = () => {
     setOpen(false)
     // opcional: focus en algo o scroll
+    router.push(`/${locale}/amazon`)
   }
 
   return (
@@ -241,7 +242,7 @@ export default function EncargosDrawer({ dict }: Props) {
               </button>
             </div>
 
-            <div className="mt-2 flex justify-center text-sm text-gray-500">
+            <div className="mt-4 mb-4 flex justify-center text-sm text-gray-500">
               <button
                 onClick={continueShopping}
                 className="font-medium text-green-600 hover:text-green-500"

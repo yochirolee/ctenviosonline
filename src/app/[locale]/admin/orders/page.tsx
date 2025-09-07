@@ -20,6 +20,15 @@ type Filters = {
   sort_dir: 'asc' | 'desc'
 }
 
+/** Extendemos estrictamente lo que necesitamos mostrar de cada fila (sin `any`) */
+type AdminOrderListItemWithTotals = AdminOrderListItem & {
+  subtotal: number
+  tax: number
+  base_total: number          // total sin fee (incluye envío)
+  card_fee: number
+  total_with_fee: number
+}
+
 export default function AdminOrdersPage() {
   const { locale } = useParams<{ locale: string }>()
   const router = useRouter()
@@ -114,7 +123,6 @@ export default function AdminOrdersPage() {
 
         <AdminTabs />
 
-
         {/* Filtros */}
         <div className="bg-white rounded shadow p-4 grid gap-3 md:grid-cols-6">
           <div className="md:col-span-2">
@@ -187,7 +195,8 @@ export default function AdminOrdersPage() {
                 <Th className="text-right">Ítems</Th>
                 <Th className="text-right">Subtotal</Th>
                 <Th className="text-right">Tax</Th>
-                <Th className="text-right">Total</Th>
+                <Th className="text-right">Envío</Th>
+                <Th className="text-right">Total (sin fee)</Th>
                 <Th className="text-right">Fee</Th>
                 <Th className="text-right">Total + fee</Th>
                 <Th>Estado</Th>
@@ -197,18 +206,18 @@ export default function AdminOrdersPage() {
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={12} className="p-4 text-center text-gray-500">Cargando…</td></tr>
+                <tr><td colSpan={13} className="p-4 text-center text-gray-500">Cargando…</td></tr>
               )}
               {!loading && error && (
-                <tr><td colSpan={12} className="p-4 text-center text-red-600">{error}</td></tr>
+                <tr><td colSpan={13} className="p-4 text-center text-red-600">{error}</td></tr>
               )}
               {!loading && !error && data?.items?.length === 0 && (
-                <tr><td colSpan={12} className="p-4 text-center text-gray-500">Sin resultados</td></tr>
+                <tr><td colSpan={13} className="p-4 text-center text-gray-500">Sin resultados</td></tr>
               )}
               {!loading && !error && data?.items?.map((o) => (
                 <Row
                   key={o.id}
-                  o={o}
+                  o={o as AdminOrderListItemWithTotals}
                   fmt={(n) => fmt.format(n)}
                   onView={() => router.push(`/${locale}/admin/orders/${o.id}`)}
                   onChangeStatus={onChangeStatus}
@@ -263,7 +272,7 @@ function Row({
   onView,
   onChangeStatus,
 }: {
-  o: AdminOrderListItem
+  o: AdminOrderListItemWithTotals
   fmt: (n: number) => string
   onView: () => void
   onChangeStatus: (id: number, s: string) => void
@@ -271,6 +280,9 @@ function Row({
   const name = [o.first_name, o.last_name].filter(Boolean).join(' ') || '—'
   const email = o.email || '—'
   const when = new Date(o.created_at).toLocaleString()
+
+  // Envío derivado de lo que ya viene del back: base_total = subtotal + tax + envío
+  const shipping = Math.max(Number((o.base_total - o.subtotal - o.tax).toFixed(2)), 0)
 
   return (
     <tr className="border-t">
@@ -281,11 +293,15 @@ function Row({
         <div className="text-xs text-gray-600">{email}</div>
       </td>
       <td className="px-3 py-2 text-right">{o.items_count}</td>
+
+      {/* Mostrar TAL CUAL vienen del back (y envío derivado) */}
       <td className="px-3 py-2 text-right">{fmt(o.subtotal)}</td>
       <td className="px-3 py-2 text-right">{fmt(o.tax)}</td>
+      <td className="px-3 py-2 text-right">{fmt(shipping)}</td>
       <td className="px-3 py-2 text-right">{fmt(o.base_total)}</td>
       <td className="px-3 py-2 text-right">{fmt(o.card_fee)}</td>
       <td className="px-3 py-2 text-right font-semibold">{fmt(o.total_with_fee)}</td>
+
       <td className="px-3 py-2">
         <span className={
           'px-2 py-0.5 rounded text-xs ' +
@@ -297,7 +313,9 @@ function Row({
           {o.status}
         </span>
       </td>
-      <td className="px-3 py-2">{o.payment_method === 'bmspay_direct' ? 'bmspay (direct)' : (o.payment_method || '—')}</td>
+      <td className="px-3 py-2">
+        {o.payment_method === 'bmspay_direct' ? 'bmspay (direct)' : (o.payment_method || '—')}
+      </td>
       <td className="px-3 py-2 whitespace-nowrap">
         <div className="flex gap-2">
           <button onClick={onView} className="px-2 py-1 rounded bg-white border hover:bg-gray-50">Ver</button>
