@@ -164,7 +164,7 @@ export default function SuccessClient({
       if (!opts?.keepShipping) {
         Object.keys(localStorage).forEach((key) => {
           const isEncargosKey = key.startsWith('encargo') || key.startsWith('encargos')
-          if (isEncargosKey && !SHIPPING_WHITELIST.has(key)) {
+          if (isEncargosKey) {
             localStorage.removeItem(key)
           }
         })
@@ -260,7 +260,7 @@ export default function SuccessClient({
       setOrdersDetail(bundles)
     
       // Mantener siempre shipping; en encargos además mantener carrito
-      cleanLocal({ keepCart: true, keepShipping: true })
+      cleanLocal({ keepCart: opts?.isEncargos === true, keepShipping: true })
     
       setLoading(false)
       stopPolling()

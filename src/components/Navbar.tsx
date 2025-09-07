@@ -8,7 +8,7 @@ import CartIcon from '@/components/CartIcon'
 import { useCustomer } from '@/context/CustomerContext'
 import type { Dict } from '@/types/Dict'
 import ConfirmLogoutButton from '@/components/ConfirmLogoutButton'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useReducer } from 'react'
 import EncargosIcon from '@/components/EncargosIcon'
 import { LogIn, LogOut, Menu, X, ClipboardList } from 'lucide-react'
 
@@ -35,9 +35,9 @@ export default function Navbar({ dict }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   // fuerza re-render cuando lleguen señales globales
-  const [navTick, setNavTick] = useState(0)
+  const [, forceRerender] = useReducer((x: number) => x + 1, 0)
   useEffect(() => {
-    const bump = () => setNavTick((t) => t + 1)
+    const bump = () => forceRerender()
     window.addEventListener('navbar:refresh', bump)
     window.addEventListener('cart:updated', bump)
     window.addEventListener('encargos:completed', bump)
