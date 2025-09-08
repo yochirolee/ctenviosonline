@@ -6,8 +6,9 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 const siteDetails = {
-  siteName: "CTEnvios Online",
-  logoSrc: "/ctelogo.png",
+  siteName: "Tu Tienda Online",
+  siteName2: "Valelee",
+  logoSrc: "/logo.png",
 };
 
 const footerDetails = {
@@ -31,9 +32,14 @@ const getPlatformIconByName = (name: string) => {
       </svg>
     ),
     Instagram: (
-      <svg className={base} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
-        <path d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9 114.9-51.3 114.9-114.9S287.7 141 224.1 141zm0 186.6c-39.6 0-71.7-32.1-71.7-71.7s32.1-71.7 71.7-71.7 71.7 32.1 71.7 71.7-32.1 71.7-71.7 71.7zm146.4-194.3c0 14.9-12 26.9-26.9 26.9s-26.9-12-26.9-26.9 12-26.9 26.9-26.9 26.9 12 26.9 26.9zm76.1 27.2c-1.7-35.7-9.9-67.3-36.2-93.5S364.8 37.6 329.1 35.9c-35.7-1.7-142.8-1.7-178.5 0-35.7 1.7-67.3 9.9-93.5 36.2S37.6 147.2 35.9 182.9c-1.7 35.7-1.7 142.8 0 178.5 1.7 35.7 9.9 67.3 36.2 93.5s57.8 34.5 93.5 36.2c35.7 1.7 142.8 1.7 178.5 0 35.7-1.7 67.3-9.9 93.5-36.2 26.3-26.3 34.5-57.8 36.2-93.5 1.7-35.7 1.7-142.8 0-178.5zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.6 102.7-9 132.1z" />
-      </svg>
+      <svg className={base} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <path d="M7 2C4.243 2 2 4.243 2 7v10c0 2.757 2.243 5 5 5h10c2.757 0 5-2.243 
+        5-5V7c0-2.757-2.243-5-5-5H7zm10 2c1.654 0 3 1.346 3 3v10c0 
+        1.654-1.346 3-3 3H7c-1.654 0-3-1.346-3-3V7c0-1.654 
+        1.346-3 3-3h10zm-5 3a5 5 0 100 10 5 5 0 000-10zm0 
+        2a3 3 0 110 6 3 3 0 010-6zm4.5-.9a1.1 1.1 0 11-2.2 
+        0 1.1 1.1 0 012.2 0z" />
+    </svg>
     ),
     WhatsApp: (
       <svg className={base} viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
@@ -77,15 +83,19 @@ const Footer: React.FC<{ dict: Dict; mode?: 'full' | 'legal' }> = ({ dict, mode 
           {/* Marca */}
           <div>
             <Link href={`/${locale}`} className="flex items-center gap-3">
-              <Image
-                src={siteDetails.logoSrc}
-                alt={`${siteDetails.siteName} Logo`}
-                width={56}
-                height={56}
-                className="rounded-xl object-contain w-[56px] h-[56px]"
-              />              
-              <h3 className="text-lg sm:text-xl font-semibold">{siteDetails.siteName}</h3>
+              <div className="relative h-10 w-auto shrink-0">
+                <Image
+                  src={siteDetails.logoSrc}
+                  alt={`${siteDetails.siteName} Logo`}
+                  width={160}   // controlas el ancho máximo
+                  height={72}
+                  className="object-contain brightness-110 contrast-110 drop-shadow w-auto h-10"
+                  priority
+                />
+              </div>
+              <h3 className="text-lg sm:text-xl font-semibold text-green-200/90">{siteDetails.siteName}</h3>
             </Link>
+
             <p className="mt-3 text-sm sm:text-base text-green-200/90">{f.subheading}</p>
           </div>
 
@@ -171,7 +181,7 @@ const Footer: React.FC<{ dict: Dict; mode?: 'full' | 'legal' }> = ({ dict, mode 
         </div>
 
         <div className="mt-8 text-center text-white/80 text-xs">
-          &copy; {new Date().getFullYear()} {siteDetails.siteName}. {f.copyright}
+          &copy; {new Date().getFullYear()} {siteDetails.siteName2}. {f.copyright}
         </div>
       </div>
     </footer>

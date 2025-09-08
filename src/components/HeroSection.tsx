@@ -94,7 +94,7 @@ export default function HeroCategories({ dict }: Props) {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-      <TuAmazonCard />
+      {/*  <TuAmazonCard /> */}
         {cats.map((cat, idx) => (
           <Link
             key={cat.slug}

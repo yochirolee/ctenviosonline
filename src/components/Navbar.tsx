@@ -99,21 +99,21 @@ export default function Navbar({ dict }: Props) {
 
   return (
     <header
-      id="navbar"
-      className="sticky top-0 z-50 flex items-center px-6 md:px-16 lg:px-24 py-3 bg-white shadow"
-    >
+  id="navbar"
+  className="sticky top-0 z-50 flex items-center pl-3 pr-6 md:pl-6 md:pr-16 lg:pl-8 lg:pr-24 py-3 bg-white shadow"
+>
       {/* Izquierda: logo */}
-      <Link href={`/${locale}`} aria-label="Ir al inicio" className="flex items-center gap-3">
-        <Image
-          src="/ctelogo.png"
-          alt="CTEnvios Logo"
-          width={56}
-          height={56}
-          className="w-12 h-12 lg:w-14 lg:h-14 object-contain rounded cursor-pointer"
-        />
-        <span className="hidden lg:inline text-lg font-bold text-gray-800 cursor-default">
-          CTEnvios Online
-        </span>
+      <Link href={`/${locale}`} aria-label="Ir al inicio" className="flex items-center gap-3 -ml-3">
+        <div className="relative h-8 md:h-8 lg:h-8 w-36 md:w-36 lg:w-36 shrink-0">
+          <Image
+            src="/logo.png"
+            alt="CTEnvios Logo"
+            fill
+            className="object-contain cursor-pointer brightness-110 contrast-110"
+            priority
+          />
+        </div>
+
       </Link>
 
       {/* Links desktop (centrales) */}
@@ -179,7 +179,7 @@ export default function Navbar({ dict }: Props) {
       {/* Derecha: idioma + carrito + (login/logout) + menú móvil */}
       <div className="ml-auto lg:ml-0 flex items-center gap-2 sm:gap-3">
         <LanguageSwitcher />
-        <EncargosIcon />
+        {/* <EncargosIcon /> */}
         <CartIcon />
 
         {/* Login/Logout (desktop) */}
@@ -231,14 +231,15 @@ export default function Navbar({ dict }: Props) {
             className="absolute right-0 top-0 w-72 h-full bg-white shadow-lg flex flex-col"
           >
             <div className="flex items-center justify-between p-4 border-b">
-              <Image
-                src="/ctelogo.png"
-                alt="CTEnvios Logo"
-                width={40}
-                height={40}
-                className="object-contain w-10 h-10 lg:w-14 lg:h-14"
-                style={{ height: 'auto', width: 'auto' }}
-              />
+              <div className="relative h-8 w-28 md:w-32 shrink-0 -ml-1">
+                <Image
+                  src="/logo.png"
+                  alt="Valelee Logo"
+                  fill
+                  className="object-contain brightness-110 contrast-110 drop-shadow"
+                  priority
+                />
+              </div>
               <button
                 onClick={() => setMobileOpen(false)}
                 className="p-2 text-gray-700 hover:bg-gray-100 rounded"
@@ -286,7 +287,7 @@ export default function Navbar({ dict }: Props) {
               [&_a:focus-visible]:outline-none [&_a:focus-visible]:ring-2 [&_a:focus-visible]:ring-green-500/30
               [&_button:focus-visible]:outline-none [&_button:focus-visible]:ring-2 [&_button:focus-visible]:ring-green-500/30"
             >
-              <li>
+              {/* <li>
                 <button
                   onClick={openEncargosDrawer}
                   className="!flex items-center gap-2 w-full text-left rounded px-3 py-2 hover:bg-gray-100"
@@ -294,7 +295,7 @@ export default function Navbar({ dict }: Props) {
                   <ClipboardList className="h-4 w-4" />
                   {locale === 'en' ? 'Special Orders' : 'Encargos'}
                 </button>
-              </li>
+              </li> */}
 
               {customer && (
                 <li>
