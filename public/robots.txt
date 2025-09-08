@@ -5,3 +5,11 @@ Disallow: /en/admin/
 Disallow: /delivery/
 Disallow: /es/delivery/
 Disallow: /en/delivery/
+Disallow: /es/amazon/
+Disallow: /en/amazon/
+Disallow: /es/capture/
+Disallow: /en/capture/
+Disallow: /es/encargos/
+Disallow: /en/encargos/
+Disallow: /es/partner/
+Disallow: /en/partner/

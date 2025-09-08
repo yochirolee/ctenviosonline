@@ -99,15 +99,15 @@ export default function Navbar({ dict }: Props) {
 
   return (
     <header
-  id="navbar"
-  className="sticky top-0 z-50 flex items-center pl-3 pr-6 md:pl-6 md:pr-16 lg:pl-8 lg:pr-24 py-3 bg-white shadow"
->
+      id="navbar"
+      className="sticky top-0 z-50 flex items-center h-14 md:h-16 pl-3 pr-6 md:pl-6 md:pr-16 lg:pl-8 lg:pr-24 bg-white shadow"
+    >
       {/* Izquierda: logo */}
       <Link href={`/${locale}`} aria-label="Ir al inicio" className="flex items-center gap-3 -ml-3">
         <div className="relative h-8 md:h-8 lg:h-8 w-36 md:w-36 lg:w-36 shrink-0">
           <Image
             src="/logo.png"
-            alt="CTEnvios Logo"
+            alt="Valelee Logo"
             fill
             className="object-contain cursor-pointer brightness-110 contrast-110"
             priority
@@ -196,9 +196,9 @@ export default function Navbar({ dict }: Props) {
           ) : (
             <Link
               href={`/${locale}/login`}
-              className="p-2 rounded hover:bg-gray-100 transition"
               aria-label={dict.common.login}
               title={dict.common.login}
+              className="inline-flex h-8 w-8 items-center justify-center rounded hover:bg-gray-100 transition"
             >
               <LogIn className="h-5 w-5 text-gray-700" />
             </Link>
