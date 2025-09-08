@@ -14,12 +14,12 @@ const siteDetails = {
 const footerDetails = {
   Address: "10230 NW 80th Ave, Hialeah Gardens, FL 33016",
   Horario: "24 H",
-  email: "leidivioleta@gmail.com",
-  telephone: "+1 (786) 451-9573",
+  email: "yleecruz@gmail.com",
+  telephone: "+1 (786) 450-9223",
   socials: {
-    Facebook: "https://www.facebook.com/ctenvio/",
-    Instagram: "https://www.instagram.com/ctenvios/",
-    WhatsApp: "https://wa.me/17864519573",
+    //Facebook: "https://www.facebook.com/ctenvio/",
+    //Instagram: "https://www.instagram.com/ctenvios/",
+    WhatsApp: "https://wa.me/17864509223",
   },
 };
 
