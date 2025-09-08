@@ -51,7 +51,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>1.3. “Valelee” se reserva el derecho de suspender o cancelar cuentas que incumplan estos términos.</p>
 
               <h2 className="text-xl font-semibold mt-4">2. Uso de la Plataforma</h2>
-              <p>2.1. “Valelee” actúa como intermediario entre vendedores y compradores, ofreciendo un marketplace especializado en electrodomésticos y productos afines.</p>
+              <p>2.1. “Valelee” actúa como intermediario entre vendedores y compradores, ofreciendo un marketplace especializado en electrodomésticos, alimentos y productos afines.</p>
               <p>2.2. Está prohibido el uso de la plataforma para actividades ilícitas, fraudulentas o que atenten contra las leyes aplicables o estos términos.</p>
 
               <h2 className="text-xl font-semibold mt-4">3. Compras y Pagos</h2>
@@ -89,7 +89,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
 
               <p className="mt-4">
                 📩 Si tiene preguntas o inquietudes, puede contactarnos en:{" "}
-                <a className="text-green-700 underline" href="mailto:leidivioleta@gmail.com">leidivioleta@gmail.com</a>
+                <a className="text-green-700 underline" href="mailto:yleecruz@gmail.com">yleecruz@gmail.com</a>
               </p>
 
               {/* -------- POLÍTICA DE ENTREGAS -------- */}
@@ -132,8 +132,8 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>7.2. Aunque garantizamos el seguimiento y apoyo en todo momento, no somos responsables por retrasos causados por aduanas, desastres naturales u otras circunstancias fuera de nuestro control.</p>
 
               <h3 className="text-xl font-semibold mt-4">8. Contacto y Soporte</h3>
-              <p>📧 Email: <a className="text-green-700 underline" href="mailto:leidivioleta@gmail.com">leidivioleta@gmail.com</a></p>
-              <p>📱 WhatsApp: <a className="text-green-700 underline" href="https://wa.me/17864519573" target="_blank" rel="noopener noreferrer">+1 (786) 451-9573</a></p>
+              <p>📧 Email: <a className="text-green-700 underline" href="mailto:yleecruz@gmail.com">yleecruz@gmail.com</a></p>
+              <p>📱 WhatsApp: <a className="text-green-700 underline" href="https://wa.me/17884509223" target="_blank" rel="noopener noreferrer">+1 (786) 450-9223</a></p>
 
               {/* -------- PREGUNTAS FRECUENTES -------- */}
               <h2 className="text-2xl font-bold mt-10">Preguntas Frecuentes – Valelee</h2>
@@ -145,7 +145,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>Puedes comprar desde cualquier parte del mundo. Solo necesitas conexión a internet y un método de pago válido.</p>
 
               <h3 className="text-lg font-semibold mt-4">3. ¿Qué productos venden?</h3>
-              <p>Vendemos electrodomésticos (neveras, aires, hornillas, etc.), electrónicos, artículos del hogar y otros productos esenciales según disponibilidad del proveedor.</p>
+              <p>Vendemos electrodomésticos (TV, batidoras, cafeteras, etc.), electrónicos, artículos del hogar y otros productos esenciales según disponibilidad del proveedor.</p>
 
               <h3 className="text-lg font-semibold mt-4">4. ¿Puedo enviar productos a familiares o amigos?</h3>
               <p>Sí. Puedes indicar un destinatario diferente al momento de la compra.</p>
@@ -154,7 +154,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>Recibirás un correo electrónico de confirmación con el resumen de tu pedido y el número de orden.</p>
 
               <h3 className="text-lg font-semibold mt-4">6. ¿Qué métodos de pago aceptan?</h3>
-              <p>Aceptamos tarjetas de crédito/débito internacionales, transferencias, Zelle y otros métodos seguros que se detallan al momento del pago.</p>
+              <p>Aceptamos tarjetas de crédito/débito internacionales, métodos seguros que se detallan al momento del pago.</p>
 
               <h3 className="text-lg font-semibold mt-4">7. ¿Puedo cancelar un pedido?</h3>
               <p>Solo si el pedido aún no ha sido procesado o enviado. Escríbenos lo antes posible para revisar tu caso.</p>
@@ -175,7 +175,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>Sí. Recibirás un número de seguimiento o guía cuando el pedido sea despachado. Puedes consultarlo en tu cuenta o escribirnos.</p>
 
               <h3 className="text-lg font-semibold mt-4">13. ¿Cómo me comunico con atención al cliente?</h3>
-              <p>Puedes escribirnos al correo <a className="text-green-700 underline" href="mailto:leidivioleta@gmail.com">leidivioleta@gmail.com</a> o vía WhatsApp al <a className="text-green-700 underline" href="https://wa.me/17864519573" target="_blank" rel="noopener noreferrer">+1 (786) 451-9573</a>. Atendemos de lunes a sábado.</p>
+              <p>Puedes escribirnos al correo <a className="text-green-700 underline" href="mailto:yleecruz@gmail.com">yleecruz@gmail.com</a> o vía WhatsApp al <a className="text-green-700 underline" href="https://wa.me/17864509223" target="_blank" rel="noopener noreferrer">+1 (786) 450-9223</a>. Atendemos de lunes a sábado.</p>
 
               <p className="mt-4 italic text-gray-600">“Conectamos hogares, cruzamos fronteras.”</p>
             </>
@@ -232,7 +232,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
 
               <p className="mt-4">
                 📩 Questions? Contact us at{" "}
-                <a className="text-green-700 underline" href="mailto:leidivioleta@gmail.com">leidivioleta@gmail.com</a>
+                <a className="text-green-700 underline" href="mailto:yleecruz@gmail.com">yleecruz@gmail.com</a>
               </p>
 
               {/* -------- DELIVERY POLICY (EN) -------- */}
@@ -274,8 +274,8 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>7.2. While we provide tracking and support, we are not responsible for delays caused by customs, natural disasters or other circumstances beyond our control.</p>
 
               <h3 className="text-xl font-semibold mt-4">8. Contact & Support</h3>
-              <p>📧 Email: <a className="text-green-700 underline" href="mailto:leidivioleta@gmail.com">leidivioleta@gmail.com</a></p>
-              <p>📱 WhatsApp: <a className="text-green-700 underline" href="https://wa.me/17864519573" target="_blank" rel="noopener noreferrer">+1 (786) 451-9573</a></p>
+              <p>📧 Email: <a className="text-green-700 underline" href="mailto:yleecruz@gmail.com">yleecruz@gmail.com</a></p>
+              <p>📱 WhatsApp: <a className="text-green-700 underline" href="https://wa.me/17864509223" target="_blank" rel="noopener noreferrer">+1 (786) 450-9223</a></p>
 
               {/* -------- FAQ (EN) -------- */}
               <h2 className="text-2xl font-bold mt-10">Frequently Asked Questions – Valelee</h2>
@@ -287,7 +287,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>You can buy from anywhere in the world. You only need an internet connection and a valid payment method.</p>
 
               <h3 className="text-lg font-semibold mt-4">3. What products do you sell?</h3>
-              <p>We sell appliances (refrigerators, AC units, cooktops, etc.), electronics, home goods and other essentials subject to supplier availability.</p>
+              <p>We sell appliances (TV, blenders, coffee makers, etc.), electronics, home goods and other essentials subject to supplier availability.</p>
 
               <h3 className="text-lg font-semibold mt-4">4. Can I ship products to family or friends?</h3>
               <p>Yes. You can specify a different recipient at checkout.</p>
@@ -296,7 +296,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>You will receive a confirmation email with the order summary and order number.</p>
 
               <h3 className="text-lg font-semibold mt-4">6. What payment methods do you accept?</h3>
-              <p>We accept international credit/debit cards, bank transfers, Zelle and other secure methods shown during checkout.</p>
+              <p>We accept international credit/debit cards, secure methods shown during checkout.</p>
 
               <h3 className="text-lg font-semibold mt-4">7. Can I cancel an order?</h3>
               <p>Only if your order has not yet been processed or shipped. Contact us as soon as possible so we can review your case.</p>
@@ -317,7 +317,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>Yes. You’ll receive a tracking/guide number when the order ships. You can also check it in your account or contact us.</p>
 
               <h3 className="text-lg font-semibold mt-4">13. How do I contact customer service?</h3>
-              <p>Email us at <a className="text-green-700 underline" href="mailto:leidivioleta@gmail.com">leidivioleta@gmail.com</a> or WhatsApp <a className="text-green-700 underline" href="https://wa.me/17864519573" target="_blank" rel="noopener noreferrer">+1 (786) 451-9573</a>. We’re available Monday to Saturday.</p>
+              <p>Email us at <a className="text-green-700 underline" href="mailto:yleecruz@gmail.com">yleecruz@gmail.com</a> or WhatsApp <a className="text-green-700 underline" href="https://wa.me/17864509223" target="_blank" rel="noopener noreferrer">+1 (786) 450-9223</a>. We’re available Monday to Saturday.</p>
 
               <p className="mt-4 italic text-gray-600">“Connecting homes, crossing borders.”</p>
             </>
