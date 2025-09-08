@@ -34,7 +34,7 @@ export async function generateMetadata({
   params,
 }: { params: Params | Promise<Params> }): Promise<Metadata> {
   const { locale } = await resolveParams(params)
-  const isES = (locale as "es" | "en") === "es"
+
 
   const baseKeywordsES = [
     "tienda online Miami",
