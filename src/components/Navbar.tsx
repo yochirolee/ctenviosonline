@@ -9,8 +9,8 @@ import { useCustomer } from '@/context/CustomerContext'
 import type { Dict } from '@/types/Dict'
 import ConfirmLogoutButton from '@/components/ConfirmLogoutButton'
 import { useEffect, useRef, useState, useReducer } from 'react'
-import EncargosIcon from '@/components/EncargosIcon'
-import { LogIn, LogOut, Menu, X, ClipboardList } from 'lucide-react'
+//import EncargosIcon from '@/components/EncargosIcon'
+import { LogIn, LogOut, Menu, X } from 'lucide-react'
 
 
 type Props = { dict: Dict }
@@ -92,10 +92,10 @@ export default function Navbar({ dict }: Props) {
     if (mobileOpen) firstLinkRef.current?.focus()
   }, [mobileOpen])
 
-  const openEncargosDrawer = () => {
+  /*const openEncargosDrawer = () => {
     setMobileOpen(false)
     try { window.dispatchEvent(new CustomEvent('encargos:open')) } catch { }
-  }
+  }*/
 
   return (
     <header

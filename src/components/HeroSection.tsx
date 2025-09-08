@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { getCategories } from '@/lib/products'
 import { useLocation } from '@/context/LocationContext'
 import type { Dict } from '@/types/Dict'
-import TuAmazonCard from '@/components/TuAmazonCard'
+//import TuAmazonCard from '@/components/TuAmazonCard'
 
 type Category = { slug: string; image?: string }
 type Props = { dict: Dict }
