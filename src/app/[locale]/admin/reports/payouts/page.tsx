@@ -43,13 +43,14 @@ export default function AdminPayoutsReportPage() {
         owner_id: ownerId ?? undefined, // si no hay selección, no filtra por owner
       });
       setData(r)
-    } catch (e) {
+    } catch {
       setErr('No se pudo cargar el reporte')
     } finally {
       setLoading(false)
     }
   }
 
+  
   useEffect(() => { void load() }, []) // primera carga
 
   return (

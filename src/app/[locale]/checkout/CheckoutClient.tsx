@@ -533,6 +533,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   }
 
   // ===== Checkout por link =====
+
+  /*
   const handleCheckout = async () => {
 
     const { ok, firstErrorField } = validate()
@@ -691,7 +693,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     } finally {
       setIsPaying(false)
     }
-  }
+  } */
 
   // ===== Pago directo =====
   const [showCardModal, setShowCardModal] = useState(false)
