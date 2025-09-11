@@ -94,9 +94,10 @@ function buildAvailabilityErrorMsg(unavailable: UnavailableLine[], locLabel?: st
   return parts.join('\n\n')
 }
 
+/*
 type CheckoutResponse =
   | { orderId?: number; payUrl?: string; message?: string; status?: 'pending' | 'paid' | 'requires_action' | 'failed' }
-  | { sessionId?: number | string; payUrl?: string; message?: string; ok?: boolean; paid?: boolean; orders?: number[] }
+  | { sessionId?: number | string; payUrl?: string; message?: string; ok?: boolean; paid?: boolean; orders?: number[] }  */
 
 function getErrorMessage(err: unknown, fallback = "Error en el proceso de checkout.") {
   if (err instanceof Error) return err.message
@@ -123,7 +124,7 @@ type CartLine = {
 }
 
 export default function CheckoutPage({ dict }: { dict: Dict }) {
-  const { items, cartId, clearCart, refreshCartNow } = useCart()
+  const { items, cartId, clearCart } = useCart()
   const cartItems: CartLine[] = (items as unknown as CartLine[]) ?? []
 
   const router = useRouter()
@@ -489,7 +490,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   const cardFeeCents = Math.round(grandTotalCents * FEE_RATE)
   const totalWithCardFeeCents = grandTotalCents + cardFeeCents
 
-  const [isPaying, setIsPaying] = useState(false)
+  const [isPaying] = useState(false)
 
   // ===== (ya existente) Checkbox de Términos
   const [acceptedTerms, setAcceptedTerms] = useState(false)
@@ -503,14 +504,15 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     !acceptedTerms
 
   // ===== helpers para leer campos de respuestas desconocidas =====
-  const getMsg = (v: unknown): string | undefined => {
+  /*const getMsg = (v: unknown): string | undefined => {
     if (typeof v === 'object' && v !== null) {
       const m = (v as Record<string, unknown>).message
       return typeof m === 'string' ? m : undefined
     }
     return undefined
-  }
-  const getPayUrl = (v: unknown): string | undefined => {
+  }*/
+
+ /* const getPayUrl = (v: unknown): string | undefined => {
     if (typeof v === 'object' && v !== null) {
       const u = (v as Record<string, unknown>).payUrl
       return typeof u === 'string' ? u : undefined
@@ -530,7 +532,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       return (typeof s === 'string' || typeof s === 'number') ? s : undefined
     }
     return undefined
-  }
+  }*/
 
   // ===== Checkout por link =====
 
