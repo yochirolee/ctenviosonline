@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import AdminGuard from '@/components/admin/AdminGuard'
 import AdminTabs from '@/components/admin/AdminTabs'
-import { listAdminOrdersPaged, updateOrderStatus, type AdminOrderListItem, type AdminOrderPage } from '@/lib/adminApi'
+import { listAdminOrdersPaged, updateOrderStatus, type AdminOrderListItem, type AdminOrderPage, markOrderOwnerPaid } from '@/lib/adminApi'
 import { toast } from 'sonner'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -27,6 +27,9 @@ type AdminOrderListItemWithTotals = AdminOrderListItem & {
   base_total: number          // total sin fee (incluye envío)
   card_fee: number
   total_with_fee: number
+  owner_paid?: boolean | null       // <-- NUEVO
+  owner_paid_at?: string | null     // <-- opcional
+  owner_payout_id?: number | null
 }
 
 export default function AdminOrdersPage() {
@@ -85,13 +88,23 @@ export default function AdminOrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQ, filters.status, filters.payment_method, filters.from, filters.to, filters.page, filters.limit, filters.sort_by, filters.sort_dir])
 
-  const onChangeStatus = async (id: number, status: string) => {
+    const onChangeStatus = async (id: number, status: string) => {
     try {
       await updateOrderStatus(id, status)
       toast.success('Estado actualizado')
       load()
     } catch {
       toast.error('No se pudo actualizar el estado')
+    }
+  }
+
+  const onMarkOwnerPaid = async (id: number) => {
+    try {
+      await markOrderOwnerPaid(id)
+      toast.success(`Orden #${id} marcada como pagada al owner`)
+      await load()
+    } catch {
+      toast.error('No se pudo marcar como pagada')
     }
   }
 
@@ -201,18 +214,19 @@ export default function AdminOrdersPage() {
                 <Th className="text-right">Total + fee</Th>
                 <Th>Estado</Th>
                 <Th>Método</Th>
-                <Th></Th>
+                <Th>Ver / Cambiar Status</Th>
+                <Th>Pago Owner</Th>
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={13} className="p-4 text-center text-gray-500">Cargando…</td></tr>
+                <tr><td colSpan={14} className="p-4 text-center text-gray-500">Cargando…</td></tr>
               )}
               {!loading && error && (
-                <tr><td colSpan={13} className="p-4 text-center text-red-600">{error}</td></tr>
+                <tr><td colSpan={14} className="p-4 text-center text-red-600">{error}</td></tr>
               )}
               {!loading && !error && data?.items?.length === 0 && (
-                <tr><td colSpan={13} className="p-4 text-center text-gray-500">Sin resultados</td></tr>
+                <tr><td colSpan={14} className="p-4 text-center text-gray-500">Sin resultados</td></tr>
               )}
               {!loading && !error && data?.items?.map((o) => (
                 <Row
@@ -221,6 +235,7 @@ export default function AdminOrdersPage() {
                   fmt={(n) => fmt.format(n)}
                   onView={() => router.push(`/${locale}/admin/orders/${o.id}`)}
                   onChangeStatus={onChangeStatus}
+                  onMarkOwnerPaid={onMarkOwnerPaid}
                 />
               ))}
             </tbody>
@@ -271,11 +286,13 @@ function Row({
   fmt,
   onView,
   onChangeStatus,
+  onMarkOwnerPaid,          
 }: {
   o: AdminOrderListItemWithTotals
   fmt: (n: number) => string
   onView: () => void
   onChangeStatus: (id: number, s: string) => void
+  onMarkOwnerPaid: (id: number) => void
 }) {
   const name = [o.first_name, o.last_name].filter(Boolean).join(' ') || '—'
   const email = o.email || '—'
@@ -316,7 +333,10 @@ function Row({
       <td className="px-3 py-2">
         {o.payment_method === 'bmspay_direct' ? 'bmspay (direct)' : (o.payment_method || '—')}
       </td>
+      
+
       <td className="px-3 py-2 whitespace-nowrap">
+
         <div className="flex gap-2">
           <button onClick={onView} className="px-2 py-1 rounded bg-white border hover:bg-gray-50">Ver</button>
           <select
@@ -328,6 +348,17 @@ function Row({
             {['pending', 'paid', 'shipped', 'delivered', 'canceled'].map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
+        
+      </td>
+      <td className="px-3 py-2 whitespace-nowrap">
+        <button
+          className="px-2 py-1 text-xs rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+          onClick={() => onMarkOwnerPaid(o.id)}
+          disabled={!!o.owner_paid}
+          title={o.owner_paid ? 'Ya está marcada como pagada al owner' : 'Marcar como pagada al owner'}
+        >
+          {o.owner_paid ? 'Pagada owner' : 'Marcar pagada'}
+        </button>
       </td>
     </tr>
   )

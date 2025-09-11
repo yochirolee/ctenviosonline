@@ -26,14 +26,15 @@ type PricingMeta = {
   estimated_gateway_total?: number
   total?: number
   tax?: number
-  card_fee?: number    
+  card_fee?: number
   subtotal?: number
-  shipping?: number          
+  shipping?: number
+  total_with_card?: number
 }
 
 type OrderMetadata = {
   pricing?: PricingMeta
-  pricing_cents?: PricingCentsLite  
+  pricing_cents?: PricingCentsLite
   [k: string]: unknown
 }
 
@@ -110,36 +111,50 @@ export default function OrdersClient({ locale, dict }: { locale: string; dict: D
     new Intl.NumberFormat(locale || 'es', { style: 'currency', currency: 'USD' }).format(Number(v || 0))
 
   const bestTotalForOrder = (o: OrderRow) => {
-    const pricing = o?.metadata?.pricing ?? {}
-    const pc = o?.metadata?.pricing_cents
-  
-    // 1) Si backend ya guardó el cobro final en centavos o en USD, úsalo
-    if (pc?.total_with_card_cents != null) return pc.total_with_card_cents / 100
-    if (pc?.charged_usd != null) return Number(pc.charged_usd)
-  
-    // 2) Si hay total estimado de gateway, úsalo
-    if (pricing.estimated_gateway_total != null) return Number(pricing.estimated_gateway_total)
-  
-    // 3) Si hay total (subtotal+tax+shipping) y card_fee, suma ambos
-    if (pricing.total != null && pricing.card_fee != null) {
-      return Number(pricing.total) + Number(pricing.card_fee)
+    const pricing = o?.metadata?.pricing ?? {};
+    const pc = o?.metadata?.pricing_cents;
+
+    // 1) Cents (final, cobrado)
+    if (pc?.total_with_card_cents != null) {
+      return { total: pc.total_with_card_cents / 100, final: true };
     }
-  
-    // 4) Construir base correctamente (incluye shipping!)
-    const itemsTotal = o.items.reduce((s, it) => s + Number(it.unit_price) * Number(it.quantity), 0)
-    const subtotal = pricing.subtotal != null ? Number(pricing.subtotal) : itemsTotal
-    const tax = Number(pricing.tax || 0)
-    const shipping = Number(pricing.shipping || 0)
-  
-    // Si el backend ya te dio total (mejor que rehacerlo)
-    const base = pricing.total != null ? Number(pricing.total) : subtotal + tax + shipping
-  
-    // 5) Aplicar % de fee si no vino card_fee explícito
-    const pct = Number(pricing.card_diff_pct ?? CARD_FEE_PCT) // p.ej. 3
-    const withFee = base * (1 + pct / 100)
-  
-    return Number(withFee.toFixed(2))
-  }
+    // 1b) Si guardaras el cobro en USD
+    if (pc?.charged_usd != null) {
+      return { total: Number(pc.charged_usd), final: true };
+    }
+
+    // 2) Snapshot en USD con total con fee (si existe)
+    if (pricing.total_with_card != null) {
+      return { total: Number(pricing.total_with_card), final: true };
+    }
+
+    // 3) Total estimado del gateway
+    if (pricing.estimated_gateway_total != null) {
+      return { total: Number(pricing.estimated_gateway_total), final: false };
+    }
+
+    // 4) total + card_fee explícitos
+    if (pricing.total != null && pricing.card_fee != null) {
+      return { total: Number(pricing.total) + Number(pricing.card_fee), final: true };
+    }
+
+    // 5) Fallback: reconstruir base (incluye shipping)
+    const itemsTotal = o.items.reduce((s, it) => s + Number(it.unit_price) * Number(it.quantity), 0);
+    const subtotal = pricing.subtotal != null ? Number(pricing.subtotal) : itemsTotal;
+    const tax = Number(pricing.tax || 0);
+    const shipping = Number(pricing.shipping || 0);
+    const base = pricing.total != null ? Number(pricing.total) : (subtotal + tax + shipping);
+
+    // Si el método es tarjeta, aplica fee; si no, muestra base
+    const isCard = (o.payment_method || '').toLowerCase().includes('bms');
+    if (isCard) {
+      const pct = Number(pricing.card_diff_pct ?? CARD_FEE_PCT); // p.ej. 3
+      const withFee = base * (1 + pct / 100);
+      return { total: Number(withFee.toFixed(2)), final: false };
+    }
+    return { total: Number(base.toFixed(2)), final: true };
+  };
+
 
   // Ordenar de más reciente a más antiguo
   const ordersSorted = [...orders].sort((a, b) => {
@@ -155,6 +170,7 @@ export default function OrdersClient({ locale, dict }: { locale: string; dict: D
   if (customerLoading || loading) {
     return <div className="p-6 text-center">{dict.common.loading}</div>
   }
+
 
   if (!customer) {
     return (
@@ -231,7 +247,7 @@ export default function OrdersClient({ locale, dict }: { locale: string; dict: D
 
       <ul className="space-y-4">
         {ordersSorted.map((o) => {
-          const total = bestTotalForOrder(o)
+          const { total, final } = bestTotalForOrder(o);
           return (
             <li key={o.order_id} className="border rounded-lg bg-white">
               <div className="flex items-start justify-between p-4">
@@ -261,11 +277,14 @@ export default function OrdersClient({ locale, dict }: { locale: string; dict: D
                   >
                     {statusLabel(o.status)}
                   </span>
+
                   <div className="mt-2 font-semibold">
                     {fmtUsd(total)}{' '}
-                    <span className="text-xs text-gray-500">
-                      ({dict.orders.estimated})
-                    </span>
+                    {!final && (
+                      <span className="text-xs text-gray-500">
+                        ({dict.orders.estimated})
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

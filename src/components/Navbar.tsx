@@ -137,7 +137,7 @@ export default function Navbar({ dict }: Props) {
             >
               {ordersFull}
             </Link>
-            {(role === 'owner' || role === 'admin') && (
+            {(role === 'admin') && (
               <Link
                 href={`/${locale}/admin`}
                 className={`${navLinkBase} ${isAdmin ? navLinkActive : ''}`}
@@ -152,7 +152,7 @@ export default function Navbar({ dict }: Props) {
                 className={`${navLinkBase} ${isPartner ? navLinkActive : ''}`}
                 aria-current={isPartner ? 'page' : undefined}
               >
-                Partner Orders
+              {locale === 'en' ? 'Deliveries' : 'Entregas'}
               </Link>
             )}
           </>
@@ -324,7 +324,7 @@ export default function Navbar({ dict }: Props) {
                 </li>
               )}
 
-              {customer && (role === 'owner' || role === 'admin') && (
+              {customer && (role === 'admin') && (
                 <li>
                   <Link
                     href={`/${locale}/admin`}
@@ -345,7 +345,7 @@ export default function Navbar({ dict }: Props) {
                     className={`block rounded ${isPartner ? 'bg-green-50 text-green-700 font-semibold' : ''}`}
                     aria-current={isPartner ? 'page' : undefined}
                   >
-                    Partner Orders
+                   {locale === 'en' ? 'Admin Deliveries' : 'Administrar Entregas'}
                   </Link>
                 </li>
               )}

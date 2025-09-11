@@ -17,6 +17,7 @@ export default function AdminTabs() {
     { href: `${base}/orders`, label: 'Órdenes' },
     { href: `${basepartner}/partner/orders`, label: 'Partners' },
     { href: `${base}/customers`, label: 'Clientes' },
+     { href: `${base}/reports/payouts`, label: 'Reports' },
   ]
 
   return (

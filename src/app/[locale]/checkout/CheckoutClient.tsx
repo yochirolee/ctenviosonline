@@ -1295,7 +1295,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         <span>{startingDirect ? dict.common.loading : `${dict.checkout.directPay}`}</span>
       </button>
 
-      {/* Pago por link */}
+      {/* Pago por link 
       <button
         onClick={handleCheckout}
         disabled={payDisabled}
@@ -1303,7 +1303,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       >
         <CreditCard size={18} />
         <span>{isPaying ? dict.common.loading : `${dict.checkout.pay}`}</span>
-      </button>
+      </button>  */}
     </div>
   )
 }

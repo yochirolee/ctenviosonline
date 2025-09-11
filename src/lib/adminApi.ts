@@ -267,8 +267,8 @@ export type AdminOrderFilters = {
   to?: string
   page?: number
   limit?: number
-  sort_by?: 'created_at'|'total'|'status'
-  sort_dir?: 'asc'|'desc'
+  sort_by?: 'created_at' | 'total' | 'status'
+  sort_dir?: 'asc' | 'desc'
 }
 
 /** Listado con filtros + paginado (RECOMENDADO) */
@@ -307,8 +307,8 @@ export type AdminOrderItem = {
   product_id: number | null
   product_name?: string | null
   image_url?: string | null
-  source_url?: string | null   
-  external_id?: string | null  
+  source_url?: string | null
+  external_id?: string | null
   quantity: number
   unit_price: number
 }
@@ -350,7 +350,7 @@ export async function listCustomersAdmin(params: {
   return res.json() as Promise<{ items: AdminCustomer[]; page: number; pages: number; total: number; limit: number }>
 }
 
-export async function setCustomerRole(id: number, role: 'admin'|'owner'|'mensajero'|''|null) {
+export async function setCustomerRole(id: number, role: 'admin' | 'owner' | 'mensajero' | '' | null) {
   const res = await fetch(`${API_URL}/admin/customers/${id}/role`, {
     method: 'PATCH',
     headers: authHeaders(),
@@ -376,4 +376,159 @@ export async function getAdminOrderDetail(id: number): Promise<AdminOrderDetail>
   });
   if (!r.ok) throw new Error('orderDetail');
   return r.json() as Promise<AdminOrderDetail>;
+}
+
+/* ========== Reports (ADMIN) ========== */
+
+export type PayoutRow = {
+  owner_id: number
+  owner_name: string
+  orders_count: number
+  items_count: number
+  base_cents: number
+  margin_cents: number
+  tax_cents: number
+  shipping_owner_cents: number
+  gateway_fee_cents: number
+  owner_product_cents_without_tax: number
+  owner_product_cents_with_tax: number
+  owner_total_cents_without_tax: number
+  owner_total_cents_with_tax: number
+  platform_gross_margin_cents: number
+  platform_net_margin_cents: number
+  amounts_usd?: {
+    base: number
+    margin: number
+    tax: number
+    shipping_owner: number
+    gateway_fee: number
+    owner_product_without_tax: number
+    owner_product_with_tax: number
+    owner_total_without_tax: number
+    owner_total_with_tax: number
+    platform_gross_margin: number
+    platform_net_margin: number
+  }
+}
+
+export type PayoutTotals = {
+  orders_count: number
+  items_count: number
+  base_cents: number
+  margin_cents: number
+  tax_cents: number
+  shipping_owner_cents: number
+  gateway_fee_cents: number
+  owner_product_cents_without_tax: number
+  owner_product_cents_with_tax: number
+  owner_total_cents_without_tax: number
+  owner_total_cents_with_tax: number
+  platform_gross_margin_cents: number
+  platform_net_margin_cents: number
+}
+
+export type PayoutResponse = {
+  rows: PayoutRow[]
+  totals: PayoutTotals
+  filters: { from: string; to: string; owner_id: number | null; delivered_only: boolean }
+}
+
+/* ---- tipos de cierre de lote ---- */
+export type OwnerPayout = {
+  id: number
+  from: string
+  to: string
+  tz: string
+  delivered_only: boolean
+  owner_id: number | null
+  orders_count: number
+  items_count: number
+  base_cents: number
+  shipping_owner_cents: number
+  amount_to_owner_cents: number
+  margin_cents: number
+  gateway_fee_cents: number
+}
+
+export type CloseOwnerPayoutResponse = {
+  ok: boolean
+  payout: OwnerPayout | null
+  orders: number[]
+  message?: string
+}
+
+export type MarkOwnerPaidResponse = {
+  ok: boolean
+  order: {
+    id: number
+    owner_paid: boolean
+    owner_paid_at: string | null
+    owner_payout_id: number | null
+  }
+}
+
+/* ---- GET /admin/reports/payouts ---- */
+export async function getPayoutsReport(opts: {
+  from: string
+  to: string
+  delivered_only?: boolean
+  include_paid?: boolean
+  owner_id?: number
+}): Promise<PayoutResponse> {
+  const qs = new URLSearchParams()
+  qs.set('from', opts.from)
+  qs.set('to', opts.to)
+  if (opts.delivered_only !== undefined) qs.set('delivered_only', opts.delivered_only ? '1' : '0')
+  if (opts.include_paid !== undefined) qs.set('include_paid', opts.include_paid ? '1' : '0')
+  if (opts.owner_id !== undefined) qs.set('owner_id', String(opts.owner_id))
+
+  const res = await fetch(`${API_URL}/admin/reports/payouts?${qs.toString()}`, {
+    headers: authHeaders(),
+    cache: 'no-store',
+  })
+  if (!res.ok) throw new Error('fetch_payouts_report')
+  return res.json() as Promise<PayoutResponse>
+}
+
+/* (opcional) compat alias con tipos estrictos, mapea unpaid_only -> include_paid=false */
+export async function fetchPayoutReport(params: {
+  from: string
+  to: string
+  owner_id?: number
+  delivered_only?: boolean
+  unpaid_only?: boolean
+}): Promise<PayoutResponse> {
+  return getPayoutsReport({
+    from: params.from,
+    to: params.to,
+    delivered_only: params.delivered_only,
+    include_paid: params.unpaid_only === undefined ? undefined : !params.unpaid_only,
+    owner_id: params.owner_id,
+  })
+}
+
+/* ---- POST /admin/reports/payouts/close ---- */
+export async function closeOwnerPayout(body: {
+  from: string; to: string;
+  delivered_only?: boolean;
+  owner_id: number; // requerido
+  note?: string;
+}): Promise<CloseOwnerPayoutResponse> {
+  const res = await fetch(`${API_URL}/admin/reports/payouts/close`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error('close_owner_payout_failed')
+  return res.json() as Promise<CloseOwnerPayoutResponse>
+}
+
+/* ---- PATCH /admin/reports/orders/:id/mark-owner-paid ---- */
+export async function markOrderOwnerPaid(id: number): Promise<MarkOwnerPaidResponse> {
+  const res = await fetch(`${API_URL}/admin/reports/orders/${id}/mark-owner-paid`, {
+    method: 'PATCH',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+  })
+  if (!res.ok) throw new Error('mark_owner_paid_failed')
+  return res.json() as Promise<MarkOwnerPaidResponse>
 }

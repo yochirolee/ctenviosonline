@@ -80,8 +80,10 @@ type SnapshotPricing = {
   subtotal?: number
   tax?: number
   shipping?: number
-  total?: number
-  card_fee?: number
+  total?: number            // total sin fee
+  card_fee?: number         // fee absoluto
+  total_with_card?: number  // total con fee
+  card_fee_pct?: number     // % aplicado
 }
 
 type OrderMetadata = {
@@ -90,7 +92,7 @@ type OrderMetadata = {
   payment?: DirectPay | null
   checkout_session_id?: string
   session_id?: string
-  pricing?: { shipping?: number } & Partial<SnapshotPricing>
+  pricing?: Partial<SnapshotPricing>
   pricing_cents?: PricingCents
   shipping_by_owner?: Record<string, number>
   snapshot?: { shipping_by_owner?: Record<string, number> }
@@ -153,10 +155,10 @@ export default function AdminOrderDetailPage() {
 
   // Datos de pago: mantener comportamiento existente
   const payInvoice =
-    pay?.invoice || bms?.InvoiceNumber || String(order.metadata?.session_id || '')
+    pay?.invoice || bms?.InvoiceNumber || String(md.session_id || '')
   const payLink = pay?.link || bms?.Link || null
 
-  const delivery = (order.metadata?.delivery ?? null) as DeliveryMeta | null
+  const delivery = (md.delivery ?? null) as DeliveryMeta | null
   const deliveredAt = delivery?.delivered_at
     ? new Date(delivery.delivered_at).toLocaleString()
     : null
@@ -185,18 +187,26 @@ export default function AdminOrderDetailPage() {
   const approvedDisplay = statusTextRaw && /approved/i.test(statusTextRaw) ? 'APPROVED' : (statusTextRaw || null)
 
   // -------------------------
-  // CÁLCULO DE TOTALES ROBUSTO
+  // CÁLCULO DE TOTALES ROBUSTO (SIN any)
   // -------------------------
   const pc: PricingCents | undefined = md.pricing_cents
+
   const pr: SnapshotPricing = {
     subtotal: md.pricing?.subtotal,
     tax: md.pricing?.tax,
     shipping: md.pricing?.shipping,
     total: md.pricing?.total,
     card_fee: md.pricing?.card_fee,
+    total_with_card: md.pricing?.total_with_card,
+    card_fee_pct: md.pricing?.card_fee_pct,
   }
 
-  const fallbackPct = typeof order.card_fee_pct === 'number' ? order.card_fee_pct : 3
+  // Permite usar un posible % guardado a nivel de orden si existe tipándolo sin any
+  const orderWithPct = order as { card_fee_pct?: number }
+  const pct =
+    typeof pr.card_fee_pct === 'number'
+      ? pr.card_fee_pct
+      : (typeof orderWithPct.card_fee_pct === 'number' ? orderWithPct.card_fee_pct : 3)
 
   let calcSubtotal = 0
   let calcTax = 0
@@ -220,21 +230,25 @@ export default function AdminOrderDetailPage() {
     cardFee = fee
     baseTotal = Number((sub + tx + shp).toFixed(2))
     totalWithCard = twc
-  } else if (pr.total != null && pr.card_fee != null) {
-    // total ya incluye el fee
+  } else if (pr.total_with_card != null || (pr.total != null && pr.card_fee != null)) {
+    // si viene total con fee o total+fee por separado
+    const base = Number(pr.total ?? ((pr.subtotal ?? 0) + (pr.tax ?? 0) + (pr.shipping ?? 0)))
+    const fee  = Number(pr.card_fee ?? (Number(pr.total_with_card!) - base))
+    const twc  = Number(pr.total_with_card ?? (base + fee))
+
     calcSubtotal = Number(pr.subtotal ?? 0)
     calcTax = Number(pr.tax ?? 0)
     calcShipping = Number(pr.shipping ?? 0)
-    totalWithCard = Number(pr.total)
-    cardFee = Number(pr.card_fee)
-    baseTotal = Number((totalWithCard - cardFee).toFixed(2))
+    baseTotal = Number(base.toFixed(2))
+    cardFee = Number(fee.toFixed(2))
+    totalWithCard = Number(twc.toFixed(2))
   } else {
-    // Fallback: base a partir de subtotal+tax+shipping y fee por % configurado en orden
+    // Fallback: base a partir de subtotal+tax+shipping y fee por % configurado
     calcSubtotal = Number(pr.subtotal ?? 0)
     calcTax = Number(pr.tax ?? 0)
     calcShipping = Number(pr.shipping ?? 0)
-    baseTotal = Number((calcSubtotal + calcTax + calcShipping).toFixed(2))
-    cardFee = Number((baseTotal * (fallbackPct / 100)).toFixed(2))
+    baseTotal = Number(((calcSubtotal + calcTax + calcShipping)).toFixed(2))
+    cardFee = Number((baseTotal * (pct / 100)).toFixed(2))
     totalWithCard = Number((baseTotal + cardFee).toFixed(2))
   }
 
@@ -318,7 +332,7 @@ export default function AdminOrderDetailPage() {
               <div><span className="text-gray-600">Impuestos:</span> <span className="font-medium">{fmt.format(calcTax)}</span></div>
               <div><span className="text-gray-600">Envío:</span> <span className="font-medium">{fmt.format(calcShipping)}</span></div>
               <div><span className="text-gray-600">Total (sin fee):</span> <span className="font-medium">{fmt.format(baseTotal)}</span></div>
-              <div><span className="text-gray-600">Cargo tarjeta ({order.card_fee_pct ?? 3}%):</span> <span className="font-medium">{fmt.format(cardFee)}</span></div>
+              <div><span className="text-gray-600">Cargo tarjeta ({pct}%):</span> <span className="font-medium">{fmt.format(cardFee)}</span></div>
               <div className="text-base"><span className="text-gray-600">Total con tarjeta:</span> <span className="font-semibold">{fmt.format(totalWithCard)}</span></div>
               <div className="text-xs text-gray-500 mt-1">* El monto reportado por la pasarela normalmente no incluye el cargo por tarjeta.</div>
             </div>
@@ -510,7 +524,7 @@ export default function AdminOrderDetailPage() {
                 <div><span className="font-medium">Impuestos: </span><span>{fmt.format(calcTax)}</span></div>
                 <div><span className="font-medium">Envío: </span><span>{fmt.format(calcShipping)}</span></div>
                 <div><span className="font-medium">Total (sin fee): </span><span>{fmt.format(baseTotal)}</span></div>
-                <div><span className="font-medium">Cargo tarjeta ({order.card_fee_pct ?? 3}%): </span><span>{fmt.format(cardFee)}</span></div>
+                <div><span className="font-medium">Cargo tarjeta ({pct}%): </span><span>{fmt.format(cardFee)}</span></div>
                 <div className="text-base">
                   <span className="font-semibold">Total con tarjeta: </span>
                   <span className="font-semibold">{fmt.format(totalWithCard)}</span>
