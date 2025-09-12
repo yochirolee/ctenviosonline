@@ -118,10 +118,10 @@ export default function RecipientsBook({ dict }: Props) {
     try {
       setDeletingId(confirmDel.id)
       await deleteRecipient(confirmDel.id)
-      toast.success(R.toasts.deleted)
+      toast.success(R.toasts.deleted, { position: 'bottom-center' })
       await load()
     } catch {
-      toast.error(R.toasts.delete_failed)
+      toast.error(R.toasts.delete_failed, { position: 'bottom-center' })
     } finally {
       setDeletingId(null)
       setConfirmDel(null)
@@ -252,7 +252,7 @@ export default function RecipientsBook({ dict }: Props) {
 
   const handleSubmit = async () => {
     if (hasErrors) {
-      toast.error(dict.common.required_fields)
+      toast.error(dict.common.required_fields, { position: 'bottom-center' })
       return
     }
     try {
@@ -293,26 +293,26 @@ export default function RecipientsBook({ dict }: Props) {
           }
           await createRecipient(payload)
         }
-        toast.success(R.toasts.created)
+        toast.success(R.toasts.created, { position: 'bottom-center' })
       } else if (mode === 'edit' && editing) {
         const patch: UpdateRecipientInput = { ...form }
         await updateRecipient(editing.id, patch)
-        toast.success(R.toasts.updated)
+        toast.success(R.toasts.updated, { position: 'bottom-center' })
       }
       await load()
       onCancel()
     } catch {
-      toast.error(R.toasts.save_failed)
+      toast.error(R.toasts.save_failed, { position: 'bottom-center' })
     }
   }
 
   const handleSetDefault = async (id: number) => {
     try {
       await setDefaultRecipient(id)
-      toast.success(R.toasts.made_default)
+      toast.success(R.toasts.made_default, { position: 'bottom-center' })
       await load()
     } catch {
-      toast.error(R.toasts.default_failed)
+      toast.error(R.toasts.default_failed, { position: 'bottom-center' })
     }
   }
 

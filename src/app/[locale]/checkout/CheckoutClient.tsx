@@ -397,7 +397,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         const province = recipientLoc?.country === 'CU' ? recipientLoc.province : location?.province
         const municipality = recipientLoc?.country === 'CU' ? recipientLoc.municipality : location?.municipality
         if (!province || !municipality) {
-          toast.error('Selecciona provincia y municipio en el banner para guardar el destinatario.')
+          toast.error('Selecciona provincia y municipio en el banner para guardar el destinatario.', { position: 'bottom-center' })
           return null
         }
 
@@ -453,7 +453,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         return created
       }
 
-      toast.error(locale === 'en' ? 'Select a country in the banner' : 'Selecciona un país en el banner')
+      toast.error(locale === 'en' ? 'Select a country in the banner' : 'Selecciona un país en el banner', { position: 'bottom-center' })
       return null
     } catch (e: unknown) {
       if (isRecipientDuplicate(e)) {
@@ -895,7 +895,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       return
     }
     if (quoting || (readyToQuote && quoteOk !== true)) {
-      toast.error(quoteError || 'Hay productos que no se pueden entregar a esa dirección.')
+      toast.error(quoteError || 'Hay productos que no se pueden entregar a esa dirección.', { position: 'bottom-center' })
       return
     }
 
@@ -923,11 +923,11 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                 ? [location?.municipality, location?.province].filter(Boolean).join(', ')
                 : [formData.city, formData.state, formData.zip].filter(Boolean).join(', ')))
 
-        toast.error(buildAvailabilityErrorMsg(Array.isArray(vdata?.unavailable) ? (vdata.unavailable as UnavailableLine[]) : [], locLabel))
+        toast.error(buildAvailabilityErrorMsg(Array.isArray(vdata?.unavailable) ? (vdata.unavailable as UnavailableLine[]) : [], locLabel), { position: 'bottom-center' })
         return
       }
     } catch {
-      toast.error('No se pudo validar disponibilidad. Intenta de nuevo.')
+      toast.error('No se pudo validar disponibilidad. Intenta de nuevo.', { position: 'bottom-center' })
       return
     }
     await maybeSaveRecipient()
