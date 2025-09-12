@@ -83,7 +83,8 @@
   "checkout": {
     "description": "Review your order before completing the payment.",
     "product": "Product",
-    "quantity": "Quantity",
+    "quantity": "Quantity",    
+    "label": "Label",
     "total": "Total",
     "back": "Back",
     "title": "Order Summary",
@@ -400,5 +401,29 @@
   "open_drawer_aria": "Open Special Orders",
   "close_drawer_aria": "Close Special Orders",
   "added_toast": "Added to your special orders."
+},
+"recipients": {
+  "title": "Shipping recipients",
+  "new": "New recipient",
+  "empty": "You don't have saved recipients yet.",
+  "default_badge": "Default",
+  "set_default": "Set as default",
+  "edit": "Edit",
+  "delete": "Delete",
+  "confirm_delete": "Delete recipient?",
+  "notes_label": "Notes (optional)",
+  "label_placeholder": "e.g., Mom's house",
+  "select_state": "Select",
+  "save": "Save recipient",
+  "update": "Update",
+  "toasts": {
+    "created": "Recipient created",
+    "updated": "Recipient updated",
+    "deleted": "Deleted",
+    "made_default": "Set as default",
+    "save_failed": "Could not save",
+    "delete_failed": "Could not delete",
+    "default_failed": "Could not set default"
+  }
 }
 }

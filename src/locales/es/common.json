@@ -84,6 +84,7 @@
     "description": "Revisa tu orden antes de completar el pago.",
     "product": "Producto",
     "quantity": "Cantidad",
+    "label": "Etiqueta",
     "total": "Total",
     "back": "Atrás",
     "title": "Resumen de Orden",
@@ -400,5 +401,29 @@
   "open_drawer_aria": "Abrir encargos",
   "close_drawer_aria": "Cerrar encargos",
   "added_toast": "Agregado a tus encargos."
+},
+"recipients": {
+  "title": "Destinatarios de envío",
+  "new": "Nuevo destinatario",
+  "empty": "Aún no tienes destinatarios guardados.",
+  "default_badge": "Predeterminado",
+  "set_default": "Predeterminar",
+  "edit": "Editar",
+  "delete": "Eliminar",
+  "confirm_delete": "¿Eliminar destinatario?",
+  "notes_label": "Notas (opcional)",
+  "label_placeholder": "Ej: Mamá Habana",
+  "select_state": "Seleccione",
+  "save": "Guardar destinatario",
+  "update": "Actualizar",
+  "toasts": {
+    "created": "Destinatario creado",
+    "updated": "Destinatario actualizado",
+    "deleted": "Eliminado",
+    "made_default": "Marcado como predeterminado",
+    "save_failed": "No se pudo guardar",
+    "delete_failed": "No se pudo eliminar",
+    "default_failed": "No se pudo marcar por defecto"
+  }
 }
 }

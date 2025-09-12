@@ -44,6 +44,7 @@ export type Dict = {
     description: string
     product: string
     quantity: string
+    label: string
     total: string
     back: string
     title: string
@@ -357,5 +358,30 @@ export type Dict = {
     open_drawer_aria: string
     close_drawer_aria: string
     added_toast: string
+  },
+  recipients: {
+    title: string
+    new: string
+    empty: string
+    default_badge: string
+    set_default: string
+    edit: string
+    delete: string
+    confirm_delete: string
+    notes_label: string
+    label_placeholder: string
+    select_state: string
+    save: string
+    update: string
+    toasts: {
+      created: string
+      updated: string
+      deleted: string
+      made_default: string
+      save_failed: string
+      delete_failed: string
+      default_failed: string
+    }
   }
+  
 }

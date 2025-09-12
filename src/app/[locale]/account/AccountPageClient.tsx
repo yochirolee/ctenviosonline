@@ -6,20 +6,22 @@ import { ArrowLeft, Save } from 'lucide-react'
 import { useCustomer } from '@/context/CustomerContext'
 import { toast } from 'sonner'
 import dynamic from 'next/dynamic'
+import type { Dict } from '@/types/Dict' // 👈 usa el Dict real
 
-const RecipientsBook = dynamic(() => import('@/components/profile/RecipientsBook'), { ssr: false })
-const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
+// Tipar el componente dinámico (sin any)
+const RecipientsBook = dynamic<{ dict: Dict }>(
+  () => import('@/components/profile/RecipientsBook'),
+  { ssr: false }
+)
 
-type Dict = {
-  common?: { back?: string }
-}
+const API_URL: string = process.env.NEXT_PUBLIC_API_BASE_URL as string
 
 type Props = {
   locale: string
-  dict: Dict
+  dict: Dict // 👈 usa el Dict real en las props
 }
 
-// Extiende el tipo del customer para campos opcionales que tu backend podría devolver
+// Extensión opcional de campos de customer que pueden venir del backend
 type CustomerExtras = {
   phone?: string
   address?: string
@@ -39,7 +41,7 @@ export default function AccountPageClient({ locale, dict }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const firstErrorKeyRef = useRef<string | null>(null)
 
-  // ====== iOS viewport fix (altura estable con teclado) ======
+  // ====== iOS viewport fix ======
   useEffect(() => {
     const apply = () => {
       const h = window.visualViewport?.height ?? window.innerHeight
@@ -164,7 +166,7 @@ export default function AccountPageClient({ locale, dict }: Props) {
       >
         <ArrowLeft size={18} />
         <span className="underline underline-offset-2">
-          {dict?.common?.back || (locale === 'en' ? 'Back' : 'Volver')}
+          {dict.common?.back || (locale === 'en' ? 'Back' : 'Volver')}
         </span>
       </button>
 
@@ -285,17 +287,17 @@ export default function AccountPageClient({ locale, dict }: Props) {
       </div>
 
       {/* Destinatarios guardados */}
-<div className="rounded-xl border bg-white shadow-sm">
-  <div className="border-b px-4 py-3">
-    <h2 className="text-base font-semibold text-gray-800">Destinatarios</h2>
-    <p className="text-xs text-gray-500 mt-0.5">
-      Guarda destinatarios en Cuba o EE. UU. para usarlos rápido en el checkout.
-    </p>
-  </div>
-  <div className="px-4 py-4">
-    <RecipientsBook />
-  </div>
-</div>
+      <div className="rounded-xl border bg-white shadow-sm">
+        <div className="border-b px-4 py-3">
+          <h2 className="text-base font-semibold text-gray-800">{(locale === 'en' ? 'Recipients' : 'Destinatarios')}</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+          {(locale === 'en' ? 'Save recipients in Cuba or the U.S. to use them quickly at checkout.' : 'Guarda destinatarios en Cuba o EE. UU. para usarlos rápido en el checkout.')}
+          </p>
+        </div>
+        <div className="px-4 py-4">
+          <RecipientsBook dict={dict} />
+        </div>
+      </div>
 
     </div>
   )
