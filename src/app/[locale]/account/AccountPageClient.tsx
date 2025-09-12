@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { useCustomer } from '@/context/CustomerContext'
 import { toast } from 'sonner'
+import dynamic from 'next/dynamic'
 
+const RecipientsBook = dynamic(() => import('@/components/profile/RecipientsBook'), { ssr: false })
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
 
 type Dict = {
@@ -281,6 +283,20 @@ export default function AccountPageClient({ locale, dict }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Destinatarios guardados */}
+<div className="rounded-xl border bg-white shadow-sm">
+  <div className="border-b px-4 py-3">
+    <h2 className="text-base font-semibold text-gray-800">Destinatarios</h2>
+    <p className="text-xs text-gray-500 mt-0.5">
+      Guarda destinatarios en Cuba o EE. UU. para usarlos rápido en el checkout.
+    </p>
+  </div>
+  <div className="px-4 py-4">
+    <RecipientsBook />
+  </div>
+</div>
+
     </div>
   )
 }
