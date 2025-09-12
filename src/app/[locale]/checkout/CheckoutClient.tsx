@@ -1074,7 +1074,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                 {noRecipientsForCountry && (
                   <button
                     type="button"
-                    className="px-3 py-2 rounded text-white rounded bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60"
+                    className="px-3 py-2 rounded text-white rounded bg-green-600 hover:bg-green-700 disabled:opacity-60"
                     onClick={() => router.push(`/${locale}/account`)}
                   >
                     {locale === 'en' ? 'Create in Profile' : 'Crear en Perfil'}
@@ -1386,8 +1386,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
       <button
         onClick={handleStartDirect}
-        disabled={startingDirect || payDisabled}
-        className="w-full bg-emerald-700 text-white py-3 rounded hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed flex justify-center items-center space-x-2"
+        disabled={startingDirect || payDisabled}                   
+        className="w-full bg-green-600 text-white py-3 rounded hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed flex justify-center items-center space-x-2"
       >
         <CreditCard size={18} />
         <span>{startingDirect ? dict.common.loading : `${dict.checkout.directPay}`}</span>

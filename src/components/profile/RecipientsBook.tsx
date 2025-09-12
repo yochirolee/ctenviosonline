@@ -104,6 +104,30 @@ export default function RecipientsBook({ dict }: Props) {
     ci: '',
   })
 
+  // Confirmación de borrado (modal)
+  const [confirmDel, setConfirmDel] = useState<{ id: number; name: string } | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+
+  const requestDelete = (r: Recipient) => {
+    const name = `${r.first_name} ${r.last_name}`.trim() || r.label || ''
+    setConfirmDel({ id: r.id, name })
+  }
+
+  const confirmDelete = async () => {
+    if (!confirmDel) return
+    try {
+      setDeletingId(confirmDel.id)
+      await deleteRecipient(confirmDel.id)
+      toast.success(R.toasts.deleted)
+      await load()
+    } catch {
+      toast.error(R.toasts.delete_failed)
+    } finally {
+      setDeletingId(null)
+      setConfirmDel(null)
+    }
+  }
+
   const muniOptions = useMemo(
     () => (form.province ? (MUNICIPIOS_CUBA[form.province] || []) : []),
     [form.province]
@@ -282,17 +306,6 @@ export default function RecipientsBook({ dict }: Props) {
     }
   }
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm(R.confirm_delete)) return
-    try {
-      await deleteRecipient(id)
-      toast.success(R.toasts.deleted)
-      await load()
-    } catch {
-      toast.error(R.toasts.delete_failed)
-    }
-  }
-
   const handleSetDefault = async (id: number) => {
     try {
       await setDefaultRecipient(id)
@@ -312,7 +325,7 @@ export default function RecipientsBook({ dict }: Props) {
         {mode === 'list' && (
           <button
             onClick={onCreate}
-            className="px-3 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+            className="px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700"
           >
             {R.new}
           </button>
@@ -334,7 +347,7 @@ export default function RecipientsBook({ dict }: Props) {
                     {r.first_name} {r.last_name}{' '}
                     {r.label ? <span className="text-gray-500">· {r.label}</span> : null}
                     {r.is_default ? (
-                      <span className="ml-2 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
+                      <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs text-emerald-700">
                         {R.default_badge}
                       </span>
                     ) : null}
@@ -374,7 +387,7 @@ export default function RecipientsBook({ dict }: Props) {
                     {R.edit}
                   </button>
                   <button
-                    onClick={() => void handleDelete(r.id)}
+                    onClick={() => requestDelete(r)}
                     className="px-3 py-2 rounded bg-red-600 text-white hover:bg-red-700"
                   >
                     {R.delete}
@@ -394,14 +407,14 @@ export default function RecipientsBook({ dict }: Props) {
             <button
               type="button"
               onClick={() => { setTab('CU'); setField('country', 'CU') }}
-              className={`px-3 py-1 rounded border ${tab === 'CU' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-700 border-gray-300'}`}
+              className={`px-3 py-1 rounded border ${tab === 'CU' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700 border-gray-300'}`}
             >
               {dict.location_banner.country_cu}
             </button>
             <button
               type="button"
               onClick={() => { setTab('US'); setField('country', 'US') }}
-              className={`px-3 py-1 rounded border ${tab === 'US' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-700 border-gray-300'}`}
+              className={`px-3 py-1 rounded border ${tab === 'US' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700 border-gray-300'}`}
             >
               {dict.location_banner.country_us}
             </button>
@@ -549,7 +562,7 @@ export default function RecipientsBook({ dict }: Props) {
           <div className="flex gap-2 pt-2">
             <button
               onClick={() => void handleSubmit()}
-              className="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+              className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700"
             >
               {mode === 'create' ? R.save : R.update}
             </button>
@@ -562,6 +575,52 @@ export default function RecipientsBook({ dict }: Props) {
           </div>
         </div>
       )}
+
+      {confirmDel && (
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-del-title"
+        >
+          <div className="w-full max-w-md rounded-xl bg-white shadow-lg border">
+            <div className="px-5 py-4 border-b">
+              <h3 id="confirm-del-title" className="text-base font-semibold text-gray-900">
+                {R.delete}
+              </h3>
+            </div>
+
+            <div className="px-5 py-4 text-sm text-gray-700">
+              <p className="mb-2">{R.confirm_delete}</p>
+              {confirmDel.name ? (
+                <p className="text-gray-500">
+                  <span className="font-medium">{confirmDel.name}</span>
+                </p>
+              ) : null}
+            </div>
+
+            <div className="px-5 py-4 border-t flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200"
+                onClick={() => (!deletingId ? setConfirmDel(null) : null)}
+                disabled={deletingId !== null}
+              >
+                {dict.common.cancel}
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+                onClick={() => void confirmDelete()}
+                disabled={deletingId !== null}
+              >
+                {deletingId === confirmDel.id ? dict.common.loading : R.delete}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </section>
   )
 }

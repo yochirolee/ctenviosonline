@@ -144,7 +144,7 @@ export default function AccountPageClient({ locale, dict }: Props) {
             : 'Debes iniciar sesión para editar tu perfil.'}
         </p>
         <button
-          className="mt-3 px-4 py-2 rounded bg-emerald-600 text-white"
+          className="mt-3 px-4 py-2 rounded bg-green-600 text-white"
           onClick={() => router.push(`/${locale}/login`)}
         >
           {locale === 'en' ? 'Log in' : 'Iniciar sesión'}
@@ -276,7 +276,7 @@ export default function AccountPageClient({ locale, dict }: Props) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-60"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
           >
             <Save size={16} />
             <span>
