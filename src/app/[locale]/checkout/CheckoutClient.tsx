@@ -529,7 +529,6 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
   // ===== Validación =====
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   const effectiveCountry: 'CU' | 'US' | null =
     (recipientLoc?.country ?? (isCU ? 'CU' : isUS ? 'US' : null))
