@@ -143,8 +143,8 @@ const isRecipientDuplicate = (e: unknown): boolean => {
     typeof obj.status === 'number'
       ? obj.status
       : (typeof obj.response === 'object' && obj.response !== null
-          ? (obj.response as Record<string, unknown>).status as number | undefined
-          : undefined)
+        ? (obj.response as Record<string, unknown>).status as number | undefined
+        : undefined)
 
   const errorStr =
     (typeof obj.error === 'string' && obj.error) ||
@@ -153,8 +153,8 @@ const isRecipientDuplicate = (e: unknown): boolean => {
       (obj.response as Record<string, unknown>).data &&
       typeof (obj.response as Record<string, unknown>).data === 'object' &&
       typeof ((obj.response as Record<string, unknown>).data as Record<string, unknown>).error === 'string'
-        ? (((obj.response as Record<string, unknown>).data as Record<string, unknown>).error as string)
-        : undefined)
+      ? (((obj.response as Record<string, unknown>).data as Record<string, unknown>).error as string)
+      : undefined)
 
   return status === 409 || (errorStr ?? '').includes('recipient_duplicate')
 }
@@ -538,11 +538,11 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {}
-  
+
     // helpers
     const onlyDigits = (s: string) => String(s || '').replace(/\D/g, '')
     const isEmpty = (s?: string) => !String(s || '').trim()
-  
+
     // Email comprador (requerido)
     const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!buyer.email || !EMAIL_RE.test(buyer.email)) {
@@ -552,12 +552,12 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
           ? 'Billing email is required and must be valid'
           : 'El email de facturación es obligatorio y debe ser válido')
     }
-  
+
     // Email receptor (opcional, si viene debe ser válido)
     if (formData.email && !EMAIL_RE.test(formData.email)) {
       newErrors.email = dict.checkout?.errors?.email || 'Email inválido'
     }
-  
+
     // Comunes
     if (isEmpty(formData.nombre)) {
       newErrors.nombre = dict.checkout?.errors?.nombre || 'Nombre requerido'
@@ -565,25 +565,25 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     if (isEmpty(formData.apellidos)) {
       newErrors.apellidos = dict.checkout?.errors?.apellidos || 'Apellidos requeridos'
     }
-  
+
     // País efectivo (según recipient o banner)
     const effectiveCountry: 'CU' | 'US' | null =
       (recipientLoc?.country ?? (isCU ? 'CU' : isUS ? 'US' : null))
     const isShipCU = effectiveCountry === 'CU'
     const isShipUS = effectiveCountry === 'US'
-  
+
     if (isShipCU) {
       // Teléfono CU: EXACTAMENTE 8 dígitos
       const cuPhone = onlyDigits(formData.telefono)
       if (!/^\d{8}$/.test(cuPhone)) {
         newErrors.telefono = dict.checkout?.errors?.telefono || 'El teléfono debe tener exactamente 8 dígitos'
       }
-  
+
       // CI: 11 dígitos
       if (!/^\d{11}$/.test(String(formData.ci || '').trim())) {
         newErrors.ci = dict.checkout?.errors?.ci || 'El CI debe tener 11 dígitos'
       }
-  
+
       // Dirección exacta (requerida)
       if (isEmpty(formData.direccion)) {
         newErrors.direccion = dict.checkout?.errors?.address || 'La dirección exacta es obligatoria'
@@ -594,7 +594,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       if (!/^\d{10}$/.test(usPhone)) {
         newErrors.telefono = dict.checkout?.errors?.telefonoeu || 'El teléfono debe tener 10 dígitos'
       }
-  
+
       if (isEmpty(formData.address1)) {
         newErrors.address1 = dict.checkout?.errors?.address1eu || 'Dirección (línea 1) requerida'
       }
@@ -611,11 +611,11 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       // Sin país → error de selección (lleva el scroll al banner)
       newErrors._noCountry = dict.location_banner?.location_select_required1 || 'Selecciona un país para continuar'
     }
-  
+
     // === Elegir el primer campo a enfocar (orden por país) ===
     const orderCU = ['nombre', 'apellidos', 'telefono', 'ci', 'direccion'] as const
     const orderUS = ['nombre', 'apellidos', 'telefono', 'address1', 'city', 'state', 'zip'] as const
-  
+
     let firstErrorField: string | null = null
     if (Object.keys(newErrors).length > 0) {
       if (isShipCU) {
@@ -632,11 +632,11 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         firstErrorField = Object.keys(newErrors)[0] || null
       }
     }
-  
+
     setErrors(newErrors)
     return { ok: Object.keys(newErrors).length === 0, firstErrorField }
   }
-  
+
 
   // ===== Precios (centavos) =====
   const priceWithMarginCentsFromMeta = (item: CartLine): number | undefined => {
@@ -838,6 +838,30 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   const grandTotalCents = subtotalCents + taxCents + shippingQuoteCents
   const cardFeeCents = Math.round(grandTotalCents * FEE_RATE)
   const totalWithCardFeeCents = grandTotalCents + cardFeeCents
+
+  const deliveryName = useMemo(
+    () => [formData.nombre, formData.apellidos].filter(Boolean).join(' '),
+    [formData.nombre, formData.apellidos]
+  )
+
+  const deliveryAddress = useMemo(() => {
+    if (isShipUS) {
+      const city = recipientLoc?.country === 'US' ? recipientLoc.city : formData.city
+      const state = recipientLoc?.country === 'US' ? recipientLoc.state : formData.state
+      const zip = recipientLoc?.country === 'US' ? recipientLoc.zip : formData.zip
+      const countryLabel = locale === 'en' ? 'United States' : 'Estados Unidos'
+      const parts = [formData.address1, city, state, zip, countryLabel].filter(Boolean)
+      return parts.join(', ')
+    }
+    if (isShipCU) {
+      const province = recipientLoc?.country === 'CU' ? recipientLoc.province : (location?.province || '')
+      const municipality = recipientLoc?.country === 'CU' ? recipientLoc.municipality : (location?.municipality || '')
+      const parts = [formData.direccion, municipality, province, 'Cuba'].filter(Boolean)
+      return parts.join(', ')
+    }
+    return ''
+  }, [isShipUS, isShipCU, recipientLoc, formData.address1, formData.city, formData.state, formData.zip, formData.direccion, location?.province, location?.municipality, locale])
+
 
   const [isPaying] = useState(false)
 
@@ -1222,10 +1246,10 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                 {selectedRecipientId && (
                   <button
                     type="button"
-                    className="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200"
-                    onClick={() => { setSelectedRecipientId(''); setRecipientLoc(null) }}
+                    className="px-3 py-2 rounded text-white bg-green-600 hover:bg-green-700"
+                    onClick={() => router.push(`/${locale}/account`)}
                   >
-                    {locale === 'en' ? 'Clear' : 'Limpiar'}
+                    {locale === 'en' ? 'Add More' : 'Agregar Más'}
                   </button>
                 )}
 
@@ -1381,7 +1405,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
               </div>
             </div>
           )}
-          
+
 
           {/* Estado de cotización */}
           <div className="pt-2 text-sm text-gray-600">
@@ -1438,42 +1462,91 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         </div>
 
         <div className="px-4 py-4 sm:px-6 sm:py-6 space-y-4">
-          {cartItems.length > 0 ? (
-            cartItems.map((item) => {
-              const perItemCents = itemDisplayCents(item)
-              const lineCents = perItemCents * item.quantity
-              return (
-                <div key={item.id} className="flex items-center space-x-4">
-                  <img
-                    src={item.thumbnail || "/pasto.jpg"}
-                    alt={item.title}
-                    className="w-20 h-20 object-cover rounded-md border"
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {item.title} <span className="text-gray-600">x{item.quantity}</span>
-                    </p>
-                    {Number(item?.weight) > 0 && (
-                      <p className="text-xs text-gray-500">
-                        {dict.checkout.weight}{Number(item.weight).toFixed(2)}{dict.checkout.weight_unit}
-                      </p>
-                    )}
-                    {(item?.owner_name || item?.metadata?.owner) && (
-                      <p className="text-xs text-gray-500">
-                        {dict.checkout.provider}{item.owner_name || item.metadata?.owner}
-                      </p>
-                    )}
-                    <p className="text-sm font-semibold text-gray-800 mt-1">
-                      {fmt.format(lineCents / 100)}
-                    </p>
-                  </div>
-                </div>
-              )
-            })
-          ) : (
-            <p className="text-gray-500">{dict.checkout.empty}</p>
+          {(deliveryName || deliveryAddress) && (
+            <div className="rounded-lg border bg-white p-3 text-sm">
+              <div className="font-medium">
+                {locale === 'en' ? 'Delivering to' : 'Envío a'}
+              </div>
+
+              {deliveryName && (
+                <div className="text-gray-900">{deliveryName}</div>
+              )}
+
+              {deliveryAddress && (
+                <div className="text-gray-600">{deliveryAddress}</div>
+              )}
+
+              <button
+                type="button"
+                className="mt-2 text-emerald-700 underline underline-offset-2 hover:text-emerald-800"
+                onClick={() => router.push(`/${locale}/account`)}
+              >
+                {locale === 'en' ? 'Change delivery address' : 'Cambiar dirección de entrega'}
+              </button>
+            </div>
           )}
 
+          <div className="rounded-lg border bg-white p-3 text-sm space-y-2">
+            <div className="font-medium">
+              {locale === 'en' ? 'Delivery times' : 'Tiempos de entrega'}
+            </div>
+
+            {locale === 'en' ? (
+              <ul className="list-disc pl-5 space-y-1 text-gray-700">
+                <li><strong>Sea shipments:</strong> estimated <strong>25–35 calendar days</strong> from payment confirmation.</li>
+                <li><strong>“72 hours” category:</strong> delivered within <strong>72 hours</strong> (3 days) in covered areas, counted from payment confirmation.</li>
+                <li>If your order includes both “72 hours” items and others, the “72 hours” items will keep their 72-hour window; the rest follow the sea timeline.</li>
+              </ul>
+            ) : (
+              <ul className="list-disc pl-5 space-y-1 text-gray-700">
+                <li><strong>Envíos por barco:</strong> estimados entre <strong>25 y 35 días naturales</strong> desde la confirmación del pago.</li>
+                <li><strong>Categoría “72 horas”:</strong> entrega en un máximo de <strong>72 horas</strong> (3 días) dentro de las zonas de cobertura, contadas desde la confirmación del pago.</li>
+                <li>Si tu pedido incluye artículos “72 horas” y otros, los “72 horas” mantienen su plazo de 72 horas; el resto seguirá el plazo de barco.</li>
+              </ul>
+            )}
+          </div>
+
+
+          <div className="rounded-lg border bg-white p-3 text-sm space-y-2">
+          <div className="font-medium">
+              {locale === 'en' ? 'Your items' : 'Tus artículos'}
+            </div>
+            {cartItems.length > 0 ? (
+              cartItems.map((item) => {
+                const perItemCents = itemDisplayCents(item)
+                const lineCents = perItemCents * item.quantity
+                return (
+                  <div key={item.id} className="flex items-center space-x-4">
+                    <img
+                      src={item.thumbnail || "/pasto.jpg"}
+                      alt={item.title}
+                      className="w-20 h-20 object-cover rounded-md border"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {item.title} <span className="text-gray-600">x{item.quantity}</span>
+                      </p>
+                      {Number(item?.weight) > 0 && (
+                        <p className="text-xs text-gray-500">
+                          {dict.checkout.weight}{Number(item.weight).toFixed(2)}{dict.checkout.weight_unit}
+                        </p>
+                      )}
+                      {(item?.owner_name || item?.metadata?.owner) && (
+                        <p className="text-xs text-gray-500">
+                          {dict.checkout.provider}{item.owner_name || item.metadata?.owner}
+                        </p>
+                      )}
+                      <p className="text-sm font-semibold text-gray-800 mt-1">
+                        {fmt.format(lineCents / 100)}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              <p className="text-gray-500">{dict.checkout.empty}</p>
+            )}
+          </div>
           <div className="border-t border-gray-200 my-2" />
 
           <div className="flex justify-between text-sm">
