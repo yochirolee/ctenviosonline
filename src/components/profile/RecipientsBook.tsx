@@ -15,6 +15,7 @@ import {
   type UpdateRecipientInput,
 } from '@/lib/recipients'
 import type { Dict } from '@/types/Dict'
+import { CUBA_PROVINCES, MUNICIPIOS_CUBA, normalizeCubaProvince, normalizeCubaMunicipality } from '@/lib/cuLocations'
 
 type Mode = 'list' | 'create' | 'edit'
 type CountryTab = 'CU' | 'US'
@@ -72,10 +73,10 @@ type RecipientForm = {
 }
 
 const US_STATES = [
-  'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
-  'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
-  'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT',
-  'VA','WA','WV','WI','WY'
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA',
+  'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT',
+  'VA', 'WA', 'WV', 'WI', 'WY'
 ] as const
 
 export default function RecipientsBook({ dict }: Props) {
@@ -103,6 +104,10 @@ export default function RecipientsBook({ dict }: Props) {
     ci: '',
   })
 
+  const muniOptions = useMemo(
+    () => (form.province ? (MUNICIPIOS_CUBA[form.province] || []) : []),
+    [form.province]
+  )
   const load = async () => {
     setLoading(true)
     try {
@@ -145,6 +150,8 @@ export default function RecipientsBook({ dict }: Props) {
     setEditing(r)
     setTab(r.country)
     if (r.country === 'CU') {
+      const prov = normalizeCubaProvince(r.province) || r.province
+      const mun = normalizeCubaMunicipality(prov, r.municipality) || r.municipality
       setForm({
         country: 'CU',
         first_name: r.first_name,
@@ -155,12 +162,16 @@ export default function RecipientsBook({ dict }: Props) {
         notes: r.notes || '',
         is_default: !!r.is_default,
         instructions: r.instructions || '',
-        province: r.province,
-        municipality: r.municipality,
+        province: prov,
+        municipality: mun,
         address: r.address,
         ci: r.ci,
       })
-    } else {
+      setTab('CU')
+      setMode('edit')
+      return
+    }
+    else {
       setForm({
         country: 'US',
         first_name: r.first_name,
@@ -195,20 +206,20 @@ export default function RecipientsBook({ dict }: Props) {
     const ce = dict.checkout.errors
 
     if (!form.first_name) e.first_name = ce.nombre
-    if (!form.last_name)  e.last_name  = ce.apellidos
+    if (!form.last_name) e.last_name = ce.apellidos
 
     if (tab === 'CU') {
       if (!form.province) e.province = ce.provincia
       if (!form.municipality) e.municipio = ce.municipio
       if (!form.address) e.address = ce.address
       if (!/^\d{11}$/.test(String(form.ci ?? ''))) e.ci = ce.ci
-      if (!/^[0-9]{8,}$/.test(String(form.phone ?? '').replace(/\D/g,''))) e.phone = ce.telefono
+      if (!/^[0-9]{8,}$/.test(String(form.phone ?? '').replace(/\D/g, ''))) e.phone = ce.telefono
     } else {
       if (!form.address_line1) e.address_line1 = ce.address1eu
       if (!form.city) e.city = ce.cityeu
       if (!form.state) e.state = ce.stateeu
       if (!/^\d{5}(-\d{4})?$/.test(String(form.zip ?? ''))) e.zip = ce.zipeu
-      if (!/^\d{10}$/.test(String(form.phone ?? '').replace(/\D/g,''))) e.phone = ce.telefonoeu
+      if (!/^\d{10}$/.test(String(form.phone ?? '').replace(/\D/g, ''))) e.phone = ce.telefonoeu
     }
     return e
   }, [form, tab, dict.checkout.errors])
@@ -226,7 +237,7 @@ export default function RecipientsBook({ dict }: Props) {
           const payload: CreateRecipientCUInput = {
             country: 'CU',
             first_name: form.first_name,
-            last_name:  form.last_name,
+            last_name: form.last_name,
             email: form.email || undefined,
             phone: form.phone || undefined,
             label: form.label || undefined,
@@ -243,7 +254,7 @@ export default function RecipientsBook({ dict }: Props) {
           const payload: CreateRecipientUSInput = {
             country: 'US',
             first_name: form.first_name,
-            last_name:  form.last_name,
+            last_name: form.last_name,
             email: form.email || undefined,
             phone: form.phone || undefined,
             label: form.label || undefined,
@@ -358,7 +369,7 @@ export default function RecipientsBook({ dict }: Props) {
                   )}
                   <button
                     onClick={() => onEdit(r)}
-                    className="px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                    className="px-3 py-2 rounded  bg-green-600 text-white hover: bg-green-700"
                   >
                     {R.edit}
                   </button>
@@ -382,15 +393,15 @@ export default function RecipientsBook({ dict }: Props) {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => { setTab('CU'); setField('country','CU') }}
-              className={`px-3 py-1 rounded border ${tab==='CU' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-700 border-gray-300'}`}
+              onClick={() => { setTab('CU'); setField('country', 'CU') }}
+              className={`px-3 py-1 rounded border ${tab === 'CU' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-700 border-gray-300'}`}
             >
               {dict.location_banner.country_cu}
             </button>
             <button
               type="button"
-              onClick={() => { setTab('US'); setField('country','US') }}
-              className={`px-3 py-1 rounded border ${tab==='US' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-700 border-gray-300'}`}
+              onClick={() => { setTab('US'); setField('country', 'US') }}
+              className={`px-3 py-1 rounded border ${tab === 'US' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-700 border-gray-300'}`}
             >
               {dict.location_banner.country_us}
             </button>
@@ -416,7 +427,7 @@ export default function RecipientsBook({ dict }: Props) {
                 className="input"
                 value={form.phone ?? ''}
                 onChange={e => setField('phone', e.target.value)}
-                placeholder={tab==='US' ? '10' : '8'}
+                placeholder={tab === 'US' ? '10' : '8'}
                 inputMode="tel"
               />
               {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
@@ -445,23 +456,30 @@ export default function RecipientsBook({ dict }: Props) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">{dict.checkout.province}</label>
-                <input
+                <select
                   className="input"
                   value={form.province ?? ''}
-                  onChange={e => setField('province', e.target.value)}
-                  placeholder={dict.location_banner.province_placeholder}
-                />
+                  onChange={e => { setField('province', e.target.value); setField('municipality', '') }}
+                >
+                  <option value="">{dict.location_banner.province_placeholder}</option>
+                  {CUBA_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
                 {errors.province && <p className="text-red-500 text-xs mt-1">{errors.province}</p>}
+
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">{dict.checkout.municipality}</label>
-                <input
+                <select
                   className="input"
                   value={form.municipality ?? ''}
                   onChange={e => setField('municipality', e.target.value)}
-                  placeholder={dict.location_banner.municipality_placeholder}
-                />
+                  disabled={!form.province}
+                >
+                  <option value="">{dict.location_banner.municipality_placeholder}</option>
+                  {muniOptions.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
                 {'municipio' in errors && <p className="text-red-500 text-xs mt-1">{errors.municipio}</p>}
+
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700">{dict.checkout.addressExact}</label>
