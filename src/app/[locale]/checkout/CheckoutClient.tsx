@@ -9,8 +9,15 @@ import { toast } from "sonner"
 import { computeAreaType } from '@/lib/cubaAreaType'
 import CardPaymentModal from '@/components/CardPaymentModal'
 import { useLocation } from '@/context/LocationContext'
-import { listRecipients, type Recipient, type RecipientCU } from '@/lib/recipients'
 import { normalizeCubaProvince, normalizeCubaMunicipality } from '@/lib/cuLocations'
+import {
+  listRecipients,
+  createRecipient,
+  type Recipient,
+  type RecipientCU,
+  type CreateRecipientCUInput,
+  type CreateRecipientUSInput,
+} from '@/lib/recipients'
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 const CARD_FEE_PCT = Number(process.env.NEXT_PUBLIC_CARD_FEE_PCT ?? '3')
@@ -63,6 +70,16 @@ function buildQuoteErrorMsg({
   return loc
     ? `Algunos productos del carrito no pueden entregarse en ${loc}. Cambia la localidad o elimina esos productos para continuar.`
     : `Algunos productos del carrito no pueden entregarse en la localidad seleccionada. Cambia la localidad o elimina esos productos para continuar.`
+}
+
+const toLocalPhone = (country: 'US' | 'CU', value: string | null | undefined) => {
+  const d = String(value ?? '').replace(/\D/g, '')
+  if (country === 'US') {
+    // acepta 10 o 11 con leading 1 -> deja 10
+    return d.replace(/^1(?=\d{10}$)/, '').slice(0, 10)
+  }
+  // CU: si viene 53 + 8+ dígitos -> quita 53
+  return d.replace(/^53(?=\d{8,}$)/, '')
 }
 
 type UnavailableLine = {
@@ -118,7 +135,34 @@ function getErrorMessage(err: unknown, fallback = "Error en el proceso de checko
   return fallback
 }
 
+const isRecipientDuplicate = (e: unknown): boolean => {
+  if (typeof e !== 'object' || e === null) return false
+  const obj = e as Record<string, unknown>
+
+  const status =
+    typeof obj.status === 'number'
+      ? obj.status
+      : (typeof obj.response === 'object' && obj.response !== null
+          ? (obj.response as Record<string, unknown>).status as number | undefined
+          : undefined)
+
+  const errorStr =
+    (typeof obj.error === 'string' && obj.error) ||
+    (typeof obj.message === 'string' && obj.message) ||
+    (typeof obj.response === 'object' && obj.response !== null &&
+      (obj.response as Record<string, unknown>).data &&
+      typeof (obj.response as Record<string, unknown>).data === 'object' &&
+      typeof ((obj.response as Record<string, unknown>).data as Record<string, unknown>).error === 'string'
+        ? (((obj.response as Record<string, unknown>).data as Record<string, unknown>).error as string)
+        : undefined)
+
+  return status === 409 || (errorStr ?? '').includes('recipient_duplicate')
+}
+
 const LS_FORM_KEY = 'checkout_form_v2'
+
+const getToken = () =>
+  (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
 
 // ===== tipos locales de carrito usados en la UI =====
 type CartLine = {
@@ -151,6 +195,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
   const isCU = location?.country === 'CU'
   const isUS = location?.country === 'US'
+  const [saveAsRecipient, setSaveAsRecipient] = useState(false)
+  const [savingRecipient, setSavingRecipient] = useState(false)
 
   // ===== (NUEVO) Datos del comprador (perfil) =====
   const [buyer, setBuyer] = useState({
@@ -304,7 +350,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         nombre: r.first_name || '',
         apellidos: r.last_name || '',
         email: r.email || '',
-        telefono: r.phone || '',
+        telefono: toLocalPhone('CU', r.phone),
         instrucciones: r.instructions || '',
         // limpia US
         address1: '',
@@ -337,7 +383,91 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         ci: '',
       }))
     }
+    try { localStorage.removeItem(LS_FORM_KEY) } catch { /* noop */ }
   }
+
+  async function maybeSaveRecipient(): Promise<Recipient | null> {
+    // solo si el user lo pidió y NO hay uno seleccionado
+    if (!saveAsRecipient) return null
+
+    try {
+      setSavingRecipient(true)
+
+      if (isShipCU) {
+        const province = recipientLoc?.country === 'CU' ? recipientLoc.province : location?.province
+        const municipality = recipientLoc?.country === 'CU' ? recipientLoc.municipality : location?.municipality
+        if (!province || !municipality) {
+          toast.error('Selecciona provincia y municipio en el banner para guardar el destinatario.')
+          return null
+        }
+
+        const payload: CreateRecipientCUInput = {
+          country: 'CU',
+          first_name: formData.nombre,
+          last_name: formData.apellidos,
+          email: formData.email || undefined,
+          phone: formData.telefono || undefined,
+          label: undefined,
+          notes: undefined,
+          is_default: false,
+          instructions: formData.instrucciones || undefined,
+          province,
+          municipality,
+          address: formData.direccion,
+          ci: formData.ci,
+        }
+
+        const created = await createRecipient(payload)
+        toast.success(locale === 'en' ? 'Recipient saved' : 'Destinatario guardado')
+        const rows = await listRecipients()
+        setRecipients(rows)
+        setSelectedRecipientId(created.id)
+        applyRecipient(created)
+        return created
+      }
+
+      if (isShipUS) {
+        const payload: CreateRecipientUSInput = {
+          country: 'US',
+          first_name: formData.nombre,
+          last_name: formData.apellidos,
+          email: formData.email || undefined,
+          phone: formData.telefono || undefined,
+          label: undefined,
+          notes: undefined,
+          is_default: false,
+          instructions: formData.instrucciones || undefined,
+          address_line1: formData.address1,
+          address_line2: formData.address2 || undefined,
+          city: formData.city,
+          state: formData.state,
+          zip: formData.zip,
+        }
+
+        const created = await createRecipient(payload)
+        toast.success(locale === 'en' ? 'Recipient saved' : 'Destinatario guardado')
+        const rows = await listRecipients()
+        setRecipients(rows)
+        setSelectedRecipientId(created.id)
+        applyRecipient(created)
+        return created
+      }
+
+      toast.error(locale === 'en' ? 'Select a country in the banner' : 'Selecciona un país en el banner')
+      return null
+    } catch (e: unknown) {
+      if (isRecipientDuplicate(e)) {
+        const msg = locale === 'en' ? 'Recipient already added' : 'Destinatario ya estaba guardado'
+        toast.info(msg)
+        return null
+      }
+      toast.error(getErrorMessage(e, 'No se pudo guardar el destinatario.'))
+      return null
+    } finally {
+      setSavingRecipient(false)
+    }
+  }
+
 
   // ===== FORM DATA (persist) =====
   const [formData, setFormData] = useState({
@@ -360,22 +490,37 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
   // Carga inicial desde LS
   const loadedRef = useRef(false)
+  // Carga inicial desde LS (solo invitados sin recipient seleccionado)
   useEffect(() => {
     if (loadedRef.current) return
     loadedRef.current = true
     try {
+      const token = getToken()
+      if (token || selectedRecipientId !== '') {
+        localStorage.removeItem(LS_FORM_KEY)
+        return
+      }
       const raw = localStorage.getItem(LS_FORM_KEY)
       if (raw) {
         const parsed = JSON.parse(raw)
         setFormData(prev => ({ ...prev, ...parsed }))
       }
-    } catch { }
-  }, [])
+    } catch { /* noop */ }
+  }, [selectedRecipientId])
+
 
   // Guarda incremental en LS
   useEffect(() => {
-    try { localStorage.setItem(LS_FORM_KEY, JSON.stringify(formData)) } catch { }
-  }, [formData])
+    try {
+      const token = getToken()
+      const shouldPersist = !token && selectedRecipientId === ''
+      if (!shouldPersist) {
+        localStorage.removeItem(LS_FORM_KEY)
+        return
+      }
+      localStorage.setItem(LS_FORM_KEY, JSON.stringify(formData))
+    } catch { /* noop */ }
+  }, [formData, selectedRecipientId])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -394,92 +539,105 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {}
-    let firstErrorField: string | null = null
-
-    // Buyer email requerido
+  
+    // helpers
+    const onlyDigits = (s: string) => String(s || '').replace(/\D/g, '')
+    const isEmpty = (s?: string) => !String(s || '').trim()
+  
+    // Email comprador (requerido)
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!buyer.email || !EMAIL_RE.test(buyer.email)) {
-      newErrors.buyer_email = (dict.checkout.errors.email)
-        || (locale === 'en'
+      newErrors.buyer_email =
+        dict.checkout?.errors?.email ||
+        (locale === 'en'
           ? 'Billing email is required and must be valid'
           : 'El email de facturación es obligatorio y debe ser válido')
-      if (!firstErrorField) firstErrorField = 'billing_email'
     }
-
-    // Email del receptor opcional
+  
+    // Email receptor (opcional, si viene debe ser válido)
     if (formData.email && !EMAIL_RE.test(formData.email)) {
-      newErrors.email = dict.checkout.errors.email
-      if (!firstErrorField) firstErrorField = 'email'
+      newErrors.email = dict.checkout?.errors?.email || 'Email inválido'
     }
-
+  
     // Comunes
-    if (!formData.nombre) {
-      newErrors.nombre = dict.checkout.errors.nombre
-      if (!firstErrorField) firstErrorField = 'nombre'
+    if (isEmpty(formData.nombre)) {
+      newErrors.nombre = dict.checkout?.errors?.nombre || 'Nombre requerido'
     }
-    if (!formData.apellidos) {
-      newErrors.apellidos = dict.checkout.errors.apellidos
-      if (!firstErrorField) firstErrorField = 'apellidos'
+    if (isEmpty(formData.apellidos)) {
+      newErrors.apellidos = dict.checkout?.errors?.apellidos || 'Apellidos requeridos'
     }
-
-    // País efectivo
+  
+    // País efectivo (según recipient o banner)
+    const effectiveCountry: 'CU' | 'US' | null =
+      (recipientLoc?.country ?? (isCU ? 'CU' : isUS ? 'US' : null))
+    const isShipCU = effectiveCountry === 'CU'
+    const isShipUS = effectiveCountry === 'US'
+  
     if (isShipCU) {
-      // Si hay banner Cuba y recipient Cuba, avisa si difieren provincia/municipio (no bloquea)
-      if (location?.country === 'CU' && recipientLoc?.country === 'CU') {
-        const diffProv = recipientLoc.province?.trim() !== (location.province || '').trim()
-        const diffMun = recipientLoc.municipality?.trim() !== (location.municipality || '').trim()
-        if (diffProv || diffMun) {
-          newErrors._cuLoc = dict.location_banner.location_select_required
-          if (!firstErrorField) firstErrorField = 'location'
-        }
+      // Teléfono CU: EXACTAMENTE 8 dígitos
+      const cuPhone = onlyDigits(formData.telefono)
+      if (!/^\d{8}$/.test(cuPhone)) {
+        newErrors.telefono = dict.checkout?.errors?.telefono || 'El teléfono debe tener exactamente 8 dígitos'
       }
-
-      // Teléfono Cuba
-      if (!/^[0-9]{8,}$/.test(formData.telefono.replace(/\D/g, ''))) {
-        newErrors.telefono = dict.checkout.errors.telefono
-        if (!firstErrorField) firstErrorField = 'telefono'
+  
+      // CI: 11 dígitos
+      if (!/^\d{11}$/.test(String(formData.ci || '').trim())) {
+        newErrors.ci = dict.checkout?.errors?.ci || 'El CI debe tener 11 dígitos'
       }
-
-      // CI 11 dígitos
-      if (!/^\d{11}$/.test(formData.ci.trim())) {
-        newErrors.ci = dict.checkout.errors.ci || 'El CI debe tener 11 dígitos'
-        if (!firstErrorField) firstErrorField = 'ci'
-      }
-
-      // Dirección exacta
-      if (!formData.direccion?.trim()) {
-        newErrors.direccion = dict.checkout.errors.address
-        if (!firstErrorField) firstErrorField = 'direccion'
+  
+      // Dirección exacta (requerida)
+      if (isEmpty(formData.direccion)) {
+        newErrors.direccion = dict.checkout?.errors?.address || 'La dirección exacta es obligatoria'
       }
     } else if (isShipUS) {
-      const usPhone = formData.telefono.replace(/\D/g, '')
+      // Teléfono US: EXACTAMENTE 10 dígitos
+      const usPhone = onlyDigits(formData.telefono)
       if (!/^\d{10}$/.test(usPhone)) {
-        newErrors.telefono = dict.checkout.errors.telefonoeu
-        if (!firstErrorField) firstErrorField = 'telefono'
+        newErrors.telefono = dict.checkout?.errors?.telefonoeu || 'El teléfono debe tener 10 dígitos'
       }
-      if (!formData.address1) {
-        newErrors.address1 = dict.checkout.errors.address1eu
-        if (!firstErrorField) firstErrorField = 'address1'
+  
+      if (isEmpty(formData.address1)) {
+        newErrors.address1 = dict.checkout?.errors?.address1eu || 'Dirección (línea 1) requerida'
       }
-      if (!formData.city) {
-        newErrors.city = dict.checkout.errors.cityeu
-        if (!firstErrorField) firstErrorField = 'city'
+      if (isEmpty(formData.city)) {
+        newErrors.city = dict.checkout?.errors?.cityeu || 'Ciudad requerida'
       }
-      if (!formData.state) {
-        newErrors.state = dict.checkout.errors.stateeu
-        if (!firstErrorField) firstErrorField = 'state'
+      if (isEmpty(formData.state)) {
+        newErrors.state = dict.checkout?.errors?.stateeu || 'Estado requerido'
       }
-      if (!/^\d{5}(-\d{4})?$/.test(formData.zip)) {
-        newErrors.zip = dict.checkout.errors.zipeu
-        if (!firstErrorField) firstErrorField = 'zip'
+      if (!/^\d{5}(-\d{4})?$/.test(String(formData.zip || ''))) {
+        newErrors.zip = dict.checkout?.errors?.zipeu || 'ZIP inválido'
       }
     } else {
-      newErrors._noCountry = dict.location_banner.location_select_required1
-      if (!firstErrorField) firstErrorField = 'location'
+      // Sin país → error de selección (lleva el scroll al banner)
+      newErrors._noCountry = dict.location_banner?.location_select_required1 || 'Selecciona un país para continuar'
     }
-
+  
+    // === Elegir el primer campo a enfocar (orden por país) ===
+    const orderCU = ['nombre', 'apellidos', 'telefono', 'ci', 'direccion'] as const
+    const orderUS = ['nombre', 'apellidos', 'telefono', 'address1', 'city', 'state', 'zip'] as const
+  
+    let firstErrorField: string | null = null
+    if (Object.keys(newErrors).length > 0) {
+      if (isShipCU) {
+        firstErrorField = orderCU.find(k => newErrors[k] !== undefined) || null
+      } else if (isShipUS) {
+        firstErrorField = orderUS.find(k => newErrors[k] !== undefined) || null
+      }
+      if (!firstErrorField && newErrors._noCountry) {
+        // id del contenedor del banner que ya tienes en el JSX
+        firstErrorField = 'location'
+      }
+      // Fallback por si algo quedó fuera del orden
+      if (!firstErrorField) {
+        firstErrorField = Object.keys(newErrors)[0] || null
+      }
+    }
+  
     setErrors(newErrors)
     return { ok: Object.keys(newErrors).length === 0, firstErrorField }
   }
+  
 
   // ===== Precios (centavos) =====
   const priceWithMarginCentsFromMeta = (item: CartLine): number | undefined => {
@@ -538,145 +696,145 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         )
         : false
 
-        useEffect(() => {
-          const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-          if (!cartId || !token) return
-        
-          if (!readyToQuote) {
-            setShippingQuoteCents(0)
-            setShippingBreakdown([])
-            setQuoteOk(null)
-            setQuoteError(null)
-            setUnavailableOwners([])
-            return
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    if (!cartId || !token) return
+
+    if (!readyToQuote) {
+      setShippingQuoteCents(0)
+      setShippingBreakdown([])
+      setQuoteOk(null)
+      setQuoteError(null)
+      setUnavailableOwners([])
+      return
+    }
+
+    const controller = new AbortController()
+    const run = async () => {
+      setQuoting(true)
+      try {
+        let shipping: ShippingQuoteInput
+
+        if (recipientLoc?.country === 'CU') {
+          shipping = {
+            country: 'CU',
+            province: recipientLoc.province,
+            municipality: recipientLoc.municipality,
+            area_type: computeAreaType(recipientLoc.province, recipientLoc.municipality),
           }
-        
-          const controller = new AbortController()
-          const run = async () => {
-            setQuoting(true)
-            try {
-              let shipping: ShippingQuoteInput
-        
-              if (recipientLoc?.country === 'CU') {
-                shipping = {
-                  country: 'CU',
-                  province: recipientLoc.province,
-                  municipality: recipientLoc.municipality,
-                  area_type: computeAreaType(recipientLoc.province, recipientLoc.municipality),
-                }
-              } else if (recipientLoc?.country === 'US') {
-                shipping = {
-                  country: 'US',
-                  state: recipientLoc.state,
-                  city: recipientLoc.city,
-                  zip: recipientLoc.zip,
-                }
-              } else if (isCU) {
-                shipping = {
-                  country: 'CU',
-                  province: location!.province!,
-                  municipality: location!.municipality!,
-                  area_type: computeAreaType(location!.province!, location!.municipality!),
-                }
-              } else {
-                shipping = {
-                  country: 'US',
-                  state: formData.state,
-                  city: formData.city,
-                  zip: formData.zip,
-                }
-              }
-        
-              const r = await fetch(`${API_URL}/shipping/quote`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ cartId, shipping }),
-                signal: controller.signal,
-              })
-        
-              const raw = await r.text()
-              let data: unknown = null
-              try { data = raw ? JSON.parse(raw) : null } catch { data = null }
-        
-              const rec = (typeof data === 'object' && data !== null) ? (data as Record<string, unknown>) : null
-              const okFlag = rec && typeof rec.ok === 'boolean' ? (rec.ok as boolean) : undefined
-              const serverMsg = (rec && typeof rec.message === 'string') ? String(rec.message) : ''
-        
-              // helpers tipados para CU
-              const provinceArg = shipping.country === 'CU' ? shipping.province : undefined
-              const municipalityArg = shipping.country === 'CU' ? shipping.municipality : undefined
-        
-              if (okFlag === false) {
-                const u = Array.isArray(rec?.unavailable)
-                  ? (rec!.unavailable as Array<{ owner_id: number; owner_name: string }>)
-                  : []
-                setQuoteOk(false)
-                const errMsg =
-                  buildQuoteErrorMsg({
-                    province: provinceArg,
-                    municipality: municipalityArg,
-                    unavailable: u,
-                  }) + (serverMsg ? `\n${serverMsg}` : '')
-                setQuoteError(errMsg)
-                setUnavailableOwners(u)
-                setShippingQuoteCents(0)
-                setShippingBreakdown([])
-                return
-              }
-        
-              if (r.status >= 400 || !rec) {
-                const u = Array.isArray(rec?.unavailable)
-                  ? (rec!.unavailable as Array<{ owner_id: number; owner_name: string }>)
-                  : []
-                setQuoteOk(false)
-                const errMsg =
-                  buildQuoteErrorMsg({
-                    province: provinceArg,
-                    municipality: municipalityArg,
-                    unavailable: u,
-                  }) + (serverMsg ? `\n${serverMsg}` : '')
-                setQuoteError(errMsg)
-                setUnavailableOwners(u)
-                setShippingQuoteCents(0)
-                setShippingBreakdown([])
-                return
-              }
-        
-              setQuoteOk(true)
-              setQuoteError(null)
-              setUnavailableOwners([])
-              setShippingQuoteCents(Number((rec.shipping_total_cents as number) || 0))
-              setShippingBreakdown(
-                Array.isArray(rec.breakdown)
-                  ? (rec.breakdown as Array<{ owner_id: number | null; owner_name: string; mode: string; weight_lb: number; shipping_cents: number }>)
-                  : []
-              )
-            } catch {
-              // noop
-            } finally {
-              setQuoting(false)
-            }
+        } else if (recipientLoc?.country === 'US') {
+          shipping = {
+            country: 'US',
+            state: recipientLoc.state,
+            city: recipientLoc.city,
+            zip: recipientLoc.zip,
           }
-        
-          const t = setTimeout(run, 350)
-          return () => {
-            clearTimeout(t)
-            controller.abort()
+        } else if (isCU) {
+          shipping = {
+            country: 'CU',
+            province: location!.province!,
+            municipality: location!.municipality!,
+            area_type: computeAreaType(location!.province!, location!.municipality!),
           }
-          // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [
-          cartId,
-          isShipCU, isShipUS,
-          location?.province, location?.municipality, location?.country,
-          formData.state, formData.city, formData.zip,
-          readyToQuote,
-          recipientLoc,
-          selectedRecipientId
-        ])
-        
+        } else {
+          shipping = {
+            country: 'US',
+            state: formData.state,
+            city: formData.city,
+            zip: formData.zip,
+          }
+        }
+
+        const r = await fetch(`${API_URL}/shipping/quote`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ cartId, shipping }),
+          signal: controller.signal,
+        })
+
+        const raw = await r.text()
+        let data: unknown = null
+        try { data = raw ? JSON.parse(raw) : null } catch { data = null }
+
+        const rec = (typeof data === 'object' && data !== null) ? (data as Record<string, unknown>) : null
+        const okFlag = rec && typeof rec.ok === 'boolean' ? (rec.ok as boolean) : undefined
+        const serverMsg = (rec && typeof rec.message === 'string') ? String(rec.message) : ''
+
+        // helpers tipados para CU
+        const provinceArg = shipping.country === 'CU' ? shipping.province : undefined
+        const municipalityArg = shipping.country === 'CU' ? shipping.municipality : undefined
+
+        if (okFlag === false) {
+          const u = Array.isArray(rec?.unavailable)
+            ? (rec!.unavailable as Array<{ owner_id: number; owner_name: string }>)
+            : []
+          setQuoteOk(false)
+          const errMsg =
+            buildQuoteErrorMsg({
+              province: provinceArg,
+              municipality: municipalityArg,
+              unavailable: u,
+            }) + (serverMsg ? `\n${serverMsg}` : '')
+          setQuoteError(errMsg)
+          setUnavailableOwners(u)
+          setShippingQuoteCents(0)
+          setShippingBreakdown([])
+          return
+        }
+
+        if (r.status >= 400 || !rec) {
+          const u = Array.isArray(rec?.unavailable)
+            ? (rec!.unavailable as Array<{ owner_id: number; owner_name: string }>)
+            : []
+          setQuoteOk(false)
+          const errMsg =
+            buildQuoteErrorMsg({
+              province: provinceArg,
+              municipality: municipalityArg,
+              unavailable: u,
+            }) + (serverMsg ? `\n${serverMsg}` : '')
+          setQuoteError(errMsg)
+          setUnavailableOwners(u)
+          setShippingQuoteCents(0)
+          setShippingBreakdown([])
+          return
+        }
+
+        setQuoteOk(true)
+        setQuoteError(null)
+        setUnavailableOwners([])
+        setShippingQuoteCents(Number((rec.shipping_total_cents as number) || 0))
+        setShippingBreakdown(
+          Array.isArray(rec.breakdown)
+            ? (rec.breakdown as Array<{ owner_id: number | null; owner_name: string; mode: string; weight_lb: number; shipping_cents: number }>)
+            : []
+        )
+      } catch {
+        // noop
+      } finally {
+        setQuoting(false)
+      }
+    }
+
+    const t = setTimeout(run, 350)
+    return () => {
+      clearTimeout(t)
+      controller.abort()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    cartId,
+    isShipCU, isShipUS,
+    location?.province, location?.municipality, location?.country,
+    formData.state, formData.city, formData.zip,
+    readyToQuote,
+    recipientLoc,
+    selectedRecipientId
+  ])
+
 
   const grandTotalCents = subtotalCents + taxCents + shippingQuoteCents
   const cardFeeCents = Math.round(grandTotalCents * FEE_RATE)
@@ -749,6 +907,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       toast.error('No se pudo validar disponibilidad. Intenta de nuevo.')
       return
     }
+    await maybeSaveRecipient()
 
     // === shipping final (misma estructura de siempre, pero preferimos el destinatario si fue seleccionado)
     const shipping =
@@ -760,7 +919,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             country: 'CU' as const,
             first_name: formData.nombre,
             last_name: formData.apellidos,
-            phone: `+53${formData.telefono}`,
+            phone: `+53${formData.telefono.replace(/\D/g, '').replace(/^53(?=\d{8,}$)/, '')}`,
             email: formData.email || buyer.email,
             province,
             municipality,
@@ -774,7 +933,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
           country: 'US' as const,
           first_name: formData.nombre,
           last_name: formData.apellidos,
-          phone: `+1${formData.telefono.replace(/\D/g, '')}`,
+          phone: `+1${formData.telefono.replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '')}`,
           email: formData.email || buyer.email,
           address_line1: formData.address1,
           address_line2: formData.address2 || undefined,
@@ -1088,6 +1247,21 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                 : 'Seleccionar un destinatario prellena este formulario y la ubicación de envío.'}
             </p>
           </div>
+          <div className="flex items-center gap-2 mt-3">
+            <input
+              id="saveAsRecipient"
+              type="checkbox"
+              checked={saveAsRecipient}
+              onChange={(e) => setSaveAsRecipient(e.target.checked)}
+              disabled={savingRecipient}
+            />
+            <label htmlFor="saveAsRecipient" className="text-sm text-gray-700">
+              {locale === 'en'
+                ? 'Save this shipping info as a recipient'
+                : 'Guardar estos datos como destinatario'}
+            </label>
+          </div>
+
 
           {/* Aviso de país/ubicación mixtos (si aplica) */}
           {recipientLoc && location?.country && recipientLoc.country !== location.country && (
@@ -1208,6 +1382,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
               </div>
             </div>
           )}
+          
 
           {/* Estado de cotización */}
           <div className="pt-2 text-sm text-gray-600">
@@ -1386,7 +1561,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
       <button
         onClick={handleStartDirect}
-        disabled={startingDirect || payDisabled}                   
+        disabled={startingDirect || payDisabled}
         className="w-full bg-green-600 text-white py-3 rounded hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed flex justify-center items-center space-x-2"
       >
         <CreditCard size={18} />
