@@ -79,24 +79,6 @@ const US_STATES = [
   'VA', 'WA', 'WV', 'WI', 'WY'
 ] as const
 
-const formatRecipientOneLine = (r: Recipient, locale: string) => {
-  if (r.country === 'CU') {
-    const parts = [r.address, r.municipality, r.province, 'Cuba'].filter(Boolean)
-    return parts.join(', ')
-  }
-  const country = locale === 'en' ? 'United States' : 'Estados Unidos'
-  const parts = [
-    r.address_line1,
-    r.address_line2 && r.address_line2.trim() ? r.address_line2 : undefined,
-    r.city,
-    r.state,
-    r.zip,
-    country,
-  ].filter(Boolean)
-  return parts.join(', ')
-}
-
-
 export default function RecipientsBook({ dict }: Props) {
   const R = dict.recipients
 
