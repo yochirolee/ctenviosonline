@@ -457,9 +457,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       return null
     } catch (e: unknown) {
       if (isRecipientDuplicate(e)) {
-        const msg = locale === 'en' ? 'Recipient already added' : 'Destinatario ya estaba guardado'
-        toast.info(msg)
-        return null
+          return null
       }
       toast.error(getErrorMessage(e, 'No se pudo guardar el destinatario.'))
       return null
