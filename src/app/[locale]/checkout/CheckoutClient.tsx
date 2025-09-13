@@ -1070,6 +1070,18 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     }
   }
 
+  const goToRecipientSelect = () => {
+    const el = document.getElementById('recipient_select') as HTMLSelectElement | null
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.focus()
+      return
+    }
+    // Fallback si por alguna razón no está el select:
+    router.push(`/${locale}/account#recipients`)
+  }
+
+
   // ===== UI =====
   return (
     <div className="py-10 px-4 max-w-4xl mx-auto space-y-8">
@@ -1213,7 +1225,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
           <div className="rounded-lg border bg-white p-3 text-sm">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div className="font-medium">
-                {locale === 'en' ? 'Saved recipients' : 'Destinatarios guardados'}
+                {locale === 'en' ? 'Recipients' : 'Destinatarios'}
               </div>
               <div className="flex gap-2">
                 <select
@@ -1237,7 +1249,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                   {recipientsForCountry.map(r => (
                     <option key={r.id} value={r.id}>
                       {r.first_name} {r.last_name}
-                      {r.label ? ` · ${r.label}` : ''} {r.is_default ? (locale === 'en' ? '· default' : '· predeterminado') : ''} {' · '}{r.country}
+                      {r.label ? ` · ${r.label}` : ''} {' · '}{r.country}{r.is_default ? (locale === 'en' ? '· default' : '· predeterminado') : ''}
                     </option>
                   ))}
 
@@ -1247,7 +1259,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                   <button
                     type="button"
                     className="px-3 py-2 rounded text-white bg-green-600 hover:bg-green-700"
-                    onClick={() => router.push(`/${locale}/account`)}
+                    onClick={() => router.push(`/${locale}/account#recipients`)}
                   >
                     {locale === 'en' ? 'Add More' : 'Agregar Más'}
                   </button>
@@ -1257,34 +1269,19 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                   <button
                     type="button"
                     className="px-3 py-2 rounded text-white rounded bg-green-600 hover:bg-green-700 disabled:opacity-60"
-                    onClick={() => router.push(`/${locale}/account`)}
+                    onClick={() => router.push(`/${locale}/account#recipients`)}
                   >
-                    {locale === 'en' ? 'Create in Profile' : 'Crear en Perfil'}
+                    {locale === 'en' ? 'Add Recipient' : 'Crear Destinatario'}
                   </button>
                 )}
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-2">
               {locale === 'en'
-                ? 'Selecting a recipient will prefill this form and the shipping location.'
-                : 'Seleccionar un destinatario prellena este formulario y la ubicación de envío.'}
+                ? 'Selecting a recipient will auto-fill this form; you can edit details anytime.'
+                : 'Al elegir un destinatario se autocompleta este formulario; puedes editar los datos en cualquier momento.'}
             </p>
           </div>
-          <div className="flex items-center gap-2 mt-3">
-            <input
-              id="saveAsRecipient"
-              type="checkbox"
-              checked={saveAsRecipient}
-              onChange={(e) => setSaveAsRecipient(e.target.checked)}
-              disabled={savingRecipient}
-            />
-            <label htmlFor="saveAsRecipient" className="text-sm text-gray-700">
-              {locale === 'en'
-                ? 'Save this shipping info as a recipient'
-                : 'Guardar estos datos como destinatario'}
-            </label>
-          </div>
-
 
           {/* Aviso de país/ubicación mixtos (si aplica) */}
           {recipientLoc && location?.country && recipientLoc.country !== location.country && (
@@ -1406,6 +1403,19 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             </div>
           )}
 
+          <div className="flex items-center gap-2 mt-3">
+            <input
+              id="saveAsRecipient"
+              type="checkbox"
+              checked={saveAsRecipient}
+              onChange={(e) => setSaveAsRecipient(e.target.checked)}
+              disabled={savingRecipient}
+            />
+            <label htmlFor="saveAsRecipient" className="text-sm text-gray-700">
+              {locale === 'en' ? 'Save as new recipient' : 'Guardar como nuevo destinatario'}
+            </label>
+
+          </div>
 
           {/* Estado de cotización */}
           <div className="pt-2 text-sm text-gray-600">
@@ -1476,13 +1486,17 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                 <div className="text-gray-600">{deliveryAddress}</div>
               )}
 
-              <button
-                type="button"
-                className="mt-2 text-emerald-700 underline underline-offset-2 hover:text-emerald-800"
-                onClick={() => router.push(`/${locale}/account`)}
-              >
-                {locale === 'en' ? 'Change delivery address' : 'Cambiar dirección de entrega'}
-              </button>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  className="text-emerald-700 underline underline-offset-2 hover:text-emerald-800"
+                  onClick={goToRecipientSelect}
+                >
+                  {locale === 'en' ? 'Change delivery address' : 'Cambiar dirección de entrega'}
+                </button>
+
+              </div>
+
             </div>
           )}
 
@@ -1508,7 +1522,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
 
           <div className="rounded-lg border bg-white p-3 text-sm space-y-2">
-          <div className="font-medium">
+            <div className="font-medium">
               {locale === 'en' ? 'Your items' : 'Tus artículos'}
             </div>
             {cartItems.length > 0 ? (

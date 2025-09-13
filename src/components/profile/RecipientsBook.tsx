@@ -79,6 +79,24 @@ const US_STATES = [
   'VA', 'WA', 'WV', 'WI', 'WY'
 ] as const
 
+const formatRecipientOneLine = (r: Recipient, locale: string) => {
+  if (r.country === 'CU') {
+    const parts = [r.address, r.municipality, r.province, 'Cuba'].filter(Boolean)
+    return parts.join(', ')
+  }
+  const country = locale === 'en' ? 'United States' : 'Estados Unidos'
+  const parts = [
+    r.address_line1,
+    r.address_line2 && r.address_line2.trim() ? r.address_line2 : undefined,
+    r.city,
+    r.state,
+    r.zip,
+    country,
+  ].filter(Boolean)
+  return parts.join(', ')
+}
+
+
 export default function RecipientsBook({ dict }: Props) {
   const R = dict.recipients
 
@@ -371,7 +389,9 @@ export default function RecipientsBook({ dict }: Props) {
                   {r.notes && <div className="text-gray-500 italic">{r.notes}</div>}
                 </div>
 
-                <div className="flex gap-2 sm:ml-4">
+                {/* Acciones */}
+                <div className="flex w-full items-center gap-2 sm:ml-4 sm:flex-1">
+                  {/* Set default a la izquierda */}
                   {!r.is_default && (
                     <button
                       onClick={() => void handleSetDefault(r.id)}
@@ -380,19 +400,24 @@ export default function RecipientsBook({ dict }: Props) {
                       {R.set_default}
                     </button>
                   )}
-                  <button
-                    onClick={() => onEdit(r)}
-                    className="px-3 py-2 rounded  bg-green-600 text-white hover: bg-green-700"
-                  >
-                    {R.edit}
-                  </button>
-                  <button
-                    onClick={() => requestDelete(r)}
-                    className="px-3 py-2 rounded bg-red-600 text-white hover:bg-red-700"
-                  >
-                    {R.delete}
-                  </button>
+
+                  {/* Edit/Delete alineados a la derecha */}
+                  <div className="ml-auto flex gap-2">
+                    <button
+                      onClick={() => onEdit(r)}
+                      className="px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700"
+                    >
+                      {R.edit}
+                    </button>
+                    <button
+                      onClick={() => requestDelete(r)}
+                      className="px-3 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                    >
+                      {R.delete}
+                    </button>
+                  </div>
                 </div>
+
               </div>
             ))}
           </div>
@@ -591,12 +616,43 @@ export default function RecipientsBook({ dict }: Props) {
             </div>
 
             <div className="px-5 py-4 text-sm text-gray-700">
-              <p className="mb-2">{R.confirm_delete}</p>
-              {confirmDel.name ? (
-                <p className="text-gray-500">
-                  <span className="font-medium">{confirmDel.name}</span>
-                </p>
-              ) : null}
+              {(() => {
+                const rec = items.find(x => x.id === confirmDel.id)
+                if (!rec) return null
+
+                const oneLine =
+                  rec.country === 'CU'
+                    ? [rec.address, rec.municipality, rec.province, 'Cuba'].filter(Boolean).join(', ')
+                    : [
+                      rec.address_line1,
+                      rec.address_line2 && rec.address_line2.trim() ? rec.address_line2 : null,
+                      rec.city,
+                      rec.state,
+                      rec.zip,
+                      'US',
+                    ]
+                      .filter(Boolean)
+                      .join(', ')
+
+                return (
+                  <div className="mt-3 rounded-lg border bg-gray-50 p-3 text-sm text-gray-700">
+                    <div className="text-gray-900 font-medium">
+                      {rec.first_name} {rec.last_name}
+                      {rec.label ? <span className="text-gray-500"> · {rec.label}</span> : null}
+                      {rec.is_default ? (
+                        <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
+                          {R.default_badge}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-1 text-gray-600">{oneLine}</div>
+                    <div className="mt-1 text-gray-600">
+                      {rec.phone || '—'}{rec.email ? ` · ${rec.email}` : ''}
+                    </div>
+                  </div>
+                )
+              })()}
+
             </div>
 
             <div className="px-5 py-4 border-t flex items-center justify-end gap-2">
