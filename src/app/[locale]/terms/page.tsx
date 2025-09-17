@@ -8,14 +8,14 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   const { locale } = await params
   const meta = {
     es: {
-      title: "Términos, Entregas y Preguntas Frecuentes - Valelee",
+      title: "Términos, Entregas y Preguntas Frecuentes - CTEnvios Online",
       description:
-        "Lee los Términos y Condiciones de Uso, la Política de Entregas y las Preguntas Frecuentes de Valelee.",
+        "Lee los Términos y Condiciones de Uso, la Política de Entregas y las Preguntas Frecuentes de CTEnvios Online.",
     },
     en: {
-      title: "Terms, Delivery Policy & FAQs - Valelee",
+      title: "Terms, Delivery Policy & FAQs - CTEnvios Online",
       description:
-        "Read Valelee’s Terms of Use, Delivery Policy and Frequently Asked Questions.",
+        "Read CTEnvios’s Terms of Use, Delivery Policy and Frequently Asked Questions.",
     },
   }
   return meta[(locale as "es" | "en") ?? "es"]
@@ -41,17 +41,17 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               {/* -------- TÉRMINOS DE USO -------- */}
               <p className="text-sm text-gray-500">Última actualización: 1 de Junio de 2025</p>
               <p>
-                Al registrarse y utilizar la plataforma <strong>“Valelee”</strong>, usted acepta cumplir con los
+                Al registrarse y utilizar la plataforma <strong>“CTEnvios Online”</strong>, usted acepta cumplir con los
                 siguientes términos y condiciones. Por favor, léalos detenidamente.
               </p>
 
               <h2 className="text-xl font-semibold mt-4">1. Registro de Usuario</h2>
-              <p>1.1. Para utilizar los servicios de “Valelee”, el usuario debe completar un formulario de registro con información verídica, actualizada y completa.</p>
+              <p>1.1. Para utilizar los servicios de “CTEnvios Online”, el usuario debe completar un formulario de registro con información verídica, actualizada y completa.</p>
               <p>1.2. Cada cuenta es personal e intransferible. Usted es responsable de mantener la confidencialidad de su contraseña.</p>
-              <p>1.3. “Valelee” se reserva el derecho de suspender o cancelar cuentas que incumplan estos términos.</p>
+              <p>1.3. “CTEnvios Online” se reserva el derecho de suspender o cancelar cuentas que incumplan estos términos.</p>
 
               <h2 className="text-xl font-semibold mt-4">2. Uso de la Plataforma</h2>
-              <p>2.1. “Valelee” actúa como intermediario entre vendedores y compradores, ofreciendo un marketplace especializado en electrodomésticos, alimentos y productos afines.</p>
+              <p>2.1. “CTEnvios Online” actúa como intermediario entre vendedores y compradores, ofreciendo un marketplace especializado en electrodomésticos, alimentos y productos afines.</p>
               <p>2.2. Está prohibido el uso de la plataforma para actividades ilícitas, fraudulentas o que atenten contra las leyes aplicables o estos términos.</p>
 
               <h2 className="text-xl font-semibold mt-4">3. Compras y Pagos</h2>
@@ -60,9 +60,9 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>3.3. El cliente acepta que ciertas compras pueden estar sujetas a cargos adicionales por manejo, envío o aduanas.</p>
 
               <h2 className="text-xl font-semibold mt-4">4. Envíos y Entregas</h2>
-              <p>4.1. “Valelee” trabaja con terceros para el manejo y transporte de los productos.</p>
+              <p>4.1. “CTEnvios Online” trabaja con terceros para el manejo y transporte de los productos.</p>
               <p>4.2. Los tiempos de entrega pueden variar según el destino, proveedor y condiciones externas.</p>
-              <p>4.3. “Valelee” no se hace responsable por demoras causadas por eventos fuera de su control (clima, aduanas, huelgas, etc.).</p>
+              <p>4.3. “CTEnvios Online” no se hace responsable por demoras causadas por eventos fuera de su control (clima, aduanas, huelgas, etc.).</p>
 
               <h2 className="text-xl font-semibold mt-4">5. Cambios, Devoluciones y Garantías</h2>
               <p>5.1. Las devoluciones solo se aceptan si el producto llega defectuoso o no corresponde con la compra.</p>
@@ -70,15 +70,15 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>5.3. Algunos productos incluyen garantía del fabricante, y el cliente deberá seguir el proceso establecido por dicho fabricante.</p>
 
               <h2 className="text-xl font-semibold mt-4">6. Política de Privacidad</h2>
-              <p>6.1. Al registrarse, el usuario acepta el tratamiento de sus datos conforme a la Política de Privacidad de “Valelee”.</p>
+              <p>6.1. Al registrarse, el usuario acepta el tratamiento de sus datos conforme a la Política de Privacidad de “CTEnvios Online”.</p>
               <p>6.2. Los datos personales no se compartirán con terceros sin consentimiento, salvo por obligación legal o para garantizar el cumplimiento del servicio.</p>
 
               <h2 className="text-xl font-semibold mt-4">7. Propiedad Intelectual</h2>
-              <p>7.1. Todo el contenido de la plataforma (logos, diseños, textos, imágenes, software) es propiedad de “Valelee” o de sus licenciantes.</p>
+              <p>7.1. Todo el contenido de la plataforma (logos, diseños, textos, imágenes, software) es propiedad de “CTEnvios Online” o de sus licenciantes.</p>
               <p>7.2. Se prohíbe su uso sin autorización expresa.</p>
 
               <h2 className="text-xl font-semibold mt-4">8. Modificaciones</h2>
-              <p>8.1. “Valelee” podrá actualizar estos términos en cualquier momento.</p>
+              <p>8.1. “CTEnvios Online” podrá actualizar estos términos en cualquier momento.</p>
               <p>8.2. Los cambios serán notificados en la plataforma y, continuando su uso, usted acepta los nuevos términos.</p>
 
               <h2 className="text-xl font-semibold mt-4">9. Legislación Aplicable</h2>
@@ -93,10 +93,10 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               </p>
 
               {/* -------- POLÍTICA DE ENTREGAS -------- */}
-              <h2 className="text-2xl font-bold mt-10">Política de Entregas – “Valelee”</h2>
+              <h2 className="text-2xl font-bold mt-10">Política de Entregas – “CTEnvios Online”</h2>
               <p className="text-sm text-gray-500">Última actualización: 1 de Junio de 2025</p>
               <p>
-                En “Valelee” trabajamos para garantizar que cada pedido llegue de forma segura, rápida y eficiente a su
+                En “CTEnvios Online” trabajamos para garantizar que cada pedido llegue de forma segura, rápida y eficiente a su
                 destino. A continuación, detallamos nuestra política de entregas para que nuestros clientes conozcan el proceso
                 y sus derechos.
               </p>
@@ -128,7 +128,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>6.2. En caso de devolución, se informará al cliente y este asumirá el costo de reenvío si aplica.</p>
 
               <h3 className="text-xl font-semibold mt-4">7. Responsabilidad del Transporte</h3>
-              <p>7.1. “Valelee” trabaja con operadores logísticos externos.</p>
+              <p>7.1. “CTEnvios Online” trabaja con operadores logísticos externos.</p>
               <p>7.2. Aunque garantizamos el seguimiento y apoyo en todo momento, no somos responsables por retrasos causados por aduanas, desastres naturales u otras circunstancias fuera de nuestro control.</p>
 
               <h3 className="text-xl font-semibold mt-4">8. Contacto y Soporte</h3>
@@ -136,9 +136,9 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>📱 WhatsApp: <a className="text-green-700 underline" href="https://wa.me/17884509223" target="_blank" rel="noopener noreferrer">+1 (786) 450-9223</a></p>
 
               {/* -------- PREGUNTAS FRECUENTES -------- */}
-              <h2 className="text-2xl font-bold mt-10">Preguntas Frecuentes – Valelee</h2>
+              <h2 className="text-2xl font-bold mt-10">Preguntas Frecuentes – CTEnvios Online</h2>
 
-              <h3 className="text-lg font-semibold mt-4">1. ¿Qué es Valelee?</h3>
+              <h3 className="text-lg font-semibold mt-4">1. ¿Qué es CTEnvios Online?</h3>
               <p>Es un marketplace digital especializado en la venta de electrodomésticos y productos esenciales, con envíos disponibles hacia varios países.</p>
 
               <h3 className="text-lg font-semibold mt-4">2. ¿Desde qué países puedo comprar?</h3>
@@ -184,17 +184,17 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               {/* -------- TERMS OF USE (EN) -------- */}
               <p className="text-sm text-gray-500">Last updated: June 1, 2025</p>
               <p>
-                By registering and using the <strong>“Valelee”</strong> platform, you agree to comply with the following
+                By registering and using the <strong>“CTEnvios Online”</strong> platform, you agree to comply with the following
                 terms and conditions. Please read them carefully.
               </p>
 
               <h2 className="text-xl font-semibold mt-4">1. User Registration</h2>
-              <p>1.1. To use “Valelee” services, users must complete the registration form with truthful, updated and complete information.</p>
+              <p>1.1. To use “CTEnvios Online” services, users must complete the registration form with truthful, updated and complete information.</p>
               <p>1.2. Each account is personal and non-transferable. You are responsible for keeping your password confidential.</p>
-              <p>1.3. “Valelee” reserves the right to suspend or cancel accounts that violate these terms.</p>
+              <p>1.3. “CTEnvios Online” reserves the right to suspend or cancel accounts that violate these terms.</p>
 
               <h2 className="text-xl font-semibold mt-4">2. Use of the Platform</h2>
-              <p>2.1. “Valelee” acts as an intermediary between sellers and buyers, providing a marketplace specialized in appliances and related products.</p>
+              <p>2.1. “CTEnvios Online” acts as an intermediary between sellers and buyers, providing a marketplace specialized in appliances and related products.</p>
               <p>2.2. It is prohibited to use the platform for illegal or fraudulent activities, or in violation of applicable laws or these terms.</p>
 
               <h2 className="text-xl font-semibold mt-4">3. Purchases and Payments</h2>
@@ -203,9 +203,9 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>3.3. The customer accepts that certain purchases may be subject to additional handling, shipping or customs charges.</p>
 
               <h2 className="text-xl font-semibold mt-4">4. Shipping and Delivery</h2>
-              <p>4.1. “Valelee” works with third parties for product handling and transportation.</p>
+              <p>4.1. “CTEnvios Online” works with third parties for product handling and transportation.</p>
               <p>4.2. Delivery times may vary depending on destination, supplier and external conditions.</p>
-              <p>4.3. “Valelee” is not responsible for delays caused by events beyond its control (weather, customs, strikes, etc.).</p>
+              <p>4.3. “CTEnvios Online” is not responsible for delays caused by events beyond its control (weather, customs, strikes, etc.).</p>
 
               <h2 className="text-xl font-semibold mt-4">5. Changes, Returns and Warranties</h2>
               <p>5.1. Returns are only accepted if the product arrives defective or does not match the purchase.</p>
@@ -213,15 +213,15 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>5.3. Some products include a manufacturer’s warranty; the customer must follow the manufacturer’s established process.</p>
 
               <h2 className="text-xl font-semibold mt-4">6. Privacy Policy</h2>
-              <p>6.1. By registering, the user accepts the processing of their data in accordance with the “Valelee” Privacy Policy.</p>
+              <p>6.1. By registering, the user accepts the processing of their data in accordance with the “CTEnvios Online” Privacy Policy.</p>
               <p>6.2. Personal data will not be shared with third parties without consent, except when required by law or to ensure service delivery.</p>
 
               <h2 className="text-xl font-semibold mt-4">7. Intellectual Property</h2>
-              <p>7.1. All platform content (logos, designs, texts, images, software) is the property of “Valelee” or its licensors.</p>
+              <p>7.1. All platform content (logos, designs, texts, images, software) is the property of “CTEnvios Online” or its licensors.</p>
               <p>7.2. Use without express authorization is prohibited.</p>
 
               <h2 className="text-xl font-semibold mt-4">8. Changes</h2>
-              <p>8.1. “Valelee” may update these terms at any time.</p>
+              <p>8.1. “CTEnvios Online” may update these terms at any time.</p>
               <p>8.2. Changes will be posted on the platform and, by continuing to use the service, you accept the new terms.</p>
 
               <h2 className="text-xl font-semibold mt-4">9. Governing Law</h2>
@@ -236,10 +236,10 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               </p>
 
               {/* -------- DELIVERY POLICY (EN) -------- */}
-              <h2 className="text-2xl font-bold mt-10">Delivery Policy – “Valelee”</h2>
+              <h2 className="text-2xl font-bold mt-10">Delivery Policy – “CTEnvios Online”</h2>
               <p className="text-sm text-gray-500">Last updated: June 1, 2025</p>
               <p>
-                At “Valelee” we work to ensure every order arrives safely, quickly and efficiently. Below is our delivery policy
+                At “CTEnvios Online” we work to ensure every order arrives safely, quickly and efficiently. Below is our delivery policy
                 so customers understand the process and their rights.
               </p>
 
@@ -270,7 +270,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>6.2. In case of return, the customer will be informed and will assume the reshipment cost if applicable.</p>
 
               <h3 className="text-xl font-semibold mt-4">7. Transport Liability</h3>
-              <p>7.1. “Valelee” works with external logistics operators.</p>
+              <p>7.1. “CTEnvios Online” works with external logistics operators.</p>
               <p>7.2. While we provide tracking and support, we are not responsible for delays caused by customs, natural disasters or other circumstances beyond our control.</p>
 
               <h3 className="text-xl font-semibold mt-4">8. Contact & Support</h3>
@@ -278,9 +278,9 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>📱 WhatsApp: <a className="text-green-700 underline" href="https://wa.me/17864509223" target="_blank" rel="noopener noreferrer">+1 (786) 450-9223</a></p>
 
               {/* -------- FAQ (EN) -------- */}
-              <h2 className="text-2xl font-bold mt-10">Frequently Asked Questions – Valelee</h2>
+              <h2 className="text-2xl font-bold mt-10">Frequently Asked Questions – CTEnvios Online</h2>
 
-              <h3 className="text-lg font-semibold mt-4">1. What is Valelee?</h3>
+              <h3 className="text-lg font-semibold mt-4">1. What is CTEnvios Online?</h3>
               <p>It’s a digital marketplace specialized in appliances and essential products, with shipping available to multiple countries.</p>
 
               <h3 className="text-lg font-semibold mt-4">2. From which countries can I buy?</h3>

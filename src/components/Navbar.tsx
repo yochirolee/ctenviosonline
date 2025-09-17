@@ -9,11 +9,12 @@ import { useCustomer } from '@/context/CustomerContext'
 import type { Dict } from '@/types/Dict'
 import ConfirmLogoutButton from '@/components/ConfirmLogoutButton'
 import { useEffect, useRef, useState, useReducer } from 'react'
-//import EncargosIcon from '@/components/EncargosIcon'
 import { LogIn, LogOut, Menu, X } from 'lucide-react'
 
-
 type Props = { dict: Dict }
+
+const LOGO_SRC = '/ctelogo.png'
+const LOGO_ALT = 'CTEnvios Online Logo'
 
 export default function Navbar({ dict }: Props) {
   const pathname = usePathname()
@@ -34,15 +35,12 @@ export default function Navbar({ dict }: Props) {
 
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  // fuerza re-render cuando lleguen señales globales
   const [, forceRerender] = useReducer((x: number) => x + 1, 0)
   useEffect(() => {
     const bump = () => forceRerender()
     window.addEventListener('navbar:refresh', bump)
     window.addEventListener('cart:updated', bump)
     window.addEventListener('encargos:completed', bump)
-    // si tienes otros eventos internos, agrégalos aquí
-
     return () => {
       window.removeEventListener('navbar:refresh', bump)
       window.removeEventListener('cart:updated', bump)
@@ -50,7 +48,6 @@ export default function Navbar({ dict }: Props) {
     }
   }, [])
 
-  // Para enfoque inicial en el primer link del drawer
   const firstLinkRef = useRef<HTMLAnchorElement>(null)
 
   const goToSection = (hash: string) => {
@@ -64,7 +61,6 @@ export default function Navbar({ dict }: Props) {
     }
   }
 
-  // 1) Bloquear scroll del body cuando el drawer está abierto
   useEffect(() => {
     if (!mobileOpen) return
     const prev = document.body.style.overflow
@@ -72,12 +68,10 @@ export default function Navbar({ dict }: Props) {
     return () => { document.body.style.overflow = prev }
   }, [mobileOpen])
 
-  // 2) Cerrar drawer si cambia la ruta
   useEffect(() => {
     setMobileOpen(false)
   }, [pathname])
 
-  // 3) Cerrar con tecla Esc
   useEffect(() => {
     if (!mobileOpen) return
     const onKey = (e: KeyboardEvent) => {
@@ -87,33 +81,27 @@ export default function Navbar({ dict }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [mobileOpen])
 
-  // 4) Enfocar primer link al abrir
   useEffect(() => {
     if (mobileOpen) firstLinkRef.current?.focus()
   }, [mobileOpen])
-
-  /*const openEncargosDrawer = () => {
-    setMobileOpen(false)
-    try { window.dispatchEvent(new CustomEvent('encargos:open')) } catch { }
-  }*/
 
   return (
     <header
       id="navbar"
       className="sticky top-0 z-50 flex items-center h-14 md:h-16 pl-3 pr-6 md:pl-6 md:pr-16 lg:pl-8 lg:pr-24 bg-white shadow"
     >
-      {/* Izquierda: logo */}
-      <Link href={`/${locale}`} aria-label="Ir al inicio" className="flex items-center gap-3 -ml-3">
-        <div className="relative h-8 md:h-8 lg:h-8 w-36 md:w-36 lg:w-36 shrink-0">
+      {/* Izquierda: logo (cuadrado) */}
+      <Link href={`/${locale}`} aria-label="Ir al inicio" className="flex items-center gap-3">
+        <div className="relative h-9 w-9 md:h-10 md:w-10 lg:h-11 lg:w-11 shrink-0">
           <Image
-            src="/logo.png"
-            alt="Valelee Logo"
+            src={LOGO_SRC}
+            alt={LOGO_ALT}
             fill
+            sizes="(max-width: 768px) 36px, (max-width: 1024px) 40px, 44px"
             className="object-contain cursor-pointer brightness-110 contrast-110"
             priority
           />
         </div>
-
       </Link>
 
       {/* Links desktop (centrales) */}
@@ -137,7 +125,7 @@ export default function Navbar({ dict }: Props) {
             >
               {ordersFull}
             </Link>
-            {(role === 'admin') && (
+            {role === 'admin' && (
               <Link
                 href={`/${locale}/admin`}
                 className={`${navLinkBase} ${isAdmin ? navLinkActive : ''}`}
@@ -152,13 +140,12 @@ export default function Navbar({ dict }: Props) {
                 className={`${navLinkBase} ${isPartner ? navLinkActive : ''}`}
                 aria-current={isPartner ? 'page' : undefined}
               >
-              {locale === 'en' ? 'Deliveries' : 'Entregas'}
+                {locale === 'en' ? 'Deliveries' : 'Entregas'}
               </Link>
             )}
           </>
         )}
 
-        {/* Secciones ancla */}
         <Link href={`/${locale}#hero`} className={navLinkBase}>
           {locale === 'en' ? 'See Products' : 'Ver Productos'}
         </Link>
@@ -179,7 +166,6 @@ export default function Navbar({ dict }: Props) {
       {/* Derecha: idioma + carrito + (login/logout) + menú móvil */}
       <div className="ml-auto lg:ml-0 flex items-center gap-2 sm:gap-3">
         <LanguageSwitcher />
-        {/* <EncargosIcon /> */}
         <CartIcon />
 
         {/* Login/Logout (desktop) */}
@@ -231,11 +217,12 @@ export default function Navbar({ dict }: Props) {
             className="absolute right-0 top-0 w-72 h-full bg-white shadow-lg flex flex-col"
           >
             <div className="flex items-center justify-between p-4 border-b">
-              <div className="relative h-8 w-28 md:w-32 shrink-0 -ml-1">
+              <div className="relative h-9 w-9 shrink-0">
                 <Image
-                  src="/logo.png"
-                  alt="Valelee Logo"
+                  src={LOGO_SRC}
+                  alt={LOGO_ALT}
                   fill
+                  sizes="36px"
                   className="object-contain brightness-110 contrast-110 drop-shadow"
                   priority
                 />
@@ -287,16 +274,6 @@ export default function Navbar({ dict }: Props) {
               [&_a:focus-visible]:outline-none [&_a:focus-visible]:ring-2 [&_a:focus-visible]:ring-green-500/30
               [&_button:focus-visible]:outline-none [&_button:focus-visible]:ring-2 [&_button:focus-visible]:ring-green-500/30"
             >
-              {/* <li>
-                <button
-                  onClick={openEncargosDrawer}
-                  className="!flex items-center gap-2 w-full text-left rounded px-3 py-2 hover:bg-gray-100"
-                >
-                  <ClipboardList className="h-4 w-4" />
-                  {locale === 'en' ? 'Special Orders' : 'Encargos'}
-                </button>
-              </li> */}
-
               {customer && (
                 <li>
                   <Link
@@ -324,7 +301,7 @@ export default function Navbar({ dict }: Props) {
                 </li>
               )}
 
-              {customer && (role === 'admin') && (
+              {customer && role === 'admin' && (
                 <li>
                   <Link
                     href={`/${locale}/admin`}
@@ -345,63 +322,44 @@ export default function Navbar({ dict }: Props) {
                     className={`block rounded ${isPartner ? 'bg-green-50 text-green-700 font-semibold' : ''}`}
                     aria-current={isPartner ? 'page' : undefined}
                   >
-                   {locale === 'en' ? 'Admin Deliveries' : 'Administrar Entregas'}
+                    {locale === 'en' ? 'Admin Deliveries' : 'Administrar Entregas'}
                   </Link>
                 </li>
               )}
 
-              {/* Secciones */}
               <li>
-                <button
-                  onClick={() => goToSection('#hero')}
-                  className="block w-full text-left rounded"
-                >
+                <button onClick={() => goToSection('#hero')} className="block w-full text-left rounded">
                   {locale === 'en' ? 'Products' : 'Productos'}
                 </button>
               </li>
               <li>
-                <button
-                  onClick={() => goToSection('#about')}
-                  className="block w-full text-left rounded"
-                >
+                <button onClick={() => goToSection('#about')} className="block w-full text-left rounded">
                   {locale === 'en' ? 'About us' : 'Acerca de nosotros'}
                 </button>
               </li>
               <li>
-                <button
-                  onClick={() => goToSection('#faq')}
-                  className="block w-full text-left rounded"
-                >
+                <button onClick={() => goToSection('#faq')} className="block w-full text-left rounded">
                   FAQ
                 </button>
               </li>
               <li>
-                <button
-                  onClick={() => goToSection('#contact')}
-                  className="block w-full text-left rounded"
-                >
+                <button onClick={() => goToSection('#contact')} className="block w-full text-left rounded">
                   {locale === 'en' ? 'Contact' : 'Contacto'}
                 </button>
               </li>
 
-              {/* Terms */}
               <li className="mt-3 border-t pt-3">
-                <Link
-                  href={`/${locale}/terms`}
-                  onClick={() => setMobileOpen(false)}
-                  className="block rounded"
-                >
+                <Link href={`/${locale}/terms`} onClick={() => setMobileOpen(false)} className="block rounded">
                   {locale === 'es' ? 'Términos y Condiciones' : 'Terms and Conditions'}
                 </Link>
               </li>
 
-              {/* Login/Logout (móvil) */}
               <li className="mt-2 border-t pt-2">
                 {!loading && customer ? (
                   <button
                     onClick={() => {
                       setMobileOpen(false)
-                      logout().catch(() => { })
+                      logout().catch(() => {})
                     }}
                     className="block w-full text-left rounded"
                   >

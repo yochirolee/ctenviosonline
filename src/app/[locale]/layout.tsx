@@ -30,70 +30,70 @@ export async function generateMetadata({
 
   const metadataByLocale: Record<"es" | "en", Metadata> = {
     es: {
-      title: "Valelee - Tienda en Miami con envíos a Cuba y Estados Unidos",
+      title: "CTEnvios Online - Tienda en Miami con envíos a Cuba y Estados Unidos",
       description:
-        "Valelee, tu tienda en Miami para enviar productos a Cuba y comprar desde cualquier lugar de Estados Unidos. Variedad, buenos precios y envíos rápidos.",
+        "CTEnvios Online, tu tienda en Miami para enviar productos a Cuba y comprar desde cualquier lugar de Estados Unidos. Variedad, buenos precios y envíos rápidos.",
       keywords: [
         "tienda online Miami",
         "envíos a Cuba",
         "compras en Miami",
         "envíos dentro de Estados Unidos",
         "productos para Cuba",
-        "Valelee",
+        "CTEnvios",
         "comprar online desde Miami",
         "envíos rápidos a Cuba",
         "tienda con envíos internacionales",
       ],
       alternates: { languages: { en: "/en" } },
       openGraph: {
-        title: "Valelee Online - Tienda en Miami con envíos a Cuba y Estados Unidos",
+        title: "CTEnvios Online - Tienda en Miami con envíos a Cuba y Estados Unidos",
         description:
-          "Compra en Valelee y recibe en Cuba o en cualquier parte de Estados Unidos. Precios competitivos y servicio confiable.",
+          "Compra en CTEnvios Online y recibe en Cuba o en cualquier parte de Estados Unidos. Precios competitivos y servicio confiable.",
         url: "https://valelee.com/",
-        siteName: "Valelee",
+        siteName: "CTEnvios",
         images: [{ url: "https://valelee.com/og-image.jpg", width: 1200, height: 630 }],
         locale: "es_ES",
         type: "website",
       },
       twitter: {
         card: "summary_large_image",
-        title: "Valelee - Tienda en Miami con envíos a Cuba y Estados Unidos",
+        title: "CTEnvios Online - Tienda en Miami con envíos a Cuba y Estados Unidos",
         description:
-          "Compra en Valelee y recibe en Cuba o en cualquier parte de Estados Unidos. Servicio confiable y rápido.",
+          "Compra en CTEnvios Online y recibe en Cuba o en cualquier parte de Estados Unidos. Servicio confiable y rápido.",
         images: ["https://valelee.com/og-image.jpg"],
       },
     },
     en: {
-      title: "Valelee - Miami Store Shipping to Cuba and the USA",
+      title: "CTEnvios Online - Miami Store Shipping to Cuba and the USA",
       description:
-        "Valelee, your Miami store to send products to Cuba and shop from anywhere in the USA. Wide selection, great prices, and fast shipping.",
+        "CTEnvios Online, your Miami store to send products to Cuba and shop from anywhere in the USA. Wide selection, great prices, and fast shipping.",
       keywords: [
         "online store Miami",
         "shipping to Cuba",
         "Miami shopping",
         "shipping within USA",
         "products for Cuba",
-        "Valelee",
+        "CTEnvios",
         "buy online from Miami",
         "fast shipping to Cuba",
         "international shipping store",
       ],
       alternates: { languages: { es: "/" } },
       openGraph: {
-        title: "Valelee - Miami Store Shipping to Cuba and the USA",
+        title: "CTEnvios Online - Miami Store Shipping to Cuba and the USA",
         description:
-          "Shop at Valelee and receive in Cuba or anywhere in the USA. Competitive prices and reliable service.",
+          "Shop at CTEnvios Online and receive in Cuba or anywhere in the USA. Competitive prices and reliable service.",
         url: "https://valelee.com/",
-        siteName: "Valelee",
+        siteName: "CTEnvios",
         images: [{ url: "https://valelee.com/og-image.jpg", width: 1200, height: 630 }],
         locale: "en_US",
         type: "website",
       },
       twitter: {
         card: "summary_large_image",
-        title: "Valelee - Miami Store Shipping to Cuba and the USA",
+        title: "CTEnvios Online - Miami Store Shipping to Cuba and the USA",
         description:
-          "Shop at Valelee Online and receive in Cuba or anywhere in the USA. Reliable and fast service.",
+          "Shop at CTEnvios Online Online and receive in Cuba or anywhere in the USA. Reliable and fast service.",
         images: ["https://valelee.com/og-image.jpg"],
       },
     },

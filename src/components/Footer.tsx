@@ -6,9 +6,9 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 const siteDetails = {
-  siteName: "Tu Tienda Online",
-  siteName2: "Valelee",
-  logoSrc: "/logo.png",
+  siteName: "CTEnvios Online",
+  siteName2: "CTEnvios",
+  logoSrc: "/ctelogo.png",
 };
 
 const footerDetails = {
@@ -17,8 +17,8 @@ const footerDetails = {
   email: "yleecruz@gmail.com",
   telephone: "+1 (786) 450-9223",
   socials: {
-    //Facebook: "https://www.facebook.com/ctenvio/",
-    //Instagram: "https://www.instagram.com/ctenvios/",
+    Facebook: "https://www.facebook.com/ctenvio/",
+    Instagram: "https://www.instagram.com/ctenvios/",
     WhatsApp: "https://wa.me/17864509223",
   },
 };
@@ -33,13 +33,13 @@ const getPlatformIconByName = (name: string) => {
     ),
     Instagram: (
       <svg className={base} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-      <path d="M7 2C4.243 2 2 4.243 2 7v10c0 2.757 2.243 5 5 5h10c2.757 0 5-2.243 
-        5-5V7c0-2.757-2.243-5-5-5H7zm10 2c1.654 0 3 1.346 3 3v10c0 
-        1.654-1.346 3-3 3H7c-1.654 0-3-1.346-3-3V7c0-1.654 
-        1.346-3 3-3h10zm-5 3a5 5 0 100 10 5 5 0 000-10zm0 
-        2a3 3 0 110 6 3 3 0 010-6zm4.5-.9a1.1 1.1 0 11-2.2 
-        0 1.1 1.1 0 012.2 0z" />
-    </svg>
+        <path d="M7 2C4.243 2 2 4.243 2 7v10c0 2.757 2.243 5 5 5h10c2.757 0 5-2.243 
+          5-5V7c0-2.757-2.243-5-5-5H7zm10 2c1.654 0 3 1.346 3 3v10c0 
+          1.654-1.346 3-3 3H7c-1.654 0-3-1.346-3-3V7c0-1.654 
+          1.346-3 3-3h10zm-5 3a5 5 0 100 10 5 5 0 000-10zm0 
+          2a3 3 0 110 6 3 3 0 010-6zm4.5-.9a1.1 1.1 0 11-2.2 
+          0 1.1 1.1 0 012.2 0z" />
+      </svg>
     ),
     WhatsApp: (
       <svg className={base} viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
@@ -60,6 +60,7 @@ type FooterDict = {
   phoneLabel: string;
   contactTitle: string;
   copyright: string;
+  madeby:string
 };
 type Dict = { footer: FooterDict; nav: NavLinks };
 
@@ -80,20 +81,22 @@ const Footer: React.FC<{ dict: Dict; mode?: 'full' | 'legal' }> = ({ dict, mode 
     <footer className="bg-green-950 border-t border-white/10 text-white">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-          {/* Marca */}
+          {/* Marca (logo cuadrado) */}
           <div>
             <Link href={`/${locale}`} className="flex items-center gap-3">
-              <div className="relative h-10 w-auto shrink-0">
+              <div className="relative h-9 w-9 sm:h-10 sm:w-10 shrink-0">
                 <Image
                   src={siteDetails.logoSrc}
                   alt={`${siteDetails.siteName} Logo`}
-                  width={160}   // controlas el ancho máximo
-                  height={72}
-                  className="object-contain brightness-110 contrast-110 drop-shadow w-auto h-10"
+                  fill
+                  sizes="(max-width: 640px) 36px, 40px"
+                  className="object-contain brightness-110 contrast-110 drop-shadow"
                   priority
                 />
               </div>
-              <h3 className="text-lg sm:text-xl font-semibold text-green-200/90">{siteDetails.siteName}</h3>
+              <h3 className="text-lg sm:text-xl font-semibold text-green-200/90">
+                {siteDetails.siteName}
+              </h3>
             </Link>
 
             <p className="mt-3 text-sm sm:text-base text-green-200/90">{f.subheading}</p>
@@ -102,7 +105,7 @@ const Footer: React.FC<{ dict: Dict; mode?: 'full' | 'legal' }> = ({ dict, mode 
           {/* Enlaces rápidos */}
           {mode === 'full' ? (
             <div>
-              <h4 className="text-base sm:text-lg font-semibold mb-3"> {f.quickLinksTitle} </h4>
+              <h4 className="text-base sm:text-lg font-semibold mb-3">{f.quickLinksTitle}</h4>
               <ul className="text-sm space-y-2">
                 {Object.keys(nav).map((key) => (
                   <li key={key}>
@@ -115,19 +118,13 @@ const Footer: React.FC<{ dict: Dict; mode?: 'full' | 'legal' }> = ({ dict, mode 
                   </li>
                 ))}
                 <li>
-                  <Link
-                    href={`/${locale}/orders`}
-                    className="hover:text-green-600 transition"
-                  >
+                  <Link href={`/${locale}/orders`} className="hover:text-green-600 transition">
                     {locale === "es" ? "Mis pedidos" : "My orders"}
                   </Link>
                 </li>
               </ul>
               <div className="mt-3">
-                <Link
-                  href={`/${locale}/terms`}
-                  className="text-sm hover:text-green-600 transition"
-                >
+                <Link href={`/${locale}/terms`} className="text-sm hover:text-green-600 transition">
                   {locale === "es" ? "Términos y Condiciones" : "Terms and Conditions"}
                 </Link>
               </div>
@@ -181,7 +178,7 @@ const Footer: React.FC<{ dict: Dict; mode?: 'full' | 'legal' }> = ({ dict, mode 
         </div>
 
         <div className="mt-8 text-center text-white/80 text-xs">
-          &copy; {new Date().getFullYear()} {siteDetails.siteName2}. {f.copyright}
+          &copy; {new Date().getFullYear()} {siteDetails.siteName2}. {f.copyright} {f.madeby}
         </div>
       </div>
     </footer>

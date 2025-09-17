@@ -14,8 +14,8 @@
   "about": {
     "title": "About Us",
     "description": "Welcome to ",
-    "description2": "Valelee",
-    "description3": ", your digital store to send packages in the United States and Cuba easily, quickly, and securely. We created this platform so you can manage your shipments from the comfort of your home, with full transparency, real-time tracking, and convenient payment options. Our goal is to help you stay connected with your loved ones by providing a reliable and affordable service from anywhere in the United States. At Valelee, making your shipment a simple experience is our priority.",
+    "description2": "CTEnvios Online",
+    "description3": ", your digital store to send packages in the United States and Cuba easily, quickly, and securely. We created this platform so you can manage your shipments from the comfort of your home, with full transparency, real-time tracking, and convenient payment options. Our goal is to help you stay connected with your loved ones by providing a reliable and affordable service from anywhere in the United States. At CTEnvios Online, making your shipment a simple experience is our priority.",
     "stats": [
       {
         "name": "Registered Users",
@@ -78,7 +78,8 @@
     "emailLabel": "Email",
     "phoneLabel": "Phone",
     "contactTitle": "Contact Us",
-    "copyright": "All rights reserved."
+    "copyright": "All rights reserved.",    
+    "madeby": "· Made by Valelee LLC"
   },
   "checkout": {
     "description": "Review your order before completing the payment.",

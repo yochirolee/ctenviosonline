@@ -39,6 +39,7 @@ export type Dict = {
     phoneLabel: string
     contactTitle: string
     copyright: string
+    madeby: string
   }
   checkout: {
     description: string
