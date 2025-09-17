@@ -289,46 +289,62 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   )
 
   useEffect(() => {
-    if (!location?.country || recipientHydratedRef.current) return;
+    if (!location?.country) return;
     if (recipients.length === 0) return;
+  
     // ¿El seleccionado actual sigue válido para el país?
     const current = recipients.find(r => r.id === selectedRecipientId);
-
-    // Si no hay seleccionado o el país no coincide, probamos a autoseleccionar
-    if (!current || current.country !== location.country) {
-      if (location.country === 'CU' && location.province && location.municipality) {
-        const provCanon = normalizeCubaProvince(location.province) || location.province;
-        const munCanon = normalizeCubaMunicipality(provCanon, location.municipality) || location.municipality;
-
-        const match = recipients
-          .filter((r): r is RecipientCU => r.country === 'CU')
-          .find(r =>
-            (normalizeCubaProvince(r.province) || r.province) === provCanon &&
-            (normalizeCubaMunicipality(provCanon, r.municipality) || r.municipality) === munCanon
-          );
-
-        if (match) {
-          setSelectedRecipientId(match.id);
-          applyRecipient(match);
-          return;
-        }
-      } else if (location.country === 'US') {
-        const match = recipients.find(r => r.country === 'US' && r.is_default)
-          || recipients.find(r => r.country === 'US');
-        if (match) {
-          setSelectedRecipientId(match.id);
-          applyRecipient(match);
-          return;
+    if (current?.country === location.country) return;
+  
+    // 1) Intentar destinatario guardado en LS para el nuevo país
+    try {
+      if (location.country === 'CU' || location.country === 'US') {
+        const key = lsRecipientKeyFor(location.country as 'CU' | 'US');
+        const raw = localStorage.getItem(key);
+        const savedId = raw ? Number(raw) : NaN;
+        if (Number.isFinite(savedId)) {
+          const saved = recipients.find(r => r.id === savedId && r.country === location.country);
+          if (saved) {
+            setSelectedRecipientId(saved.id);
+            applyRecipient(saved);
+            return;
+          }
         }
       }
-
-      // Sin coincidencias → limpiar selección (tu “plan B” simple)
-      if (selectedRecipientId !== null) {
-        setSelectedRecipientId(null);
-        setRecipientLoc(null);
+    } catch { /* noop */ }
+  
+    // 2) Autoselección por país (tu misma lógica)
+    if (location.country === 'CU' && location.province && location.municipality) {
+      const provCanon = normalizeCubaProvince(location.province) || location.province;
+      const munCanon = normalizeCubaMunicipality(provCanon, location.municipality) || location.municipality;
+  
+      const match = recipients
+        .filter((r): r is RecipientCU => r.country === 'CU')
+        .find(r =>
+          (normalizeCubaProvince(r.province) || r.province) === provCanon &&
+          (normalizeCubaMunicipality(provCanon, r.municipality) || r.municipality) === munCanon
+        );
+  
+      if (match) {
+        setSelectedRecipientId(match.id);
+        applyRecipient(match);
+        return;
+      }
+    } else if (location.country === 'US') {
+      const match = recipients.find(r => r.country === 'US' && r.is_default)
+        || recipients.find(r => r.country === 'US');
+      if (match) {
+        setSelectedRecipientId(match.id);
+        applyRecipient(match);
+        return;
       }
     }
+  
+    // 3) Si nada aplica → limpiar para que el formulario use el país del banner
+    setSelectedRecipientId(null);
+    setRecipientLoc(null);
   }, [location?.country, location?.province, location?.municipality, recipients, selectedRecipientId]);
+  
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
