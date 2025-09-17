@@ -1,4 +1,4 @@
-// lib/adminOwner.ts
+// src/lib/adminOwner.ts
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 function authHeaders() {
@@ -16,29 +16,29 @@ export type CuZoneKey =
 
 export type CubaFixed = Partial<Record<CuZoneKey, number>>;
 export type CubaByWeightBase = Partial<Record<CuZoneKey, number>>;
+export type CuMode = 'fixed' | 'by_weight';
+
+export type CuBranch = {
+  mode?: CuMode;
+  fixed?: CubaFixed;
+  by_weight?: {
+    rate_per_lb?: number;
+    base?: CubaByWeightBase;
+  };
+  min_fee?: number;
+  /** NUEVO */
+  over_weight_threshold_lbs?: number;
+  /** NUEVO */
+  over_weight_fee?: number;
+};
 
 export type ShippingConfig = {
-  us?: { fixed_usd?: number };
+  us?: { fixed_usd?: number | string };
   cu?: {
-    mode?: 'fixed' | 'by_weight';
-    fixed?: {
-      habana_city?: number;
-      habana_municipio?: number;
-      provincias_city?: number;
-      provincias_municipio?: number;
-    };
-    by_weight?: {
-      rate_per_lb?: number;
-      base?: {
-        habana_city?: number;
-        habana_municipio?: number;
-        provincias_city?: number;
-        provincias_municipio?: number;
-      };
-    };
-    min_fee?: number;
+    sea?: CuBranch;
+    air?: CuBranch;
   };
-  /** 🔴 Este flag se persiste en owner_shipping_config.country='CU' */
+  /** persiste en owner_shipping_config */
   cu_restrict_to_list?: boolean;
 };
 
@@ -47,7 +47,6 @@ export type Owner = {
   name: string;
   email?: string | null;
   phone?: string | null;
-  /** JSON guardado en owners.shipping_config (referencial/legacy para UI) */
   shipping_config?: ShippingConfig | null;
 };
 
@@ -77,7 +76,6 @@ export async function createOwner(input: {
   return r.json();
 }
 
-/** Actualiza datos básicos del owner (y opcionalmente el JSON owners.shipping_config si lo necesitas para UI) */
 export async function updateOwner(
   id: number,
   input: Partial<Pick<Owner, 'name' | 'email' | 'phone' | 'shipping_config'>>
@@ -91,7 +89,6 @@ export async function updateOwner(
   return r.json();
 }
 
-/** Eliminar owner */
 export async function deleteOwner(id: number): Promise<{ ok: true }> {
   const r = await fetch(`${API_URL}/admin/owners/${id}`, {
     method: 'DELETE',
@@ -99,19 +96,11 @@ export async function deleteOwner(id: number): Promise<{ ok: true }> {
   });
   const text = await r.text().catch(() => '');
   if (!r.ok) throw new Error(`deleteOwner ${r.status} ${text}`);
-  // Éxito: estandarizamos la respuesta y eliminamos el `as any`
   return { ok: true } as const;
 }
 
+/* ---------------- Config efectiva (owner_shipping_config) ---------------- */
 
-/* ---------------- Shipping config efectiva (owner_shipping_config) ---------------- */
-
-/**
- * 🔐 IMPORTANTE:
- * Guarda la configuración efectiva de envíos en owner_shipping_config
- * (incluye cu_restrict_to_list). Este endpoint debe existir en tu backend:
- *   PUT /admin/owners/:ownerId/shipping-config
- */
 export async function updateOwnerShippingConfig(
   id: number,
   shipping_config: ShippingConfig
@@ -125,7 +114,7 @@ export async function updateOwnerShippingConfig(
   return r.json().catch(() => ({ ok: true }));
 }
 
-/* ---------------- (Opcional) Helpers para áreas CU ---------------- */
+/* ---------------- Áreas CU (opcional) ---------------- */
 
 export type OwnerAreaRow = {
   id: number;
@@ -134,7 +123,6 @@ export type OwnerAreaRow = {
   created_at?: string;
 };
 
-/** Lista áreas permitidas (Cuba) para un owner */
 export async function listOwnerAreasCU(ownerId: number): Promise<OwnerAreaRow[]> {
   const r = await fetch(`${API_URL}/admin/owners/${ownerId}/areas?country=CU`, {
     headers: authHeaders(),
@@ -144,7 +132,6 @@ export async function listOwnerAreasCU(ownerId: number): Promise<OwnerAreaRow[]>
   return r.json();
 }
 
-/** Reemplaza todas las áreas permitidas (Cuba) */
 export async function saveOwnerAreasCU(
   ownerId: number,
   items: Array<{ province: string; municipality: string | null }>

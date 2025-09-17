@@ -15,11 +15,12 @@ import {
   type Owner,
   type ShippingConfig,
   type CuZoneKey,
+  type CuBranch,
 } from '@/lib/adminOwner';
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
-/** Provincias y municipios de Cuba (para el editor de disponibilidad) */
+/** Provincias/Municipios Cuba (para disponibilidad) */
 const PROVINCIAS_CUBA: Record<string, string[]> = {
   'Pinar del Río': ['Pinar del Río', 'Consolación del Sur', 'Guane', 'La Palma', 'Los Palacios', 'Mantua', 'Minas de Matahambre', 'San Juan y Martínez', 'San Luis', 'Sandino', 'Viñales'],
   'Artemisa': ['Artemisa', 'Alquízar', 'Bauta', 'Caimito', 'Guanajay', 'Güira de Melena', 'Mariel', 'San Antonio de los Baños', 'Bahía Honda'],
@@ -46,7 +47,7 @@ const CU_FIELDS: { label: string; key: CuZoneKey }[] = [
   { label: 'Provincias (municipio)', key: 'provincias_municipio' },
 ];
 
-/* ========= Mini sistema de toasts ========= */
+/* ========= Mini toasts ========= */
 type Toast = { id: number; type: 'success' | 'error' | 'info'; message: string };
 function useToasts() {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -60,7 +61,7 @@ function useToasts() {
   return { toasts, push, remove };
 }
 
-/** Estado UI por provincia: all=true => toda la provincia; selected => municipios específicos */
+/** Estado UI por provincia */
 type ProvinceState = { all: boolean; selected: Set<string> };
 
 export default function OwnersAdminPage() {
@@ -72,14 +73,14 @@ export default function OwnersAdminPage() {
   const [savingTariffs, setSavingTariffs] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // form crear owner
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPhone, setNewPhone] = useState('');
 
-  // === NUEVO: estado para disponibilidad en Cuba ===
   const [areasLoading, setAreasLoading] = useState(false);
-  const [cuAreas, setCuAreas] = useState<Record<string, ProvinceState>>({}); // province -> state
+  const [cuAreas, setCuAreas] = useState<Record<string, ProvinceState>>({});
+
+  const [cuTab, setCuTab] = useState<'sea' | 'air'>('sea');
 
   const { toasts, push, remove } = useToasts();
 
@@ -93,7 +94,6 @@ export default function OwnersAdminPage() {
   const load = async () => {
     const data = await getOwners().catch(() => []);
     setOwners(Array.isArray(data) ? data : []);
-    // refrescar selección si sigue existiendo
     if (sel) {
       const refreshed = (data || []).find((o: Owner) => o.id === sel.id);
       if (refreshed) setSel(refreshed);
@@ -103,7 +103,6 @@ export default function OwnersAdminPage() {
 
   useEffect(() => { load(); /* eslint-disable-line react-hooks/exhaustive-deps */ }, []);
 
-  // === NUEVO: cargar áreas permitidas por owner al seleccionar ===
   useEffect(() => {
     const ownerId = sel?.id;
     if (!ownerId) {
@@ -122,31 +121,24 @@ export default function OwnersAdminPage() {
         if (!res.ok) throw new Error('ERR');
         const rows: Array<{ province: string | null; municipality: string | null }> = await res.json();
 
-        // Inicializamos vacío
         const next: Record<string, ProvinceState> = {};
         for (const prov of Object.keys(PROVINCIAS_CUBA)) {
           next[prov] = { all: false, selected: new Set() };
         }
-
-        // Mapeamos lo que viene del backend a estado UI
         for (const row of rows) {
           const prov = row.province || '';
           const mun = row.municipality || null;
           if (!prov || !next[prov]) continue;
-
           if (mun === null) {
-            // Toda la provincia
             next[prov].all = true;
             next[prov].selected.clear();
           } else if (!next[prov].all) {
             next[prov].selected.add(mun);
           }
         }
-
         if (!cancelled) setCuAreas(next);
       } catch {
         if (!cancelled) {
-          // Si falla, dejamos todo vacío
           const empty: Record<string, ProvinceState> = {};
           for (const prov of Object.keys(PROVINCIAS_CUBA)) {
             empty[prov] = { all: false, selected: new Set() };
@@ -163,23 +155,17 @@ export default function OwnersAdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sel?.id]);
 
-  // === NUEVO: guardar áreas permitidas (PUT) ===
   const onSaveAreas = async () => {
     if (!sel?.id) return;
-    // Construimos payload con filas por provincia/municipio
     const items: Array<{ country: 'CU'; province: string; municipality: string | null }> = [];
-
     for (const [prov, st] of Object.entries(cuAreas)) {
-      if (st.all) {
-        items.push({ country: 'CU', province: prov, municipality: null });
-      } else if (st.selected.size > 0) {
+      if (st.all) items.push({ country: 'CU', province: prov, municipality: null });
+      else if (st.selected.size > 0) {
         for (const m of Array.from(st.selected.values())) {
           items.push({ country: 'CU', province: prov, municipality: m });
         }
       }
-      // Si no hay nada seleccionado y no es all, esa provincia NO se permite => no enviamos fila.
     }
-
     try {
       const res = await fetch(`${API_URL}/admin/owners/${sel.id}/areas`, {
         method: 'PUT',
@@ -187,9 +173,8 @@ export default function OwnersAdminPage() {
         body: JSON.stringify({ country: 'CU', items }),
       });
       if (!res.ok) throw new Error('No se pudo guardar');
-      push('success', 'Zonas de entrega en Cuba guardadas.');
-    } catch (e) {
-      console.error(e);
+      push('success', 'Zonas de Cuba guardadas.');
+    } catch {
       push('error', 'Error guardando zonas.');
     }
   };
@@ -203,8 +188,7 @@ export default function OwnersAdminPage() {
       name: newName.trim(),
       email: newEmail.trim(),
       phone: newPhone.trim() || undefined
-    }).catch((e) => {
-      console.error(e);
+    }).catch(() => {
       push('error', 'Error al crear owner.');
       return null;
     });
@@ -212,11 +196,10 @@ export default function OwnersAdminPage() {
       setNewName(''); setNewEmail(''); setNewPhone('');
       await load();
       setSel(created);
-      push('success', 'Owner creado correctamente.');
+      push('success', 'Owner creado.');
     }
   };
 
-  // Guardar perfil básico (nombre/email/phone)
   const onSaveProfile = async () => {
     if (!sel) return;
     if (!sel.name?.trim() || !sel.email?.trim()) {
@@ -229,128 +212,148 @@ export default function OwnersAdminPage() {
       email: sel.email.trim(),
       phone: sel.phone?.trim() || null,
     })
-      .then(() => {
-        push('success', 'Perfil guardado.');
-        load();
-      })
-      .catch((e) => {
-        console.error(e);
-        push('error', 'Error guardando el perfil.');
-      })
+      .then(() => { push('success', 'Perfil guardado.'); load(); })
+      .catch(() => { push('error', 'Error guardando el perfil.'); })
       .finally(() => setSavingProfile(false));
   };
 
-  // Guardar tarifas (shipping_config)
+  const onDeleteOwner = async () => {
+    if (!sel) return;
+    const ok = window.confirm(`¿Eliminar el owner "${sel.name}"?`);
+    if (!ok) return;
+    setDeleting(true);
+    await deleteOwner(sel.id)
+      .then(() => { setSel(null); load(); push('success', 'Owner eliminado.'); })
+      .catch(() => { push('error', 'No se pudo eliminar.'); })
+      .finally(() => setDeleting(false));
+  };
+
+  /* ====== Helpers para editar shipping_config ====== */
+
+  const bindSel = <K extends keyof Owner>(key: K, value: Owner[K]) =>
+    setSel(s => (s ? ({ ...s, [key]: value }) : s));
+
+  const ensureCfg = (s: Owner | null): ShippingConfig => ({ ...(s?.shipping_config || {}) });
+  const ensureCu = (cfg: ShippingConfig) => ({ ...(cfg.cu || {}) });
+
+  const ensureBranch = (cfg: ShippingConfig, t: 'sea'|'air'): CuBranch => {
+    const cu = ensureCu(cfg);
+    const branch = (cu[t] || {}) as CuBranch;
+    return {
+      mode: branch.mode,
+      fixed: { ...(branch.fixed || {}) },
+      by_weight: {
+        rate_per_lb: branch.by_weight?.rate_per_lb,
+        base: { ...(branch.by_weight?.base || {}) }
+      },
+      min_fee: branch.min_fee,
+      over_weight_threshold_lbs: branch.over_weight_threshold_lbs,
+      over_weight_fee: branch.over_weight_fee,
+    };
+  };
+
+  const setCfg = (next: ShippingConfig) =>
+    setSel(s => s ? ({ ...s, shipping_config: next }) : s);
+
+  const setUsFixed = (val: number | undefined) => {
+    const cfg = ensureCfg(sel);
+    cfg.us = { ...(cfg.us || {}), fixed_usd: val };
+    setCfg(cfg);
+  };
+
+  const setCuRestrict = (checked: boolean) => {
+    const cfg = ensureCfg(sel);
+    cfg.cu_restrict_to_list = checked;
+    setCfg(cfg);
+  };
+
+  const setCuMode = (t: 'sea'|'air', mode: 'fixed'|'by_weight') => {
+    const cfg = ensureCfg(sel);
+    const cu = ensureCu(cfg);
+    const b = ensureBranch(cfg, t);
+    b.mode = mode;
+    cu[t] = b;
+    cfg.cu = cu;
+    setCfg(cfg);
+  };
+
+  const setCuFixed = (t: 'sea'|'air', key: CuZoneKey, val?: number) => {
+    const cfg = ensureCfg(sel);
+    const cu = ensureCu(cfg);
+    const b = ensureBranch(cfg, t);
+    b.fixed = { ...(b.fixed || {}), [key]: val };
+    cu[t] = b;
+    cfg.cu = cu;
+    setCfg(cfg);
+  };
+
+  const setCuRatePerLb = (t: 'sea'|'air', val?: number) => {
+    const cfg = ensureCfg(sel);
+    const cu = ensureCu(cfg);
+    const b = ensureBranch(cfg, t);
+    b.by_weight = { ...(b.by_weight || {}), rate_per_lb: val };
+    cu[t] = b;
+    cfg.cu = cu;
+    setCfg(cfg);
+  };
+
+  const setCuMinFee = (t: 'sea'|'air', val?: number) => {
+    const cfg = ensureCfg(sel);
+    const cu = ensureCu(cfg);
+    const b = ensureBranch(cfg, t);
+    b.min_fee = val;
+    cu[t] = b;
+    cfg.cu = cu;
+    setCfg(cfg);
+  };
+
+  const setCuBase = (t: 'sea'|'air', key: CuZoneKey, val?: number) => {
+    const cfg = ensureCfg(sel);
+    const cu = ensureCu(cfg);
+    const b = ensureBranch(cfg, t);
+    const base = { ...(b.by_weight?.base || {}), [key]: val };
+    b.by_weight = { ...(b.by_weight || {}), base };
+    cu[t] = b;
+    cfg.cu = cu;
+    setCfg(cfg);
+  };
+
+  const setCuOverThr = (t: 'sea'|'air', val?: number) => {
+    const cfg = ensureCfg(sel);
+    const cu = ensureCu(cfg);
+    const b = ensureBranch(cfg, t);
+    b.over_weight_threshold_lbs = val;
+    cu[t] = b;
+    cfg.cu = cu;
+    setCfg(cfg);
+  };
+
+  const setCuOverFee = (t: 'sea'|'air', val?: number) => {
+    const cfg = ensureCfg(sel);
+    const cu = ensureCu(cfg);
+    const b = ensureBranch(cfg, t);
+    b.over_weight_fee = val;
+    cu[t] = b;
+    cfg.cu = cu;
+    setCfg(cfg);
+  };
+
   const onSaveTariffs = async () => {
     if (!sel) return;
     setSavingTariffs(true);
     const cfg: ShippingConfig = sel.shipping_config || {};
     await updateOwnerShippingConfig(sel.id, cfg)
-      .then(() => {
-        push('success', 'Tarifas guardadas.');
-        load();
-      })
-      .catch((e) => {
-        console.error(e);
-        push('error', 'Error guardando las tarifas.');
-      })
+      .then(() => { push('success', 'Tarifas guardadas.'); load(); })
+      .catch(() => { push('error', 'Error guardando las tarifas.'); })
       .finally(() => setSavingTariffs(false));
   };
 
-  // Eliminar owner
-  const onDeleteOwner = async () => {
-    if (!sel) return;
-    const ok = window.confirm(`¿Eliminar el owner "${sel.name}"? Esta acción no se puede deshacer.`);
-    if (!ok) return;
-    setDeleting(true);
-    await deleteOwner(sel.id)
-      .then(() => {
-        setSel(null);
-        load();
-        push('success', 'Owner eliminado.');
-      })
-      .catch((e) => {
-        console.error(e);
-        push('error', 'No se pudo eliminar. Verifica que no tenga productos asociados.');
-      })
-      .finally(() => setDeleting(false));
-  };
-
-  // helpers de setSel “inmutables” y tipados
-  const bindSel = <K extends keyof Owner>(key: K, value: Owner[K]) =>
-    setSel(s => (s ? ({ ...s, [key]: value }) : s));
-
-  const setUsFixed = (val: number | undefined) =>
-    setSel(s => s ? ({
-      ...s,
-      shipping_config: {
-        ...(s.shipping_config || {}),
-        us: { ...(s.shipping_config?.us || {}), fixed_usd: val }
-      }
-    }) : s);
-
-  const setCuMode = (mode: 'fixed' | 'by_weight') =>
-    setSel(s => s ? ({
-      ...s,
-      shipping_config: { ...(s.shipping_config || {}), cu: { ...(s.shipping_config?.cu || {}), mode } }
-    }) : s);
-
-  const setCuFixed = (key: CuZoneKey, val: number | undefined) =>
-    setSel(s => s ? ({
-      ...s,
-      shipping_config: {
-        ...(s.shipping_config || {}),
-        cu: {
-          ...(s.shipping_config?.cu || {}),
-          fixed: { ...(s.shipping_config?.cu?.fixed || {}), [key]: val }
-        }
-      }
-    }) : s);
-
-  const setCuRatePerLb = (val: number | undefined) =>
-    setSel(s => s ? ({
-      ...s,
-      shipping_config: {
-        ...(s.shipping_config || {}),
-        cu: {
-          ...(s.shipping_config?.cu || {}),
-          by_weight: { ...(s.shipping_config?.cu?.by_weight || {}), rate_per_lb: val }
-        }
-      }
-    }) : s);
-
-  const setCuMinFee = (val: number | undefined) =>
-    setSel(s => s ? ({
-      ...s,
-      shipping_config: {
-        ...(s.shipping_config || {}),
-        cu: { ...(s.shipping_config?.cu || {}), min_fee: val }
-      }
-    }) : s);
-
-  const setCuBase = (key: CuZoneKey, val: number | undefined) =>
-    setSel(s => s ? ({
-      ...s,
-      shipping_config: {
-        ...(s.shipping_config || {}),
-        cu: {
-          ...(s.shipping_config?.cu || {}),
-          by_weight: {
-            ...(s.shipping_config?.cu?.by_weight || {}),
-            base: { ...(s.shipping_config?.cu?.by_weight?.base || {}), [key]: val }
-          }
-        }
-      }
-    }) : s);
-
-  // estilos de toast por tipo
   const toastClass = useMemo(() => ({
     success: 'bg-green-600 text-white',
     error: 'bg-red-600 text-white',
     info: 'bg-gray-800 text-white',
   }), []);
 
-  // === NUEVO: toggles de disponibilidad (UI) ===
   const toggleProvinceAll = (prov: string, checked: boolean) => {
     setCuAreas(prev => {
       const curr = prev[prov] || { all: false, selected: new Set<string>() };
@@ -360,7 +363,6 @@ export default function OwnersAdminPage() {
       };
     });
   };
-
   const toggleMunicipality = (prov: string, mun: string, checked: boolean) => {
     setCuAreas(prev => {
       const curr = prev[prov] || { all: false, selected: new Set<string>() };
@@ -371,27 +373,25 @@ export default function OwnersAdminPage() {
     });
   };
 
+  const branch = (t: 'sea'|'air'): CuBranch | undefined =>
+    sel?.shipping_config?.cu?.[t];
+
+  const valNum = (v: unknown) => {
+    if (v === null || v === undefined || v === '') return '';
+    const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
+    return Number.isFinite(n) ? n : '';
+  };
+
   return (
     <AdminGuard>
       <div className="max-w-6xl mx-auto p-6 space-y-6 relative">
-        {/* Header con flechas */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Owners & Tarifas de Envío</h1>
           <div className="flex gap-2">
-            <button
-              onClick={() => router.back()}
-              className="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 inline-flex items-center"
-              aria-label="Atrás"
-              title="Atrás"
-            >
+            <button onClick={() => router.back()} className="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 inline-flex items-center">
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <button
-              onClick={() => router.forward()}
-              className="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 inline-flex items-center"
-              aria-label="Adelante"
-              title="Adelante"
-            >
+            <button onClick={() => router.forward()} className="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 inline-flex items-center">
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
@@ -400,26 +400,11 @@ export default function OwnersAdminPage() {
         <AdminTabs />
 
         {/* TOASTS */}
-        <div
-          className="fixed right-4 top-4 z-50 space-y-2"
-          role="region"
-          aria-live="polite"
-          aria-label="Notificaciones"
-        >
+        <div className="fixed right-4 top-4 z-50 space-y-2" role="region" aria-live="polite" aria-label="Notificaciones">
           {toasts.map(t => (
-            <div
-              key={t.id}
-              className={`shadow-lg rounded px-4 py-3 flex items-start gap-3 ${toastClass[t.type]}`}
-            >
+            <div key={t.id} className={`shadow-lg rounded px-4 py-3 flex items-start gap-3 ${toastClass[t.type]}`}>
               <div className="text-sm">{t.message}</div>
-              <button
-                onClick={() => remove(t.id)}
-                className="ml-auto opacity-80 hover:opacity-100 text-sm"
-                aria-label="Cerrar notificación"
-                title="Cerrar"
-              >
-                ✕
-              </button>
+              <button onClick={() => remove(t.id)} className="ml-auto opacity-80 hover:opacity-100 text-sm">✕</button>
             </div>
           ))}
         </div>
@@ -442,10 +427,7 @@ export default function OwnersAdminPage() {
             </div>
           </div>
           <div className="mt-3">
-            <button
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-              onClick={onCreateOwner}
-            >
+            <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700" onClick={onCreateOwner}>
               Crear owner
             </button>
           </div>
@@ -456,9 +438,7 @@ export default function OwnersAdminPage() {
           <div className="border rounded p-3 bg-white">
             <h2 className="font-semibold mb-2">Owners</h2>
             <ul className="divide-y">
-              {owners.length === 0 && (
-                <li className="py-2 text-sm text-gray-500">No hay owners. Crea el primero arriba.</li>
-              )}
+              {owners.length === 0 && <li className="py-2 text-sm text-gray-500">No hay owners. Crea el primero arriba.</li>}
               {owners.map(o => (
                 <li key={o.id} className="py-2 flex justify-between items-center">
                   <button className="underline" onClick={() => setSel(o)}>{o.name}</button>
@@ -476,48 +456,28 @@ export default function OwnersAdminPage() {
               <div className="space-y-6">
                 <h2 className="font-semibold">Editar: {sel.name}</h2>
 
-                {/* PERFIL BÁSICO */}
+                {/* PERFIL */}
                 <div className="space-y-3">
                   <h3 className="font-medium">Perfil</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-sm">Nombre</label>
-                      <input
-                        className="input"
-                        value={sel.name || ''}
-                        onChange={(e) => bindSel('name', e.target.value)}
-                      />
+                      <input className="input" value={sel.name || ''} onChange={(e) => bindSel('name', e.target.value)} />
                     </div>
                     <div>
                       <label className="block text-sm">Email</label>
-                      <input
-                        className="input"
-                        value={sel.email || ''}
-                        onChange={(e) => bindSel('email', e.target.value)}
-                      />
+                      <input className="input" value={sel.email || ''} onChange={(e) => bindSel('email', e.target.value)} />
                     </div>
                     <div>
                       <label className="block text-sm">Teléfono</label>
-                      <input
-                        className="input"
-                        value={sel.phone || ''}
-                        onChange={(e) => bindSel('phone', e.target.value)}
-                      />
+                      <input className="input" value={sel.phone || ''} onChange={(e) => bindSel('phone', e.target.value)} />
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-                      disabled={savingProfile}
-                      onClick={onSaveProfile}
-                    >
+                    <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50" disabled={savingProfile} onClick={onSaveProfile}>
                       {savingProfile ? 'Guardando…' : 'Guardar perfil'}
                     </button>
-                    <button
-                      className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-                      disabled={deleting}
-                      onClick={onDeleteOwner}
-                    >
+                    <button className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50" disabled={deleting} onClick={onDeleteOwner}>
                       {deleting ? 'Eliminando…' : 'Eliminar owner'}
                     </button>
                   </div>
@@ -535,7 +495,7 @@ export default function OwnersAdminPage() {
                       className="input"
                       type="number"
                       step="0.01"
-                      value={sel.shipping_config?.us?.fixed_usd ?? ''}
+                      value={valNum(sel.shipping_config?.us?.fixed_usd)}
                       onChange={(e) => {
                         const raw = e.target.value;
                         const v = raw === '' ? undefined : Number(raw);
@@ -544,30 +504,47 @@ export default function OwnersAdminPage() {
                     />
                   </div>
 
-                  {/* Cuba: modo */}
+                  {/* Cuba tabs */}
                   <div className="space-y-2">
                     <h4 className="font-medium">Cuba</h4>
-                    <div className="flex gap-4">
+
+                    <div className="inline-flex rounded-lg border overflow-hidden">
+                      <button
+                        className={`px-4 py-2 text-sm ${cuTab === 'sea' ? 'bg-green-600 text-white' : 'bg-white'}`}
+                        onClick={() => setCuTab('sea')}
+                      >
+                        Barco
+                      </button>
+                      <button
+                        className={`px-4 py-2 text-sm border-l ${cuTab === 'air' ? 'bg-green-600 text-white' : 'bg-white'}`}
+                        onClick={() => setCuTab('air')}
+                      >
+                        Avión
+                      </button>
+                    </div>
+
+                    {/* Modo */}
+                    <div className="flex gap-4 mt-3">
                       <label className="flex items-center gap-2">
                         <input
                           type="radio"
-                          checked={(sel.shipping_config?.cu?.mode || 'fixed') === 'fixed'}
-                          onChange={() => setCuMode('fixed')}
+                          checked={(branch(cuTab)?.mode || 'fixed') === 'fixed'}
+                          onChange={() => setCuMode(cuTab, 'fixed')}
                         />
                         Fijo por zona
                       </label>
                       <label className="flex items-center gap-2">
                         <input
                           type="radio"
-                          checked={sel.shipping_config?.cu?.mode === 'by_weight'}
-                          onChange={() => setCuMode('by_weight')}
+                          checked={branch(cuTab)?.mode === 'by_weight'}
+                          onChange={() => setCuMode(cuTab, 'by_weight')}
                         />
                         Calculado por peso
                       </label>
                     </div>
 
-                    {/* Cuba: fijo */}
-                    {(sel.shipping_config?.cu?.mode || 'fixed') === 'fixed' && (
+                    {/* Fijo */}
+                    {(branch(cuTab)?.mode || 'fixed') === 'fixed' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {CU_FIELDS.map(({ label, key }) => (
                           <div key={key}>
@@ -576,11 +553,11 @@ export default function OwnersAdminPage() {
                               className="input"
                               type="number"
                               step="0.01"
-                              value={sel.shipping_config?.cu?.fixed?.[key] ?? ''}
+                              value={valNum(branch(cuTab)?.fixed?.[key])}
                               onChange={(e) => {
                                 const raw = e.target.value;
                                 const v = raw === '' ? undefined : Number(raw);
-                                setCuFixed(key, Number.isFinite(v as number) ? (v as number) : undefined);
+                                setCuFixed(cuTab, key, Number.isFinite(v as number) ? (v as number) : undefined);
                               }}
                             />
                           </div>
@@ -588,8 +565,8 @@ export default function OwnersAdminPage() {
                       </div>
                     )}
 
-                    {/* Cuba: por peso */}
-                    {sel.shipping_config?.cu?.mode === 'by_weight' && (
+                    {/* Por peso */}
+                    {branch(cuTab)?.mode === 'by_weight' && (
                       <div className="space-y-3">
                         <div>
                           <label className="block text-sm">Costo por libra (USD)</label>
@@ -597,11 +574,11 @@ export default function OwnersAdminPage() {
                             className="input"
                             type="number"
                             step="0.01"
-                            value={sel.shipping_config?.cu?.by_weight?.rate_per_lb ?? ''}
+                            value={valNum(branch(cuTab)?.by_weight?.rate_per_lb)}
                             onChange={(e) => {
                               const raw = e.target.value;
                               const v = raw === '' ? undefined : Number(raw);
-                              setCuRatePerLb(Number.isNaN(Number(v)) ? undefined : (v as number));
+                              setCuRatePerLb(cuTab, Number.isFinite(v as number) ? (v as number) : undefined);
                             }}
                           />
                         </div>
@@ -612,11 +589,11 @@ export default function OwnersAdminPage() {
                             className="input"
                             type="number"
                             step="0.01"
-                            value={sel.shipping_config?.cu?.min_fee ?? ''}
+                            value={valNum(branch(cuTab)?.min_fee)}
                             onChange={(e) => {
                               const raw = e.target.value;
                               const v = raw === '' ? undefined : Number(raw);
-                              setCuMinFee(Number.isFinite(v as number) ? (v as number) : undefined);
+                              setCuMinFee(cuTab, Number.isFinite(v as number) ? (v as number) : undefined);
                             }}
                           />
                         </div>
@@ -629,11 +606,11 @@ export default function OwnersAdminPage() {
                                 className="input"
                                 type="number"
                                 step="0.01"
-                                value={sel.shipping_config?.cu?.by_weight?.base?.[key] ?? ''}
+                                value={valNum(branch(cuTab)?.by_weight?.base?.[key])}
                                 onChange={(e) => {
                                   const raw = e.target.value;
                                   const v = raw === '' ? undefined : Number(raw);
-                                  setCuBase(key, Number.isFinite(v as number) ? (v as number) : undefined);
+                                  setCuBase(cuTab, key, Number.isFinite(v as number) ? (v as number) : undefined);
                                 }}
                               />
                             </div>
@@ -641,6 +618,38 @@ export default function OwnersAdminPage() {
                         </div>
                       </div>
                     )}
+
+                    {/* NUEVOS: exceso de peso */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                      <div>
+                        <label className="block text-sm">Umbral de exceso (lb)</label>
+                        <input
+                          className="input"
+                          type="number"
+                          step="0.01"
+                          value={valNum(branch(cuTab)?.over_weight_threshold_lbs)}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            const v = raw === '' ? undefined : Number(raw);
+                            setCuOverThr(cuTab, Number.isFinite(v as number) ? (v as number) : undefined);
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm">Cargo por exceso (USD)</label>
+                        <input
+                          className="input"
+                          type="number"
+                          step="0.01"
+                          value={valNum(branch(cuTab)?.over_weight_fee)}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            const v = raw === '' ? undefined : Number(raw);
+                            setCuOverFee(cuTab, Number.isFinite(v as number) ? (v as number) : undefined);
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="mt-2">
@@ -648,22 +657,10 @@ export default function OwnersAdminPage() {
                       <input
                         type="checkbox"
                         checked={!!sel.shipping_config?.cu_restrict_to_list}
-                        onChange={(e) =>
-                          setSel(s => s ? ({
-                            ...s,
-                            shipping_config: {
-                              ...(s.shipping_config || {}),
-                              cu_restrict_to_list: e.target.checked,
-                            }
-                          }) : s)
-                        }
+                        onChange={(e) => setCuRestrict(e.target.checked)}
                       />
                       <span>Restringir catálogo en Cuba a las áreas listadas</span>
                     </label>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Si está activo, este owner solo podrá entregar en las provincias/municipios configurados
-                      en “Disponibilidad de entrega en Cuba”.
-                    </p>
                   </div>
 
                   <div className="pt-2">
@@ -677,16 +674,15 @@ export default function OwnersAdminPage() {
                   </div>
                 </div>
 
-                {/* ===== NUEVO BLOQUE: Disponibilidad por provincias/municipios (Cuba) ===== */}
+                {/* DISPONIBILIDAD CUBA */}
                 <div className="space-y-3">
                   <h3 className="font-medium">Disponibilidad de entrega en Cuba</h3>
                   <p className="text-sm text-gray-600">
-                    Marca <b>provincia completa</b> para permitir todos sus municipios, o bien selecciona{' '}
-                    <b>municipios específicos</b>. Si no marcas nada en una provincia, esa provincia queda deshabilitada.
+                    Marca <b>provincia completa</b> o selecciona <b>municipios específicos</b>.
                   </p>
 
                   {areasLoading ? (
-                    <div className="text-sm text-gray-500">Cargando disponibilidad…</div>
+                    <div className="text-sm text-gray-500">Cargando…</div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {Object.entries(PROVINCIAS_CUBA).map(([prov, municipalities]) => {
@@ -726,15 +722,11 @@ export default function OwnersAdminPage() {
                   )}
 
                   <div className="pt-1">
-                    <button
-                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                      onClick={onSaveAreas}
-                    >
+                    <button className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700" onClick={onSaveAreas}>
                       Guardar zonas Cuba
                     </button>
                   </div>
                 </div>
-                {/* ===== /FIN BLOQUE NUEVO ===== */}
 
               </div>
             )}

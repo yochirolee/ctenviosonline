@@ -10,6 +10,7 @@ import { computeAreaType } from '@/lib/cubaAreaType'
 import CardPaymentModal from '@/components/CardPaymentModal'
 import { useLocation } from '@/context/LocationContext'
 import { normalizeCubaProvince, normalizeCubaMunicipality } from '@/lib/cuLocations'
+import { Ship, Plane } from "lucide-react";
 import {
   listRecipients,
   createRecipient,
@@ -89,11 +90,15 @@ type UnavailableLine = {
   available?: number
 }
 
+// === tipos de quote ===
+type ShippingTransport = 'sea' | 'air';
+
 type ShippingQuoteInputCU = {
   country: 'CU';
   province: string;
   municipality: string;
   area_type: string;
+  transport?: ShippingTransport;
 };
 
 type ShippingQuoteInputUS = {
@@ -197,6 +202,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   const isUS = location?.country === 'US'
   const [saveAsRecipient, setSaveAsRecipient] = useState(false)
   const [savingRecipient, setSavingRecipient] = useState(false)
+  const [transport, setTransport] = useState<ShippingTransport>('sea');
 
   // ===== (NUEVO) Datos del comprador (perfil) =====
   const [buyer, setBuyer] = useState({
@@ -457,7 +463,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       return null
     } catch (e: unknown) {
       if (isRecipientDuplicate(e)) {
-          return null
+        return null
       }
       toast.error(getErrorMessage(e, 'No se pudo guardar el destinatario.'))
       return null
@@ -718,6 +724,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             province: recipientLoc.province,
             municipality: recipientLoc.municipality,
             area_type: computeAreaType(recipientLoc.province, recipientLoc.municipality),
+            transport,
           }
         } else if (recipientLoc?.country === 'US') {
           shipping = {
@@ -732,6 +739,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             province: location!.province!,
             municipality: location!.municipality!,
             area_type: computeAreaType(location!.province!, location!.municipality!),
+            transport,
           }
         } else {
           shipping = {
@@ -829,7 +837,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     formData.state, formData.city, formData.zip,
     readyToQuote,
     recipientLoc,
-    selectedRecipientId
+    selectedRecipientId,
+    transport,
   ])
 
 
@@ -948,6 +957,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             area_type: computeAreaType(province, municipality),
             instructions: formData.instrucciones || undefined,
             ci: formData.ci,
+            transport,
           }
         })()
         : {
@@ -991,6 +1001,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
               zip: buyer.zip || undefined,
             },
             terms: { accepted: true, url: `/${locale}/terms`, accepted_at: new Date().toISOString(), version: 'v1' },
+            shipping_prefs: { transport },
           }
         }),
       })
@@ -1078,6 +1089,39 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     // Fallback si por alguna razón no está el select:
     router.push(`/${locale}/account#recipients`)
   }
+
+  const DELIVERY_TIMES: {
+    en: { title: string; sea: [string, string][], air: [string, string][] };
+    es: { title: string; sea: [string, string][], air: [string, string][] };
+  } = {
+    en: {
+      title: 'Delivery times',
+      sea: [
+        ['Sea shipments:', 'estimated 25–35 calendar days from payment confirmation.'],
+        ['“72 hours” category:', 'delivered within 72 hours (3 days) in covered areas, counted from payment confirmation.'],
+        ['Mixed orders:', '“72 hours” items keep their 72-hour window; the rest follow the sea timeline.'],
+      ],
+      air: [
+        ['Air shipments:', 'estimated 7–14 calendar days from payment confirmation.'],
+        ['“72 hours” category:', 'delivered within 72 hours (3 days) in covered areas, counted from payment confirmation.'],
+        ['Mixed orders:', '“72 hours” items keep their 72-hour window; the rest follow the air timeline.'],
+      ],
+    },
+    es: {
+      title: 'Tiempos de entrega',
+      sea: [
+        ['Envíos por barco:', 'estimados entre 25 y 35 días naturales desde la confirmación del pago.'],
+        ['Categoría “72 horas”:', 'entrega en un máximo de 72 horas (3 días) en zonas de cobertura, contadas desde la confirmación del pago.'],
+        ['Pedidos mixtos:', 'los artículos “72 horas” mantienen su plazo; el resto sigue el plazo de barco.'],
+      ],
+      air: [
+        ['Envíos por avión:', 'estimados entre 7 y 14 días naturales desde la confirmación del pago.'],
+        ['Categoría “72 horas”:', 'entrega en un máximo de 72 horas (3 días) en zonas de cobertura, contadas desde la confirmación del pago.'],
+        ['Pedidos mixtos:', 'los artículos “72 horas” mantienen su plazo; el resto sigue el plazo de avión.'],
+      ],
+    },
+  };
+
 
 
   // ===== UI =====
@@ -1415,6 +1459,101 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
           </div>
 
+          {/* ===== Método de envío a Cuba ===== */}
+          {isCU && (
+            <div className="rounded-xl border bg-white shadow-sm p-4">
+              <div className="text-sm font-semibold text-gray-800 mb-3">
+                {locale === 'en' ? 'Shipping method to Cuba' : 'Método de envío a Cuba'}
+              </div>
+
+              <fieldset
+                role="radiogroup"
+                aria-label={locale === 'en' ? 'Shipping method to Cuba' : 'Método de envío a Cuba'}
+                className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+              >
+                {/* Card: Barco */}
+                <label
+                  className={[
+                    "flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition",
+                    transport === 'sea'
+                      ? "border-emerald-500 ring-2 ring-emerald-300 bg-emerald-50"
+                      : "border-gray-200 hover:border-emerald-300"
+                  ].join(" ")}
+                >
+                  <input
+                    type="radio"
+                    name="cu_transport"
+                    className="sr-only"
+                    checked={transport === 'sea'}
+                    onChange={() => setTransport('sea')}
+                    aria-checked={transport === 'sea'}
+                  />
+                  <div className="mt-0.5 shrink-0">
+                    <div className={[
+                      "rounded-full p-2 border",
+                      transport === 'sea' ? "border-emerald-500 bg-white" : "border-gray-300 bg-white"
+                    ].join(" ")}>
+                      <Ship className="h-5 w-5" aria-hidden />
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="font-medium text-gray-900">
+                      {locale === 'en' ? 'Sea' : 'Barco'}
+                      <span className="ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">
+                        {locale === 'en' ? 'More economical' : 'Más económico'}
+                      </span>
+                    </div>
+                    <div className="text-gray-600">
+                      {locale === 'en'
+                        ? 'Estimated 25–35 calendar days'
+                        : 'Estimado 25–35 días naturales'}
+                    </div>
+                  </div>
+                </label>
+
+                {/* Card: Avión */}
+                <label
+                  className={[
+                    "flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition",
+                    transport === 'air'
+                      ? "border-emerald-500 ring-2 ring-emerald-300 bg-emerald-50"
+                      : "border-gray-200 hover:border-emerald-300"
+                  ].join(" ")}
+                >
+                  <input
+                    type="radio"
+                    name="cu_transport"
+                    className="sr-only"
+                    checked={transport === 'air'}
+                    onChange={() => setTransport('air')}
+                    aria-checked={transport === 'air'}
+                  />
+                  <div className="mt-0.5 shrink-0">
+                    <div className={[
+                      "rounded-full p-2 border",
+                      transport === 'air' ? "border-emerald-500 bg-white" : "border-gray-300 bg-white"
+                    ].join(" ")}>
+                      <Plane className="h-5 w-5" aria-hidden />
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="font-medium text-gray-900">
+                      {locale === 'en' ? 'Air' : 'Avión'}
+                      <span className="ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">
+                        {locale === 'en' ? 'Faster' : 'Más rápido'}
+                      </span>
+                    </div>
+                    <div className="text-gray-600">
+                      {locale === 'en'
+                        ? 'Estimated 7–14 calendar days'
+                        : 'Estimado 7–14 días naturales'}
+                    </div>
+                  </div>
+                </label>
+              </fieldset>
+            </div>
+          )}
+
           {/* Estado de cotización */}
           <div className="pt-2 text-sm text-gray-600">
             {quoting
@@ -1500,22 +1639,31 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
           <div className="rounded-lg border bg-white p-3 text-sm space-y-2">
             <div className="font-medium">
-              {locale === 'en' ? 'Delivery times' : 'Tiempos de entrega'}
+              {isShipCU && (
+                <div className="mt-2 text-sm text-gray-700">
+                  <span className="font-medium">
+                    {locale === 'en' ? 'Delivery By:' : 'Entrega por:'}
+                  </span>{' '}
+                  {transport === 'air'
+                    ? (locale === 'en' ? 'Air' : 'Avión')
+                    : (locale === 'en' ? 'Sea' : 'Barco')}
+                </div>
+              )}
+              {locale === 'en' ? DELIVERY_TIMES.en.title : DELIVERY_TIMES.es.title}
             </div>
 
-            {locale === 'en' ? (
-              <ul className="list-disc pl-5 space-y-1 text-gray-700">
-                <li><strong>Sea shipments:</strong> estimated <strong>25–35 calendar days</strong> from payment confirmation.</li>
-                <li><strong>“72 hours” category:</strong> delivered within <strong>72 hours</strong> (3 days) in covered areas, counted from payment confirmation.</li>
-                <li>If your order includes both “72 hours” items and others, the “72 hours” items will keep their 72-hour window; the rest follow the sea timeline.</li>
-              </ul>
-            ) : (
-              <ul className="list-disc pl-5 space-y-1 text-gray-700">
-                <li><strong>Envíos por barco:</strong> estimados entre <strong>25 y 35 días naturales</strong> desde la confirmación del pago.</li>
-                <li><strong>Categoría “72 horas”:</strong> entrega en un máximo de <strong>72 horas</strong> (3 días) dentro de las zonas de cobertura, contadas desde la confirmación del pago.</li>
-                <li>Si tu pedido incluye artículos “72 horas” y otros, los “72 horas” mantienen su plazo de 72 horas; el resto seguirá el plazo de barco.</li>
-              </ul>
-            )}
+            {/* Lista dinámica según transporte */}
+            <ul className="list-disc pl-5 space-y-1 text-gray-700">
+              {(
+                locale === 'en'
+                  ? (transport === 'air' ? DELIVERY_TIMES.en.air : DELIVERY_TIMES.en.sea)
+                  : (transport === 'air' ? DELIVERY_TIMES.es.air : DELIVERY_TIMES.es.sea)
+              ).map(([strong, rest], i) => (
+                <li key={i}>
+                  <strong>{strong}</strong> {rest}
+                </li>
+              ))}
+            </ul>
           </div>
 
 
