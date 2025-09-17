@@ -73,6 +73,14 @@ function buildQuoteErrorMsg({
     : `Algunos productos del carrito no pueden entregarse en la localidad seleccionada. Cambia la localidad o elimina esos productos para continuar.`
 }
 
+const LS_CU_TRANSPORT = 'checkout_cu_transport';
+
+//Para salvar en LS Destinatario por pais
+const LS_RECIPIENT_ID_CU = 'checkout_recipient_id_CU';
+const LS_RECIPIENT_ID_US = 'checkout_recipient_id_US';
+const lsRecipientKeyFor = (country: 'CU' | 'US') =>
+  country === 'CU' ? LS_RECIPIENT_ID_CU : LS_RECIPIENT_ID_US;
+
 const toLocalPhone = (country: 'US' | 'CU', value: string | null | undefined) => {
   const d = String(value ?? '').replace(/\D/g, '')
   if (country === 'US') {
@@ -265,7 +273,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   // ===== (NUEVO) Destinatarios guardados =====
   const [recipients, setRecipients] = useState<Recipient[]>([])
   const [recLoading, setRecLoading] = useState(false)
-  const [selectedRecipientId, setSelectedRecipientId] = useState<number | ''>('')
+  const [selectedRecipientId, setSelectedRecipientId] = useState<number | null>(null);
   const [recipientLoc, setRecipientLoc] = useState<ShipLoc | null>(null)
 
   // filtra por país del banner (UX simple)
@@ -281,8 +289,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   )
 
   useEffect(() => {
-    if (!location?.country) return;
-
+    if (!location?.country || recipientHydratedRef.current) return;
+    if (recipients.length === 0) return;
     // ¿El seleccionado actual sigue válido para el país?
     const current = recipients.find(r => r.id === selectedRecipientId);
 
@@ -315,8 +323,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       }
 
       // Sin coincidencias → limpiar selección (tu “plan B” simple)
-      if (selectedRecipientId !== '') {
-        setSelectedRecipientId('');
+      if (selectedRecipientId !== null) {
+        setSelectedRecipientId(null);
         setRecipientLoc(null);
       }
     }
@@ -332,7 +340,24 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         const rows = await listRecipients()
         if (abort) return
         setRecipients(rows)
-        // Si hay alguno del país del banner, preselecciona
+        if (!location?.country) return
+
+        // ✅ Preferir destinatario guardado en LS para el país actual
+        try {
+          const key = lsRecipientKeyFor(location.country as 'CU' | 'US')
+          const raw = localStorage.getItem(key)
+          const savedId = raw ? Number(raw) : NaN
+          if (Number.isFinite(savedId)) {
+            const saved = rows.find(r => r.id === savedId && r.country === location.country)
+            if (saved) {
+              setSelectedRecipientId(saved.id)
+              applyRecipient(saved)
+              return
+            }
+          }
+        } catch { /* noop */ }
+
+        // ↪️ Fallback solo si no existía guardado
         const firstMatch = rows.find(r => r.country === (isCU ? 'CU' : isUS ? 'US' : r.country))
         if (firstMatch) {
           setSelectedRecipientId(firstMatch.id)
@@ -390,7 +415,12 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       }))
     }
     try { localStorage.removeItem(LS_FORM_KEY) } catch { /* noop */ }
+    try {
+      const key = lsRecipientKeyFor(r.country as 'CU' | 'US');
+      localStorage.setItem(key, String(r.id));
+    } catch { /* noop */ }
   }
+
 
   async function maybeSaveRecipient(): Promise<Recipient | null> {
     // solo si el user lo pidió y NO hay uno seleccionado
@@ -472,7 +502,6 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     }
   }
 
-
   // ===== FORM DATA (persist) =====
   const [formData, setFormData] = useState({
     // comunes
@@ -500,7 +529,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     loadedRef.current = true
     try {
       const token = getToken()
-      if (token || selectedRecipientId !== '') {
+      if (token || selectedRecipientId !== null) {
         localStorage.removeItem(LS_FORM_KEY)
         return
       }
@@ -517,7 +546,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   useEffect(() => {
     try {
       const token = getToken()
-      const shouldPersist = !token && selectedRecipientId === ''
+      const shouldPersist = !token && selectedRecipientId === null
       if (!shouldPersist) {
         localStorage.removeItem(LS_FORM_KEY)
         return
@@ -530,6 +559,9 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
+
+  const transportHydratedRef = useRef(false);
+  const recipientHydratedRef = useRef(false);
 
   // ===== Validación =====
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
@@ -698,6 +730,58 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             : (location?.province && location?.municipality))
         )
         : false
+
+  useEffect(() => {
+    if (!isCU || transportHydratedRef.current) return;
+    transportHydratedRef.current = true;
+    try {
+      const t = localStorage.getItem(LS_CU_TRANSPORT);
+      if (t === 'sea' || t === 'air') setTransport(t as ShippingTransport);
+    } catch { /* noop */ }
+  }, [isCU]);
+
+  useEffect(() => {
+    try {
+      if (isCU) localStorage.setItem(LS_CU_TRANSPORT, transport);
+      else localStorage.removeItem(LS_CU_TRANSPORT);
+    } catch { /* noop */ }
+  }, [isCU, transport]);
+
+  useEffect(() => {
+    // Espera a tener país y lista cargada
+    if (!location?.country || recipientHydratedRef.current) return;
+    if (recipients.length === 0) return;
+
+    try {
+      const key = lsRecipientKeyFor(location.country as 'CU' | 'US');
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const id = Number(raw);
+        if (Number.isFinite(id)) {
+          const r = recipients.find(x => x.id === id && x.country === location.country);
+          if (r) {
+            setSelectedRecipientId(r.id);
+            applyRecipient(r);
+          }
+        }
+      }
+    } catch { /* noop */ }
+    finally {
+      // Marcamos hidratado SOLO después de que hubo lista para intentar
+      recipientHydratedRef.current = true;
+    }
+  }, [location?.country, recipients.length]);
+
+
+
+  useEffect(() => {
+    try {
+      const r = recipients.find(x => x.id === selectedRecipientId);
+      if (!r) return;
+      const key = lsRecipientKeyFor(r.country as 'CU' | 'US');
+      localStorage.setItem(key, String(r.id));
+    } catch { /* noop */ }
+  }, [selectedRecipientId, recipients]);
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
@@ -1267,19 +1351,30 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
           <div className="rounded-lg border bg-white p-3 text-sm">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div className="font-medium">
-                {locale === 'en' ? 'Recipients' : 'Destinatarios'}
+                {locale === 'en' ? 'Select a recipient' : 'Selecciona un destinatario'}
               </div>
               <div className="flex gap-2">
                 <select
                   id="recipient_select"
                   className="input"
-                  value={selectedRecipientId}
+                  value={selectedRecipientId ?? ''}
                   onChange={(e) => {
-                    const id = Number(e.target.value)
-                    setSelectedRecipientId(id || '')
-                    const r = filteredRecipients.find(x => x.id === id)
-                    if (r) applyRecipient(r)
+                    const val = e.target.value;
+                    const id = val ? Number(val) : null;
+                    setSelectedRecipientId(id);
+                    if (id !== null) {
+                      const r = filteredRecipients.find(x => x.id === id);
+                      if (r) applyRecipient(r);
+                    } else {
+                      setRecipientLoc(null);
+                      try {
+                        if (location?.country === 'CU' || location?.country === 'US') {
+                          localStorage.removeItem(lsRecipientKeyFor(location.country))
+                        }
+                      } catch { /* noop */ }
+                    }
                   }}
+
                 >
                   <option value="">
                     {recLoading
@@ -1318,145 +1413,154 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                 )}
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-gray-500 mt-2 mb-3">
               {locale === 'en'
                 ? 'Selecting a recipient will auto-fill this form; you can edit details anytime.'
                 : 'Al elegir un destinatario se autocompleta este formulario; puedes editar los datos en cualquier momento.'}
             </p>
-          </div>
 
-          {/* Aviso de país/ubicación mixtos (si aplica) */}
-          {recipientLoc && location?.country && recipientLoc.country !== location.country && (
-            <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-              {recipientLoc.country === 'US'
-                ? 'Has seleccionado un destinatario de Estados Unidos, pero arriba está Cuba. La cotización usará Estados Unidos según el destinatario.'
-                : 'Has seleccionado un destinatario de Cuba, pero arriba está Estados Unidos. La cotización usará Cuba según el destinatario.'}
-            </div>
-          )}
-          {recipientLoc?.country === 'CU' && location?.country === 'CU' && (
-            (recipientLoc.province?.trim() !== (location.province || '').trim()
-              || recipientLoc.municipality?.trim() !== (location.municipality || '').trim()) && (
-              <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                Has seleccionado un destinatario en {recipientLoc.municipality}, {recipientLoc.province}, pero el banner está en {location.municipality}, {location.province}. La cotización y el envío usarán la dirección del destinatario.
-              </div>
-            )
-          )}
 
-          {/* Comunes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">{dict.checkout.first_name}</label>
-              <input id="nombre" name="nombre" value={formData.nombre} onChange={handleChange} className="input" />
-              {errors.nombre && <p className="text-red-500 text-xs mt-1">{errors.nombre}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">{dict.checkout.last_name}</label>
-              <input id="apellidos" name="apellidos" value={formData.apellidos} onChange={handleChange} className="input" />
-              {errors.apellidos && <p className="text-red-500 text-xs mt-1">{errors.apellidos}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                {isShipUS ? dict.checkout.phoneeu : dict.checkout.phone}{' '}
-                <span className="text-gray-400">{isShipUS ? '(10 dígitos)' : '(8+ dígitos)'}</span>
-              </label>
-              <input id="telefono" name="telefono" value={formData.telefono} onChange={handleChange} className="input" />
-              {errors.telefono && <p className="text-red-500 text-xs mt-1">{errors.telefono}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">{dict.checkout.email} <span className="text-gray-500">({locale === 'en' ? 'optional' : 'opcional'})</span></label>
-              <input id="email" name="email" value={formData.email} onChange={handleChange} className="input" />
-              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-            </div>
-          </div>
+            {/* Aviso de país/ubicación mixtos (si aplica) */}
+            {recipientLoc && location?.country && recipientLoc.country !== location.country && (
+              <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 mb-3">
+                {locale === 'en'
+                  ? (recipientLoc.country === 'US'
+                    ? 'You selected a recipient in the United States, but the selected destination above is Cuba. The quote will use the United States based on the recipient.'
+                    : 'You selected a recipient in Cuba, but the selected destination above is the United States. The quote will use Cuba based on the recipient.')
+                  : (recipientLoc.country === 'US'
+                    ? 'Has seleccionado un destinatario de Estados Unidos, pero el destino seleccionado está en Cuba. La cotización usará Estados Unidos según el destinatario.'
+                    : 'Has seleccionado un destinatario de Cuba, pero el destino seleccionado está en Estados Unidos. La cotización usará Cuba según el destinatario.')}
+              </div>
+            )}
 
-          {/* Cuba */}
-          {isShipCU && (
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{dict.checkout.ci}</label>
-                <input
-                  id="ci"
-                  name="ci"
-                  value={formData.ci}
-                  onChange={handleChange}
-                  className="input w-full"
-                />
-                {errors.ci && <p className="text-red-500 text-xs mt-1">{errors.ci}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{dict.checkout.addressExact}</label>
-                <input
-                  id="direccion"
-                  name="direccion"
-                  value={formData.direccion}
-                  onChange={handleChange}
-                  className="input w-full"
-                  placeholder={dict.checkout.addressExact_placeholder}
-                />
-                {errors.direccion && <p className="text-red-500 text-xs mt-1">{errors.direccion}</p>}
-                {errors._cuLoc && <p className="text-red-500 text-xs mt-1">{errors._cuLoc}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  {dict.checkout.instructions_label}
-                </label>
-                <input
-                  name="instrucciones"
-                  value={formData.instrucciones}
-                  onChange={handleChange}
-                  className="input w-full"
-                />
-              </div>
-            </div>
-          )}
+            {recipientLoc?.country === 'CU' && location?.country === 'CU' && (
+              (recipientLoc.province?.trim() !== (location.province || '').trim()
+                || recipientLoc.municipality?.trim() !== (location.municipality || '').trim()) && (
+                <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 mb-3">
+                  {locale === 'en'
+                    ? `You selected a recipient in ${recipientLoc.municipality}, ${recipientLoc.province}, but the selected destination shows ${location.municipality}, ${location.province}. The quote and shipping will use the recipient’s address.`
+                    : `Has seleccionado un destinatario en ${recipientLoc.municipality}, ${recipientLoc.province}, pero el destino seleccionado está en ${location.municipality}, ${location.province}. La cotización y el envío usarán la dirección del destinatario.`}
+                </div>
+              )
+            )}
 
-          {/* US */}
-          {isShipUS && (
+
+            {/* Comunes */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700">{dict.checkout.address1eu}</label>
-                <input id="address1" name="address1" value={formData.address1} onChange={handleChange} className="input" />
-                {errors.address1 && <p className="text-red-500 text-xs mt-1">{errors.address1}</p>}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">{dict.checkout.first_name}</label>
+                <input id="nombre" name="nombre" value={formData.nombre} onChange={handleChange} className="input" />
+                {errors.nombre && <p className="text-red-500 text-xs mt-1">{errors.nombre}</p>}
               </div>
-              <div className="md:col-span-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">{dict.checkout.last_name}</label>
+                <input id="apellidos" name="apellidos" value={formData.apellidos} onChange={handleChange} className="input" />
+                {errors.apellidos && <p className="text-red-500 text-xs mt-1">{errors.apellidos}</p>}
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  {dict.checkout.address2eu} <span className="text-gray-500">(opcional)</span>
+                  {isShipUS ? dict.checkout.phoneeu : dict.checkout.phone}{' '}
+                  <span className="text-gray-400">{isShipUS ? '(10 dígitos)' : '(8+ dígitos)'}</span>
                 </label>
-                <input id="address2" name="address2" value={formData.address2} onChange={handleChange} className="input" />
+                <input id="telefono" name="telefono" value={formData.telefono} onChange={handleChange} className="input" />
+                {errors.telefono && <p className="text-red-500 text-xs mt-1">{errors.telefono}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">{dict.checkout.cityeu}</label>
-                <input id="city" name="city" value={formData.city} onChange={handleChange} className="input" />
-                {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{dict.checkout.stateeu}</label>
-                <select id="state" name="state" value={formData.state} onChange={handleChange} className="input">
-                  <option value="">{'Seleccione'}</option>
-                  {US_STATES.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
-                </select>
-                {errors.state && <p className="text-red-500 text-xs mt-1">{errors.state}</p>}
-              </div>
-              <div className="md:max-w-xs">
-                <label className="block text-sm font-medium text-gray-700">{dict.checkout.zipeu}</label>
-                <input id="zip" name="zip" value={formData.zip} onChange={handleChange} className="input" />
-                {errors.zip && <p className="text-red-500 text-xs mt-1">{errors.zip}</p>}
+                <label className="block text-sm font-medium text-gray-700">{dict.checkout.email} <span className="text-gray-500">({locale === 'en' ? 'optional' : 'opcional'})</span></label>
+                <input id="email" name="email" value={formData.email} onChange={handleChange} className="input" />
+                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
               </div>
             </div>
-          )}
 
-          <div className="flex items-center gap-2 mt-3">
-            <input
-              id="saveAsRecipient"
-              type="checkbox"
-              checked={saveAsRecipient}
-              onChange={(e) => setSaveAsRecipient(e.target.checked)}
-              disabled={savingRecipient}
-            />
-            <label htmlFor="saveAsRecipient" className="text-sm text-gray-700">
-              {locale === 'en' ? 'Save as new recipient' : 'Guardar como nuevo destinatario'}
-            </label>
+            {/* Cuba */}
+            {isShipCU && (
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.ci}</label>
+                  <input
+                    id="ci"
+                    name="ci"
+                    value={formData.ci}
+                    onChange={handleChange}
+                    className="input w-full"
+                  />
+                  {errors.ci && <p className="text-red-500 text-xs mt-1">{errors.ci}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.addressExact}</label>
+                  <input
+                    id="direccion"
+                    name="direccion"
+                    value={formData.direccion}
+                    onChange={handleChange}
+                    className="input w-full"
+                    placeholder={dict.checkout.addressExact_placeholder}
+                  />
+                  {errors.direccion && <p className="text-red-500 text-xs mt-1">{errors.direccion}</p>}
+                  {errors._cuLoc && <p className="text-red-500 text-xs mt-1">{errors._cuLoc}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    {dict.checkout.instructions_label}
+                  </label>
+                  <input
+                    name="instrucciones"
+                    value={formData.instrucciones}
+                    onChange={handleChange}
+                    className="input w-full"
+                  />
+                </div>
+              </div>
+            )}
 
+            {/* US */}
+            {isShipUS && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.address1eu}</label>
+                  <input id="address1" name="address1" value={formData.address1} onChange={handleChange} className="input" />
+                  {errors.address1 && <p className="text-red-500 text-xs mt-1">{errors.address1}</p>}
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    {dict.checkout.address2eu} <span className="text-gray-500">(opcional)</span>
+                  </label>
+                  <input id="address2" name="address2" value={formData.address2} onChange={handleChange} className="input" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.cityeu}</label>
+                  <input id="city" name="city" value={formData.city} onChange={handleChange} className="input" />
+                  {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.stateeu}</label>
+                  <select id="state" name="state" value={formData.state} onChange={handleChange} className="input">
+                    <option value="">{'Seleccione'}</option>
+                    {US_STATES.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
+                  </select>
+                  {errors.state && <p className="text-red-500 text-xs mt-1">{errors.state}</p>}
+                </div>
+                <div className="md:max-w-xs">
+                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.zipeu}</label>
+                  <input id="zip" name="zip" value={formData.zip} onChange={handleChange} className="input" />
+                  {errors.zip && <p className="text-red-500 text-xs mt-1">{errors.zip}</p>}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 mt-3">
+              <input
+                id="saveAsRecipient"
+                type="checkbox"
+                checked={saveAsRecipient}
+                onChange={(e) => setSaveAsRecipient(e.target.checked)}
+                disabled={savingRecipient}
+              />
+              <label htmlFor="saveAsRecipient" className="text-sm text-gray-700">
+                {locale === 'en' ? 'Save as new recipient' : 'Guardar como nuevo destinatario'}
+              </label>
+
+            </div>
           </div>
 
           {/* ===== Método de envío a Cuba ===== */}
