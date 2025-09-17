@@ -14,12 +14,12 @@ const siteDetails = {
 const footerDetails = {
   Address: "10230 NW 80th Ave, Hialeah Gardens, FL 33016",
   Horario: "24 H",
-  email: "yleecruz@gmail.com",
-  telephone: "+1 (786) 450-9223",
+  email: "soporte@ctenvios.com",
+  telephone: "+1 (754)-277-8810",
   socials: {
     Facebook: "https://www.facebook.com/ctenvio/",
     Instagram: "https://www.instagram.com/ctenvios/",
-    WhatsApp: "https://wa.me/17864509223",
+    WhatsApp: "https://wa.me/17542778810",
   },
 };
 

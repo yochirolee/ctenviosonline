@@ -89,7 +89,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
 
               <p className="mt-4">
                 📩 Si tiene preguntas o inquietudes, puede contactarnos en:{" "}
-                <a className="text-green-700 underline" href="mailto:yleecruz@gmail.com">yleecruz@gmail.com</a>
+                <a className="text-green-700 underline" href="mailto:soporte@ctenvios.com">soporte@ctenvios.com</a>
               </p>
 
               {/* -------- POLÍTICA DE ENTREGAS -------- */}
@@ -132,8 +132,8 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>7.2. Aunque garantizamos el seguimiento y apoyo en todo momento, no somos responsables por retrasos causados por aduanas, desastres naturales u otras circunstancias fuera de nuestro control.</p>
 
               <h3 className="text-xl font-semibold mt-4">8. Contacto y Soporte</h3>
-              <p>📧 Email: <a className="text-green-700 underline" href="mailto:yleecruz@gmail.com">yleecruz@gmail.com</a></p>
-              <p>📱 WhatsApp: <a className="text-green-700 underline" href="https://wa.me/17884509223" target="_blank" rel="noopener noreferrer">+1 (786) 450-9223</a></p>
+              <p>📧 Email: <a className="text-green-700 underline" href="mailto:soporte@ctenvios.com">soporte@ctenvios.com</a></p>
+              <p>📱 WhatsApp: <a className="text-green-700 underline" href="https://wa.me/17542778810" target="_blank" rel="noopener noreferrer">+1 (754) 277-8810</a></p>
 
               {/* -------- PREGUNTAS FRECUENTES -------- */}
               <h2 className="text-2xl font-bold mt-10">Preguntas Frecuentes – CTEnvios Online</h2>
@@ -175,7 +175,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>Sí. Recibirás un número de seguimiento o guía cuando el pedido sea despachado. Puedes consultarlo en tu cuenta o escribirnos.</p>
 
               <h3 className="text-lg font-semibold mt-4">13. ¿Cómo me comunico con atención al cliente?</h3>
-              <p>Puedes escribirnos al correo <a className="text-green-700 underline" href="mailto:yleecruz@gmail.com">yleecruz@gmail.com</a> o vía WhatsApp al <a className="text-green-700 underline" href="https://wa.me/17864509223" target="_blank" rel="noopener noreferrer">+1 (786) 450-9223</a>. Atendemos de lunes a sábado.</p>
+              <p>Puedes escribirnos al correo <a className="text-green-700 underline" href="mailto:soporte@ctenvios.com">soporte@ctenvios.com</a> o vía WhatsApp al <a className="text-green-700 underline" href="https://wa.me/17542778810" target="_blank" rel="noopener noreferrer">+1 (754) 277-8810</a>. Atendemos de lunes a sábado.</p>
 
               <p className="mt-4 italic text-gray-600">“Conectamos hogares, cruzamos fronteras.”</p>
             </>
@@ -232,7 +232,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
 
               <p className="mt-4">
                 📩 Questions? Contact us at{" "}
-                <a className="text-green-700 underline" href="mailto:yleecruz@gmail.com">yleecruz@gmail.com</a>
+                <a className="text-green-700 underline" href="mailto:soporte@ctenvios.com">soporte@ctenvios.com</a>
               </p>
 
               {/* -------- DELIVERY POLICY (EN) -------- */}
@@ -274,8 +274,8 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>7.2. While we provide tracking and support, we are not responsible for delays caused by customs, natural disasters or other circumstances beyond our control.</p>
 
               <h3 className="text-xl font-semibold mt-4">8. Contact & Support</h3>
-              <p>📧 Email: <a className="text-green-700 underline" href="mailto:yleecruz@gmail.com">yleecruz@gmail.com</a></p>
-              <p>📱 WhatsApp: <a className="text-green-700 underline" href="https://wa.me/17864509223" target="_blank" rel="noopener noreferrer">+1 (786) 450-9223</a></p>
+              <p>📧 Email: <a className="text-green-700 underline" href="mailto:soporte@ctenvios.com">soporte@ctenvios.com</a></p>
+              <p>📱 WhatsApp: <a className="text-green-700 underline" href="https://wa.me/17542778810" target="_blank" rel="noopener noreferrer">+1 (754) 277-8810</a></p>
 
               {/* -------- FAQ (EN) -------- */}
               <h2 className="text-2xl font-bold mt-10">Frequently Asked Questions – CTEnvios Online</h2>
@@ -317,7 +317,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
               <p>Yes. You’ll receive a tracking/guide number when the order ships. You can also check it in your account or contact us.</p>
 
               <h3 className="text-lg font-semibold mt-4">13. How do I contact customer service?</h3>
-              <p>Email us at <a className="text-green-700 underline" href="mailto:yleecruz@gmail.com">yleecruz@gmail.com</a> or WhatsApp <a className="text-green-700 underline" href="https://wa.me/17864509223" target="_blank" rel="noopener noreferrer">+1 (786) 450-9223</a>. We’re available Monday to Saturday.</p>
+              <p>Email us at <a className="text-green-700 underline" href="mailto:soporte@ctenvios.com">soporte@ctenvios.com</a> or WhatsApp <a className="text-green-700 underline" href="https://wa.me/17542778810" target="_blank" rel="noopener noreferrer">+1 (754) 277-8810</a>. We’re available Monday to Saturday.</p>
 
               <p className="mt-4 italic text-gray-600">“Connecting homes, crossing borders.”</p>
             </>
