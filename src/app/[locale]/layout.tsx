@@ -13,6 +13,7 @@ import GlobalSearch from "@/components/GlobalSearch"
 import { getDictionary } from "@/lib/dictionaries"
 import type { Dict } from "@/types/Dict"
 import EncargosDrawer from '@/components/EncargosDrawer'
+import MaintenanceBanner from '@/components/MaintenanceBanner'
 
 /** ---- Helper para aceptar params como objeto o como Promise ---- */
 type Params = { locale: string }
@@ -122,6 +123,7 @@ export default async function LocaleLayout({
           <CartDrawer dict={dict} />
           <BannerLocationPicker dict={dict} />
           <GlobalSearch dict={dict} />
+          <MaintenanceBanner />
           {children}
           <EncargosDrawer dict={dict} />
           <Toaster position="top-center" />

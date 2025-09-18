@@ -1,5 +1,6 @@
 import AdminGuard from '@/components/admin/AdminGuard'
 import AdminTabs from '@/components/admin/AdminTabs'
+import AdminMaintenanceCard  from '@/components/admin/AdminMaintenanceCard'
 
 export default function AdminHome() {
   return (
@@ -11,6 +12,10 @@ export default function AdminHome() {
         </div>
 
         <AdminTabs />
+
+        
+        {/* 🔧 NUEVO: panel de mantenimiento */}
+        <AdminMaintenanceCard />
 
         {/* Aquí a futuro: tarjetas con KPIs, últimos pedidos, etc. */}
         <div className="grid gap-4 sm:grid-cols-3">
