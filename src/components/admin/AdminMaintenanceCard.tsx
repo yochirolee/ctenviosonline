@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useState } from 'react' // ← quitamos useEffect
 import { toast } from 'sonner'
 import { Wrench, ShieldAlert } from 'lucide-react'
 
@@ -10,8 +10,7 @@ type MaintState = { mode: MaintMode; message?: string | null }
 
 function useMaintenanceState() {
   const [state, setState] = useState<MaintState>({ mode: 'off', message: '' })
-  const [loading] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving] = useState(false) // ← quitamos loading
 
   async function save(next: MaintState) {
     setSaving(true)
@@ -32,18 +31,19 @@ function useMaintenanceState() {
       }
       setState(next)
       toast.success('Configuración de mantenimiento guardada')
-    } catch (e: any) {
-      toast.error(e?.message || 'Error guardando mantenimiento')
+    } catch (e: unknown) { // ← sin 'any'
+      const msg = e instanceof Error ? e.message : 'Error guardando mantenimiento'
+      toast.error(msg)
     } finally {
       setSaving(false)
     }
   }
 
-  return { state, setState, loading, saving, save }
+  return { state, setState, saving, save } // ← ya no devolvemos loading
 }
 
 export default function AdminMaintenanceCard() {
-  const { state, setState, loading, saving, save } = useMaintenanceState()
+  const { state, setState, saving, save } = useMaintenanceState() // ← quitamos loading
 
   const confirmAndSave = async () => {
     if (state.mode === 'full') {
@@ -62,7 +62,6 @@ export default function AdminMaintenanceCard() {
           <Wrench className="text-emerald-600" />
           <h2 className="text-lg font-semibold">Mantenimiento</h2>
         </div>
-        
       </div>
 
       <p className="text-sm text-gray-600">
@@ -111,7 +110,6 @@ export default function AdminMaintenanceCard() {
           value={state.message ?? ''}
           onChange={(e) => setState((s) => ({ ...s, message: e.target.value }))}
         />
-       
       </div>
 
       <div className="flex items-center justify-between">
