@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback, useTransition } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
@@ -20,6 +20,10 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
 
   const [items, setItems] = useState<SimplifiedProduct[]>([])
   const [loading, setLoading] = useState(true)
+
+  // PERF: render progresivo (pocas al inicio, luego más)
+  const [visibleCount, setVisibleCount] = useState<number>(0)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
   const railRef = useRef<HTMLDivElement>(null)
 
   const t = {
@@ -43,11 +47,11 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     () =>
       location
         ? ({
-          country: location.country,
-          province: location.province,
-          municipality: location.municipality,
-          area_type: location.area_type,
-        } as DeliveryLocation)
+            country: location.country,
+            province: location.province,
+            municipality: location.municipality,
+            area_type: location.area_type,
+          } as DeliveryLocation)
         : undefined,
     [location?.country, location?.province, location?.municipality, location?.area_type]
   )
@@ -58,7 +62,24 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
       try {
         setLoading(true)
         const list = await getProducts(loc)
-        if (!cancelled) setItems((list ?? []).slice(0, 20))
+        if (!cancelled) {
+          const trimmed = (list ?? []).slice(0, 20)
+          setItems(trimmed)
+
+          // PERF: decide cuántas mostrar de entrada según viewport (muy simple y conservador)
+          const w = typeof window !== 'undefined' ? window.innerWidth : 768
+          const initial = w < 640 ? 4 : 8 // 2 filas móviles ~ 4 items visibles, en desktop 8
+          setVisibleCount(Math.min(initial, trimmed.length))
+
+          // PERF: hidrata más en idle (hasta 12) sin bloquear interacción
+          const idle = (cb: () => void) => {            
+            if (window.requestIdleCallback) return window.requestIdleCallback(cb)
+            return setTimeout(cb, 200)
+          }
+          idle(() => {
+            setVisibleCount(v => Math.min(Math.max(v, 8), Math.min(12, trimmed.length)))
+          })
+        }
       } catch {
         if (!cancelled) setItems([])
       } finally {
@@ -66,9 +87,7 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
       }
     }
     load()
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [loc])
 
   const fmt = useMemo(
@@ -76,7 +95,8 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     [locale]
   )
 
-  const handleAdd = async (p: SimplifiedProduct) => {
+  // PERF: evita recrear función por render
+  const handleAdd = useCallback(async (p: SimplifiedProduct) => {
     const isLoggedIn = await checkCustomerAuth()
     if (!isLoggedIn) {
       toast.error(t.login_required, { position: 'bottom-center' })
@@ -94,13 +114,28 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
         toast.error(locale === 'en' ? 'At the moment, you can’t add products to the cart.' : 'En este momento no se pueden agregar productos al carrito.', { position: 'bottom-center' })
       }
     }
-  }
+  }, [addItem, locale, router, t.login_required, t.added])
 
   const scrollBy = (delta: number) => {
     const el = railRef.current
     if (!el) return
     el.scrollBy({ left: delta, behavior: 'smooth' })
   }
+
+  // PERF: cargar más cuando el usuario se acerca al final (horizontal)
+  useEffect(() => {
+    if (!sentinelRef.current) return
+    const el = sentinelRef.current
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          setVisibleCount(v => Math.min(v + 6, items.length))
+        }
+      }
+    }, { root: railRef.current, rootMargin: '200px', threshold: 0.01 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [items.length])
 
   return (
     <section className="py-8 px-4 md:px-12 lg:px-20 bg-white">
@@ -149,18 +184,22 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
         <div className="relative">
           <div
             ref={railRef}
+            // PERF: content-visibility reduce trabajo del main thread fuera de viewport
             className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2
                        [-ms-overflow-style:none] [scrollbar-width:none]
-                       [&::-webkit-scrollbar]:hidden"
+                       [&::-webkit-scrollbar]:hidden
+                       [content-visibility:auto] [contain-intrinsic-size:360px]"
           >
-            {items.map((p) => (
+            {items.slice(0, Math.max(visibleCount, 1)).map((p, idx, arr) => (
               <article
                 key={p.id}
                 className="w-[calc(50%-0.5rem)] sm:w-56 flex-shrink-0 snap-start rounded-xl border shadow-sm bg-white flex flex-col overflow-hidden"
+                ref={idx === arr.length - 1 ? sentinelRef : undefined}
               >
                 {/* Imagen click → detalle */}
                 <Link
                   href={`/${locale}/product/${p.id}`}
+                  prefetch={false} // PERF: evita prefetch masivo de 20 páginas
                   className="relative aspect-[4/3] bg-white rounded-t-xl overflow-hidden block"
                 >
                   <Image
@@ -169,12 +208,16 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
                     fill
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 224px"
                     className="object-contain p-2"
-                    priority={false}
+                    // PERF: mantener lazy, y baja prioridad de fetch
+                    loading="lazy"
+                    fetchPriority="low"
+                    decoding="async"
+                    draggable={false}
                   />
                 </Link>
 
                 <div className="p-3 flex-1 flex flex-col">
-                  <Link href={`/${locale}/product/${p.id}`}>
+                  <Link href={`/${locale}/product/${p.id}`} prefetch={false}>
                     <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 hover:underline">
                       {p.name}
                     </h3>
@@ -197,7 +240,6 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
                   </div>
                 </div>
               </article>
-
             ))}
           </div>
 
@@ -218,5 +260,4 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
       )}
     </section>
   )
-
 }

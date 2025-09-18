@@ -7,12 +7,9 @@ import { useEffect, useState } from 'react'
 import { getCategories } from '@/lib/products'
 import { useLocation } from '@/context/LocationContext'
 import type { Dict } from '@/types/Dict'
-//import TuAmazonCard from '@/components/TuAmazonCard'
 
 type Category = { slug: string; image?: string }
 type Props = { dict: Dict }
-
-// Tipo esperado desde el backend
 type RawCategory = { slug: string; image_url?: string | null }
 
 export default function HeroCategories({ dict }: Props) {
@@ -20,7 +17,7 @@ export default function HeroCategories({ dict }: Props) {
   const [cats, setCats] = useState<Category[]>([])
   const { location } = useLocation()
 
-  // 👇 Al montar, abrir el selector si venimos de login/registro
+  // Abrir selector si venimos de login/registro
   useEffect(() => {
     try {
       const flag = sessionStorage.getItem('openLocationOnNextPage')
@@ -31,6 +28,7 @@ export default function HeroCategories({ dict }: Props) {
     } catch {}
   }, [])
 
+  // Cargar categorías una sola vez (no depende de dict)
   useEffect(() => {
     let mounted = true
     ;(async () => {
@@ -38,25 +36,22 @@ export default function HeroCategories({ dict }: Props) {
         const rows = (await getCategories()) as RawCategory[]
         const normalized: Category[] = rows
           .filter((c): c is RawCategory => !!c && typeof c.slug === 'string' && c.slug in dict.categories.list)
-          .map((c) => ({
-            slug: c.slug,
-            image: c.image_url ?? undefined, // SOLO la URL que viene del backend
-          }))
+          .map((c) => ({ slug: c.slug, image: c.image_url ?? undefined }))
         if (mounted) setCats(normalized)
       } catch {}
     })()
-    return () => {
-      mounted = false
-    }
-  }, [dict])
+    return () => { mounted = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (cats.length === 0) return null
-  const ABOVE_THE_FOLD_N = 6
+  const ABOVE_THE_FOLD_N = 3
 
   return (
     <section id="hero" className="py-8 px-4 md:px-12 lg:px-20 bg-white scroll-mt-24">
-      {/* Faja de ubicación visible siempre */}
-      <div className="mb-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      {/* Faja de ubicación con altura reservada (evita CLS) */}
+      <div className="mb-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900
+                      flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-h-[48px]">
         <div>
           {location ? (
             <>
@@ -76,11 +71,7 @@ export default function HeroCategories({ dict }: Props) {
         <div>
           <button
             type="button"
-            onClick={() => {
-              try {
-                window.dispatchEvent(new CustomEvent('location:open'))
-              } catch {}
-            }}
+            onClick={() => { try { window.dispatchEvent(new CustomEvent('location:open')) } catch {} }}
             className="underline text-emerald-800 hover:text-emerald-900"
           >
             {location ? dict.location_banner.location_selected_change : dict.location_banner.location_select}
@@ -94,12 +85,15 @@ export default function HeroCategories({ dict }: Props) {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-      {/*  <TuAmazonCard /> */}
         {cats.map((cat, idx) => (
           <Link
             key={cat.slug}
             href={`/${locale}/categories/${cat.slug}`}
-            className="group block border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition"
+            className={
+              "group block border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition " +
+              (idx >= ABOVE_THE_FOLD_N ? "cv-auto" : "")
+            }
+            // prefetch={false} // <- activar solo si ves red saturada por muchos links
           >
             <div className="relative h-28 sm:h-32 md:h-36 lg:h-40 bg-gray-100">
               {cat.image ? (
@@ -110,7 +104,7 @@ export default function HeroCategories({ dict }: Props) {
                   sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
                   className="object-cover"
                   priority={idx < ABOVE_THE_FOLD_N}
-                  loading={idx < ABOVE_THE_FOLD_N ? 'eager' : undefined}
+                  fetchPriority={idx === 0 ? 'high' : undefined}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
