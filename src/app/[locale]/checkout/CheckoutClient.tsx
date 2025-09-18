@@ -291,11 +291,11 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   useEffect(() => {
     if (!location?.country) return;
     if (recipients.length === 0) return;
-  
+
     // ¿El seleccionado actual sigue válido para el país?
     const current = recipients.find(r => r.id === selectedRecipientId);
     if (current?.country === location.country) return;
-  
+
     // 1) Intentar destinatario guardado en LS para el nuevo país
     try {
       if (location.country === 'CU' || location.country === 'US') {
@@ -312,19 +312,19 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         }
       }
     } catch { /* noop */ }
-  
+
     // 2) Autoselección por país (tu misma lógica)
     if (location.country === 'CU' && location.province && location.municipality) {
       const provCanon = normalizeCubaProvince(location.province) || location.province;
       const munCanon = normalizeCubaMunicipality(provCanon, location.municipality) || location.municipality;
-  
+
       const match = recipients
         .filter((r): r is RecipientCU => r.country === 'CU')
         .find(r =>
           (normalizeCubaProvince(r.province) || r.province) === provCanon &&
           (normalizeCubaMunicipality(provCanon, r.municipality) || r.municipality) === munCanon
         );
-  
+
       if (match) {
         setSelectedRecipientId(match.id);
         applyRecipient(match);
@@ -339,12 +339,12 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         return;
       }
     }
-  
+
     // 3) Si nada aplica → limpiar para que el formulario use el país del banner
     setSelectedRecipientId(null);
     setRecipientLoc(null);
   }, [location?.country, location?.province, location?.municipality, recipients, selectedRecipientId]);
-  
+
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
@@ -1757,9 +1757,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             </div>
           )}
 
-          <div className="rounded-lg border bg-white p-3 text-sm space-y-2">
-            <div className="font-medium">
-              {isShipCU && (
+          {isShipCU && (<div className="rounded-lg border bg-white p-3 text-sm space-y-2">
+            <div className="font-medium">              
                 <div className="mt-2 text-sm text-gray-700">
                   <span className="font-medium">
                     {locale === 'en' ? 'Delivery By:' : 'Entrega por:'}
@@ -1768,7 +1767,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                     ? (locale === 'en' ? 'Air' : 'Avión')
                     : (locale === 'en' ? 'Sea' : 'Barco')}
                 </div>
-              )}
+              
               {locale === 'en' ? DELIVERY_TIMES.en.title : DELIVERY_TIMES.es.title}
             </div>
 
@@ -1785,6 +1784,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
               ))}
             </ul>
           </div>
+        )}
 
 
           <div className="rounded-lg border bg-white p-3 text-sm space-y-2">
