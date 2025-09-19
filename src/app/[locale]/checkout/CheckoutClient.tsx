@@ -557,6 +557,21 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     try { localStorage.setItem(lsRecipientKeyFor(cc), String(r.id)) } catch { }
   }, []);
 
+  // evita trabajo durante el cambio de destinatario (tick siguiente)
+const switchingRecipientRef = useRef(false);
+
+const findRecipientById = useCallback(
+  (id: number, country?: 'CU'|'US'): Recipient | null => {
+    const list = country
+      ? recipients.filter(r => normalizeCountry((r as any).country) === country)
+      : recipients;
+    const r = list.find(x => x.id === id);
+    return r ?? null;
+  },
+  [recipients]
+);
+
+
 
   useEffect(() => {
     if (!location?.country) return;
@@ -936,6 +951,9 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   }, [selectedRecipientId, recipients]);
 
   useEffect(() => {
+    if (switchingRecipientRef.current) {
+      return;
+    }
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
     if (!cartId || !token) return
 
@@ -2201,19 +2219,39 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                     onChange={(e) => {
                       const val = e.target.value;
                       const id = val ? Number(val) : null;
+                    
+                      // marca que estamos cambiando
+                      switchingRecipientRef.current = true;
+                    
                       setSelectedRecipientId(id);
-                      if (id !== null) {
-                        const r = recipientsForCountry.find(x => x.id === id);
-                        if (r) applyRecipient(r);
-                      } else {
+                    
+                      if (id === null || Number.isNaN(id)) {
                         setRecipientLoc(null);
                         try {
                           if (location?.country === 'CU' || location?.country === 'US') {
                             localStorage.removeItem(lsRecipientKeyFor(location.country));
                           }
-                        } catch { }
+                        } catch {}
+                        // liberamos el lock en el próximo tick para que el quote se reactive
+                        requestAnimationFrame(() => { switchingRecipientRef.current = false; });
+                        return;
                       }
+                    
+                      // difiere la aplicación del destinatario al próximo frame:
+                      requestAnimationFrame(() => {
+                        const country = (location?.country === 'CU' || location?.country === 'US')
+                          ? location.country
+                          : undefined;
+                    
+                        const r = findRecipientById(id, country as any);
+                        if (r) {
+                          applyRecipient(r);
+                        }
+                        // si por timing no se encontró, no hacemos nada (no crashea)
+                        switchingRecipientRef.current = false;
+                      });
                     }}
+                    
                   >
                     <option value="">
                       {recLoading
