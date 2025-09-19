@@ -115,6 +115,54 @@ export const CU_MUNS_BY_PROVINCE: Record<CuProvince, readonly string[]> = {
   'Isla de la Juventud': ['Isla de la Juventud'],
 };
 
+// ---- Captura de errores en móvil (verás toasts + logs en consola) ----
+function setupMobileCrashCapture(API_URL?: string) {
+  if (typeof window === 'undefined') return
+  if ((window as any).__crashHooked) return
+    ; (window as any).__crashHooked = true
+
+  const report = (msg: string, extra?: any) => {
+    // Muestra feedback inmediato
+    try { (window as any).toast?.error?.(`⚠️ ${msg}`) } catch { }
+    // Y loggea a consola (iOS: usa Safari → “Compartir” → “Añadir a pantalla de inicio” no siempre muestra consola)
+    console.error('[MobileCrash]', msg, extra)
+    // Opcional: envía a tu backend si quieres guardar el stack
+    // if (API_URL) fetch(`${API_URL}/_client-logs`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({msg, extra, ua: navigator.userAgent}) }).catch(()=>{})
+  }
+
+  window.addEventListener('error', (e) => {
+    report(e.message || 'window.error', e.error?.stack || e.error || null)
+  })
+
+  window.addEventListener('unhandledrejection', (e: any) => {
+    const reason = e?.reason
+    const msg = typeof reason === 'string' ? reason : (reason?.message || 'unhandledrejection')
+    report(msg, reason?.stack || reason || null)
+  })
+}
+
+// ---- Polyfill CustomEvent (por si algún WebView iOS falla) ----
+(function () {
+  if (typeof window === 'undefined') return;
+  try { new CustomEvent('test'); } catch {
+    const CE = function (event: string, params?: any) {
+      params = params || { bubbles: false, cancelable: false, detail: null };
+      const evt = document.createEvent('CustomEvent');
+      evt.initCustomEvent(event, params.bubbles, params.cancelable, params.detail);
+      return evt;
+    };
+    CE.prototype = (window as any).Event?.prototype;
+    (window as any).CustomEvent = CE as any;
+  }
+})();
+
+// ---- Detección de navegadores "embebidos" (IG/FB/TikTok) ----
+function isInAppBrowserUA(ua: string) {
+  ua = ua.toLowerCase();
+  return ua.includes('fbav') || ua.includes('fbios') || ua.includes('fban') ||
+    ua.includes('instagram') || ua.includes('line/') ||
+    ua.includes('snapchat') || ua.includes('tiktok');
+}
 
 // ===== helpers =====
 function buildQuoteErrorMsg({
@@ -269,7 +317,7 @@ type ShipLoc =
   | { country: 'CU'; province: string; municipality: string }
   | { country: 'US'; state: string; city: string; zip: string }
 
-  
+
 export default function CheckoutPage({ dict }: { dict: Dict }) {
   const { items, cartId, clearCart } = useCart()
   const cartItems: CartLine[] = useMemo(
@@ -343,6 +391,10 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     load()
     return () => controller.abort()
   }, [])
+
+  useEffect(() => {
+    setupMobileCrashCapture(API_URL);
+  }, []);
 
   // — Billing (buyer) card edit state —
   const [editingBilling, setEditingBilling] = useState(false)
@@ -1284,15 +1336,15 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     municipality?: string;
   };
 
-// Subtipo derivado del union que ya tienes importado
-type RecipientUSNarrow = Extract<Recipient, { country: 'US' }>;
+  // Subtipo derivado del union que ya tienes importado
+  type RecipientUSNarrow = Extract<Recipient, { country: 'US' }>;
 
-const isRecipientUS = (x: Recipient): x is RecipientUSNarrow =>
-  normalizeCountry((x as { country?: string }).country) === 'US';
+  const isRecipientUS = (x: Recipient): x is RecipientUSNarrow =>
+    normalizeCountry((x as { country?: string }).country) === 'US';
 
-const isRecipientCU = (x: Recipient): x is RecipientCU =>
-  normalizeCountry((x as { country?: string }).country) === 'CU';
-  
+  const isRecipientCU = (x: Recipient): x is RecipientCU =>
+    normalizeCountry((x as { country?: string }).country) === 'CU';
+
   const [showRecipientModal, setShowRecipientModal] = useState(false);
   const [recipientModalMode, setRecipientModalMode] = useState<'create' | 'edit'>('create');
   const [recipientDraft, setRecipientDraft] = useState<RecipientDraft>({});
@@ -1306,7 +1358,7 @@ const isRecipientCU = (x: Recipient): x is RecipientCU =>
     if (s === 'US' || s === 'USA' || s === 'UNITED STATES' || s === 'EEUU' || s === 'EE.UU.') return 'US';
     return 'CU';
   }
-  
+
 
   function openCreateRecipient() {
     const defaultCountry: 'CU' | 'US' =
@@ -1535,37 +1587,37 @@ const isRecipientCU = (x: Recipient): x is RecipientCU =>
         toast.info(locale === 'en'
           ? 'This recipient already exists.'
           : 'Este destinatario ya existe.', { position: 'bottom-center' });
-    
+
         // (Opcional) tratar de autoseleccionarlo
         try {
           const rows = await listRecipients();
           setRecipients(rows);
-    
+
           const match = rows.find(r => {
             const sameName =
               r.first_name?.trim().toLowerCase() === (d.first_name || '').trim().toLowerCase() &&
               r.last_name?.trim().toLowerCase() === (d.last_name || '').trim().toLowerCase();
-          
+
             if (d.country === 'CU') {
               return isRecipientCU(r) &&
                 sameName &&
                 (r.ci?.trim() === (d.ci || '').trim());
             }
-          
+
             return isRecipientUS(r) &&
               sameName &&
               (r.address_line1?.trim().toLowerCase() === (d.address_line1 || '').trim().toLowerCase()) &&
               (r.zip?.trim() === (d.zip || '').trim());
           });
-          
-    
+
+
           if (match) {
             setSelectedRecipientId(match.id);
             applyRecipient(match);
             setShowRecipientModal(false);
           }
-        } catch {}
-    
+        } catch { }
+
         return; // no lo tratamos como error fatal
       }
       toast.error(getErrorMessage(e, locale === 'en' ? 'Could not save recipient.' : 'No se pudo guardar el destinatario.'), { position: 'bottom-center' });
@@ -1881,6 +1933,15 @@ const isRecipientCU = (x: Recipient): x is RecipientCU =>
           </div>
         )}
       </div>
+      {/* Aviso: navegador embebido */}
+      {typeof navigator !== 'undefined' && isInAppBrowserUA(navigator.userAgent) && (
+        <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 mt-3">
+          {locale === 'en'
+            ? 'You are opening this page inside an app browser (e.g. Instagram/Facebook). If you see errors, tap the ••• menu and open in Safari.'
+            : 'Estás abriendo la página dentro del navegador de otra app (por ejemplo Instagram/Facebook). Si ves errores, ábrela en Safari desde el menú •••.'}
+        </div>
+      )}
+
 
 
       {/* ===== Billing (Buyer) ===== */}
