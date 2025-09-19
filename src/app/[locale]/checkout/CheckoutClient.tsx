@@ -163,17 +163,26 @@ function setupMobileCrashCapture(): void {
 // ---- Polyfill CustomEvent (por si algún WebView iOS falla) ----
 (function () {
   if (typeof window === 'undefined') return;
-  try { new CustomEvent('test'); } catch {
-    const CE = function (event: string, params?: any) {
-      params = params || { bubbles: false, cancelable: false, detail: null };
-      const evt = document.createEvent('CustomEvent');
-      evt.initCustomEvent(event, params.bubbles, params.cancelable, params.detail);
-      return evt;
-    };
-    CE.prototype = (window as any).Event?.prototype;
-    (window as any).CustomEvent = CE as any;
+  try {
+    // Si existe CustomEvent nativo, no hacemos nada
+    // eslint-disable-next-line no-new
+    new CustomEvent('test');
+  } catch {
+    // Polyfill mínimo sin 'implements CustomEvent<T>' para evitar initCustomEvent
+    class CECustomEvent<T = unknown> extends Event {
+      readonly detail: T;
+      constructor(type: string, params: CustomEventInit<T> = {}) {
+        super(type, params);
+        this.detail = params.detail as T;
+      }
+    }
+    // Asignamos manteniendo el tipado, sin usar 'any'
+    (window as Window & typeof globalThis).CustomEvent =
+      CECustomEvent as unknown as typeof CustomEvent;
   }
 })();
+
+
 
 // ---- Detección de navegadores "embebidos" (IG/FB/TikTok) ----
 function isInAppBrowserUA(ua: string) {
