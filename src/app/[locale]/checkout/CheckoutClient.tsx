@@ -116,30 +116,49 @@ export const CU_MUNS_BY_PROVINCE: Record<CuProvince, readonly string[]> = {
 };
 
 // ---- Captura de errores en móvil (verás toasts + logs en consola) ----
-function setupMobileCrashCapture(API_URL?: string) {
-  if (typeof window === 'undefined') return
-  if ((window as any).__crashHooked) return
-    ; (window as any).__crashHooked = true
-
-  const report = (msg: string, extra?: any) => {
-    // Muestra feedback inmediato
-    try { (window as any).toast?.error?.(`⚠️ ${msg}`) } catch { }
-    // Y loggea a consola (iOS: usa Safari → “Compartir” → “Añadir a pantalla de inicio” no siempre muestra consola)
-    console.error('[MobileCrash]', msg, extra)
-    // Opcional: envía a tu backend si quieres guardar el stack
-    // if (API_URL) fetch(`${API_URL}/_client-logs`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({msg, extra, ua: navigator.userAgent}) }).catch(()=>{})
+declare global {
+  interface Window {
+    __crashHooked?: boolean;
   }
-
-  window.addEventListener('error', (e) => {
-    report(e.message || 'window.error', e.error?.stack || e.error || null)
-  })
-
-  window.addEventListener('unhandledrejection', (e: any) => {
-    const reason = e?.reason
-    const msg = typeof reason === 'string' ? reason : (reason?.message || 'unhandledrejection')
-    report(msg, reason?.stack || reason || null)
-  })
 }
+
+function setupMobileCrashCapture(): void {
+  if (typeof window === 'undefined') return;
+  if (window.__crashHooked) return;
+  window.__crashHooked = true;
+
+  const report = (msg: string, extra?: unknown) => {
+    try { toast.error(`⚠️ ${msg}`); } catch { /* noop */ }
+    // Nota: 'extra' es 'unknown' para evitar 'any'
+    // eslint-disable-next-line no-console
+    console.error('[MobileCrash]', msg, extra);
+  };
+
+  window.addEventListener('error', (e: ErrorEvent) => {
+    const extra = (e.error && typeof e.error === 'object' && 'stack' in (e.error as object))
+      ? (e.error as { stack?: unknown }).stack
+      : e.error ?? null;
+    report(e.message || 'window.error', extra);
+  });
+
+  window.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => {
+    const reason: unknown = e.reason;
+    const msg =
+      typeof reason === 'string'
+        ? reason
+        : (typeof reason === 'object' && reason && 'message' in reason && typeof (reason as { message?: unknown }).message === 'string')
+          ? String((reason as { message: string }).message)
+          : 'unhandledrejection';
+
+    const extra =
+      (typeof reason === 'object' && reason && 'stack' in reason)
+        ? (reason as { stack?: unknown }).stack
+        : reason;
+
+    report(msg, extra);
+  });
+}
+
 
 // ---- Polyfill CustomEvent (por si algún WebView iOS falla) ----
 (function () {
@@ -393,7 +412,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   }, [])
 
   useEffect(() => {
-    setupMobileCrashCapture(API_URL);
+    setupMobileCrashCapture();
   }, []);
 
   // — Billing (buyer) card edit state —
