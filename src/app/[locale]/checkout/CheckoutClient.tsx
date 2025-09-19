@@ -269,9 +269,13 @@ type ShipLoc =
   | { country: 'CU'; province: string; municipality: string }
   | { country: 'US'; state: string; city: string; zip: string }
 
+  
 export default function CheckoutPage({ dict }: { dict: Dict }) {
   const { items, cartId, clearCart } = useCart()
-  const cartItems: CartLine[] = (items as unknown as CartLine[]) ?? []
+  const cartItems: CartLine[] = useMemo(
+    () => (items as unknown as CartLine[]) ?? [],
+    [items]
+  )
 
   const router = useRouter()
   const { locale } = useParams<{ locale: string }>()
@@ -394,6 +398,56 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     [recipients, location?.country]
   )
 
+  const applyRecipient = useCallback((r: Recipient) => {
+    const cc = normalizeCountry((r as { country?: string }).country);
+
+    if (cc === 'CU') {
+      setRecipientLoc({ country: 'CU', province: (r as RecipientCU).province, municipality: (r as RecipientCU).municipality });
+      setFormData(prev => ({
+        ...prev,
+        nombre: r.first_name || '',
+        apellidos: r.last_name || '',
+        email: r.email || '',
+        telefono: toLocalPhone('CU', r.phone),
+        instrucciones: r.instructions || '',
+        // limpia US
+        address1: '', address2: '', city: '', state: '', zip: '',
+        // Cuba
+        direccion: (r as RecipientCU).address || '',
+        ci: (r as RecipientCU).ci || '',
+      }));
+    } else {
+      const ru = r as {
+        address_line1?: string; address_line2?: string | null;
+        city?: string; state?: string; zip?: string;
+      };
+      setRecipientLoc({ country: 'US', state: ru.state || '', city: ru.city || '', zip: ru.zip || '' });
+      setFormData(prev => ({
+        ...prev,
+        nombre: r.first_name || '',
+        apellidos: r.last_name || '',
+        email: r.email || '',
+        telefono: r.phone || '',
+        instrucciones: r.instructions || '',
+        // US
+        address1: ru.address_line1 || '',
+        address2: ru.address_line2 || '',
+        city: ru.city || '',
+        state: ru.state || '',
+        zip: ru.zip || '',
+        // limpia CU
+        direccion: '',
+        ci: '',
+      }));
+    }
+
+    try { localStorage.removeItem(LS_FORM_KEY) } catch { /* noop */ }
+    try {
+      const key = lsRecipientKeyFor(cc);
+      localStorage.setItem(key, String(r.id));
+    } catch { /* noop */ }
+  }, []);
+
   useEffect(() => {
     if (!location?.country) return;
     if (recipients.length === 0) return;
@@ -449,8 +503,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     // 3) Si nada aplica → limpiar para que el formulario use el país del banner
     setSelectedRecipientId(null);
     setRecipientLoc(null);
-  }, [location?.country, location?.province, location?.municipality, recipients, selectedRecipientId]);
-
+  }, [location?.country, location?.province, location?.municipality, recipients, selectedRecipientId, applyRecipient]);
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
@@ -492,56 +545,6 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     return () => { abort = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const applyRecipient = (r: Recipient) => {
-    const cc = normalizeCountry((r as { country?: string }).country);
-
-    if (cc === 'CU') {
-      setRecipientLoc({ country: 'CU', province: (r as RecipientCU).province, municipality: (r as RecipientCU).municipality });
-      setFormData(prev => ({
-        ...prev,
-        nombre: r.first_name || '',
-        apellidos: r.last_name || '',
-        email: r.email || '',
-        telefono: toLocalPhone('CU', r.phone),
-        instrucciones: r.instructions || '',
-        // limpia US
-        address1: '', address2: '', city: '', state: '', zip: '',
-        // Cuba
-        direccion: (r as RecipientCU).address || '',
-        ci: (r as RecipientCU).ci || '',
-      }));
-    } else {
-      const ru = r as {
-        address_line1?: string; address_line2?: string | null;
-        city?: string; state?: string; zip?: string;
-      };
-      setRecipientLoc({ country: 'US', state: ru.state || '', city: ru.city || '', zip: ru.zip || '' });
-      setFormData(prev => ({
-        ...prev,
-        nombre: r.first_name || '',
-        apellidos: r.last_name || '',
-        email: r.email || '',
-        telefono: r.phone || '',
-        instrucciones: r.instructions || '',
-        // US
-        address1: ru.address_line1 || '',
-        address2: ru.address_line2 || '',
-        city: ru.city || '',
-        state: ru.state || '',
-        zip: ru.zip || '',
-        // limpia CU
-        direccion: '',
-        ci: '',
-      }));
-    }
-
-    try { localStorage.removeItem(LS_FORM_KEY) } catch { /* noop */ }
-    try {
-      const key = lsRecipientKeyFor(cc);
-      localStorage.setItem(key, String(r.id));
-    } catch { /* noop */ }
-  };
 
   // ===== FORM DATA (persist) =====
   const [formData, setFormData] = useState({
@@ -811,9 +814,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       // Marcamos hidratado SOLO después de que hubo lista para intentar
       recipientHydratedRef.current = true;
     }
-  }, [location?.country, recipients.length]);
-
-
+  }, [location?.country, recipients, applyRecipient]);
 
   useEffect(() => {
     try {
@@ -1283,6 +1284,15 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     municipality?: string;
   };
 
+// Subtipo derivado del union que ya tienes importado
+type RecipientUSNarrow = Extract<Recipient, { country: 'US' }>;
+
+const isRecipientUS = (x: Recipient): x is RecipientUSNarrow =>
+  normalizeCountry((x as { country?: string }).country) === 'US';
+
+const isRecipientCU = (x: Recipient): x is RecipientCU =>
+  normalizeCountry((x as { country?: string }).country) === 'CU';
+  
   const [showRecipientModal, setShowRecipientModal] = useState(false);
   const [recipientModalMode, setRecipientModalMode] = useState<'create' | 'edit'>('create');
   const [recipientDraft, setRecipientDraft] = useState<RecipientDraft>({});
@@ -1296,6 +1306,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     if (s === 'US' || s === 'USA' || s === 'UNITED STATES' || s === 'EEUU' || s === 'EE.UU.') return 'US';
     return 'CU';
   }
+  
 
   function openCreateRecipient() {
     const defaultCountry: 'CU' | 'US' =
@@ -1530,15 +1541,23 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
           const rows = await listRecipients();
           setRecipients(rows);
     
-          const match = rows.find(r =>
-            r.country === d.country &&
-            r.first_name?.trim().toLowerCase() === (d.first_name || '').trim().toLowerCase() &&
-            r.last_name?.trim().toLowerCase() === (d.last_name || '').trim().toLowerCase() &&
-            (d.country === 'CU'
-              ? (r as RecipientCU).ci?.trim() === (d.ci || '').trim()
-              : (r as any).address_line1?.trim().toLowerCase() === (d.address_line1 || '').trim().toLowerCase() &&
-                (r as any).zip?.trim() === (d.zip || '').trim())
-          );
+          const match = rows.find(r => {
+            const sameName =
+              r.first_name?.trim().toLowerCase() === (d.first_name || '').trim().toLowerCase() &&
+              r.last_name?.trim().toLowerCase() === (d.last_name || '').trim().toLowerCase();
+          
+            if (d.country === 'CU') {
+              return isRecipientCU(r) &&
+                sameName &&
+                (r.ci?.trim() === (d.ci || '').trim());
+            }
+          
+            return isRecipientUS(r) &&
+              sameName &&
+              (r.address_line1?.trim().toLowerCase() === (d.address_line1 || '').trim().toLowerCase()) &&
+              (r.zip?.trim() === (d.zip || '').trim());
+          });
+          
     
           if (match) {
             setSelectedRecipientId(match.id);
