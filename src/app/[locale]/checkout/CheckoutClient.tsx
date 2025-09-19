@@ -560,6 +560,10 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   // Evita cotizar mientras cambia el destinatario (se libera en el próximo frame)
   const switchingRecipientRef = useRef<boolean>(false)
 
+  // Ref para evitar race conditions en useEffect
+  const selectedRecipientIdRef = useRef<number | null>(selectedRecipientId);
+  selectedRecipientIdRef.current = selectedRecipientId;
+
   // Buscar por id con filtro opcional por país, sin usar `any`
   const findRecipientById = useCallback(
     (id: number, country?: 'CU' | 'US'): Recipient | null => {
@@ -576,7 +580,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     if (recipients.length === 0) return;
 
     // ¿El seleccionado actual sigue válido para el país?
-    const current = recipients.find(r => r.id === selectedRecipientId);
+    // Usar ref en lugar de state para evitar race conditions
+    const current = recipients.find(r => r.id === selectedRecipientIdRef.current);
     if (current?.country === location.country) return;
 
     // 1) Intentar destinatario guardado en LS para el nuevo país
@@ -626,7 +631,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     // 3) Si nada aplica → limpiar para que el formulario use el país del banner
     setSelectedRecipientId(null);
     setRecipientLoc(null);
-  }, [location?.country, location?.province, location?.municipality, recipients, selectedRecipientId, applyRecipient]);
+  }, [location?.country, location?.province, location?.municipality, recipients, applyRecipient]);
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
