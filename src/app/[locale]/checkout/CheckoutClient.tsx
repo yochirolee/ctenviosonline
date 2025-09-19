@@ -3,14 +3,14 @@
 import { useCart } from "@/context/CartContext"
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { useRouter, useParams } from 'next/navigation'
-import { ArrowLeft, CreditCard } from "lucide-react"
 import type { Dict } from '@/types/Dict'
 import { toast } from "sonner"
 import { computeAreaType } from '@/lib/cubaAreaType'
 import CardPaymentModal from '@/components/CardPaymentModal'
 import { useLocation } from '@/context/LocationContext'
 import { normalizeCubaProvince, normalizeCubaMunicipality } from '@/lib/cuLocations'
-import { Ship, Plane } from "lucide-react";
+import { ArrowLeft, CreditCard, Ship, Plane, PencilLine, Plus, X, UserRound } from "lucide-react"
+import { updateRecipient } from '@/lib/recipients'
 import {
   listRecipients,
   createRecipient,
@@ -44,6 +44,77 @@ const US_STATES = [
   { code: "VA", name: "Virginia" }, { code: "WA", name: "Washington" }, { code: "WV", name: "West Virginia" },
   { code: "WI", name: "Wisconsin" }, { code: "WY", name: "Wyoming" },
 ]
+
+// === Catálogo de Cuba (provincias y municipios) ===
+export const CU_PROVINCES = [
+  'Pinar del Río', 'Artemisa', 'La Habana', 'Mayabeque', 'Matanzas', 'Cienfuegos', 'Villa Clara',
+  'Sancti Spíritus', 'Ciego de Ávila', 'Camagüey', 'Las Tunas', 'Holguín', 'Granma', 'Santiago de Cuba',
+  'Guantánamo', 'Isla de la Juventud',
+] as const;
+export type CuProvince = typeof CU_PROVINCES[number];
+
+export const CU_MUNS_BY_PROVINCE: Record<CuProvince, readonly string[]> = {
+  'Pinar del Río': [
+    'Pinar del Río', 'Consolación del Sur', 'San Luis', 'San Juan y Martínez', 'Viñales', 'Minas de Matahambre',
+    'La Palma', 'Los Palacios', 'Mantua', 'Guane', 'Sandino'
+  ],
+  'Artemisa': [
+    'Artemisa', 'Bauta', 'Caimito', 'Guanajay', 'Mariel', 'Güira de Melena', 'Alquízar',
+    'San Antonio de los Baños', 'Bahía Honda', 'Candelaria', 'San Cristóbal'
+  ],
+  'La Habana': [
+    'Playa', 'Plaza de la Revolución', 'Centro Habana', 'La Habana Vieja', 'Regla', 'Guanabacoa',
+    'Habana del Este', 'San Miguel del Padrón', 'Diez de Octubre', 'Cerro', 'Arroyo Naranjo',
+    'Boyeros', 'Cotorro', 'Marianao', 'La Lisa'
+  ],
+  'Mayabeque': [
+    'San José de las Lajas', 'Jaruco', 'Santa Cruz del Norte', 'Madruga', 'Güines', 'Melena del Sur',
+    'Quivicán', 'San Nicolás', 'Nueva Paz', 'Batabanó'
+  ],
+  'Matanzas': [
+    'Matanzas', 'Cárdenas', 'Jovellanos', 'Colón', 'Perico', 'Pedro Betancourt', 'Jagüey Grande', 'Limonar',
+    'Martí', 'Unión de Reyes', 'Calimete', 'Ciénaga de Zapata'
+  ],
+  'Cienfuegos': [
+    'Cienfuegos', 'Cruces', 'Palmira', 'Cumanayagua', 'Rodas', 'Abreus', 'Lajas', 'Aguada de Pasajeros'
+  ],
+  'Villa Clara': [
+    'Santa Clara', 'Camajuaní', 'Caibarién', 'Remedios', 'Placetas', 'Manicaragua', 'Cifuentes', 'Ranchuelo',
+    'Encrucijada', 'Santo Domingo', 'Quemado de Güines', 'Corralillo', 'Sagua la Grande'
+  ],
+  'Sancti Spíritus': [
+    'Sancti Spíritus', 'Trinidad', 'Cabaiguán', 'Jatibonico', 'Taguasco', 'Fomento', 'Yaguajay', 'La Sierpe'
+  ],
+  'Ciego de Ávila': [
+    'Ciego de Ávila', 'Morón', 'Ciro Redondo', 'Venezuela', 'Baraguá', 'Chambas', 'Florencia', 'Majagua',
+    'Primero de Enero', 'Bolivia'
+  ],
+  'Camagüey': [
+    'Camagüey', 'Florida', 'Vertientes', 'Esmeralda', 'Minas', 'Sierra de Cubitas', 'Carlos Manuel de Céspedes',
+    'Santa Cruz del Sur', 'Jimaguayú', 'Sibanicú', 'Guáimaro', 'Nuevitas'
+  ],
+  'Las Tunas': [
+    'Las Tunas', 'Puerto Padre', 'Jesús Menéndez', 'Majibacoa', 'Manatí', 'Colombia', 'Amancio', 'Jobabo'
+  ],
+  'Holguín': [
+    'Holguín', 'Gibara', 'Banes', 'Antilla', 'Rafael Freyre', 'Báguanos', 'Cacocum', 'Calixto García', 'Urbano Noris',
+    'Cueto', 'Mayarí', 'Sagua de Tánamo', 'Moa', 'Frank País'
+  ],
+  'Granma': [
+    'Bayamo', 'Manzanillo', 'Niquero', 'Pilón', 'Media Luna', 'Campechuela', 'Yara', 'Río Cauto', 'Jiguaní',
+    'Buey Arriba', 'Bartolomé Masó', 'Guisa', 'Cauto Cristo'
+  ],
+  'Santiago de Cuba': [
+    'Santiago de Cuba', 'Palma Soriano', 'San Luis', 'Songo-La Maya', 'Contramaestre', 'Mella',
+    'Segundo Frente', 'Tercer Frente', 'Guamá'
+  ],
+  'Guantánamo': [
+    'Guantánamo', 'Baracoa', 'Maisí', 'Imías', 'San Antonio del Sur', 'Caimanera', 'Niceto Pérez',
+    'El Salvador', 'Manuel Tames', 'Yateras'
+  ],
+  'Isla de la Juventud': ['Isla de la Juventud'],
+};
+
 
 // ===== helpers =====
 function buildQuoteErrorMsg({
@@ -208,9 +279,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
   const isCU = location?.country === 'CU'
   const isUS = location?.country === 'US'
-  const [saveAsRecipient, setSaveAsRecipient] = useState(false)
-  const [savingRecipient, setSavingRecipient] = useState(false)
   const [transport, setTransport] = useState<ShippingTransport>('sea');
+
 
   // ===== (NUEVO) Datos del comprador (perfil) =====
   const [buyer, setBuyer] = useState({
@@ -269,6 +339,42 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     load()
     return () => controller.abort()
   }, [])
+
+  // — Billing (buyer) card edit state —
+  const [editingBilling, setEditingBilling] = useState(false)
+  const [savingBilling, setSavingBilling] = useState(false)
+
+  async function saveBilling() {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    if (!token) {
+      toast.error(locale === 'en' ? 'Please log in again.' : 'Inicia sesión de nuevo.', { position: 'bottom-center' })
+      return
+    }
+    setSavingBilling(true)
+    try {
+      const body = {
+        first_name: (buyer.first_name || '').trim(),
+        last_name: (buyer.last_name || '').trim(),
+        phone: (buyer.phone || '').trim(),
+        address: (buyer.address || '').trim(),
+        zip: (buyer.zip || '').trim(),
+        // el email lo editas aquí pero no lo envío en PUT si tu backend no lo acepta; si lo acepta, añade: email: (buyer.email || '').trim(),
+      }
+      const r = await fetch(`${API_URL}/customers/me`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      })
+      if (!r.ok) throw new Error()
+      toast.success(locale === 'en' ? 'Billing info updated.' : 'Datos de facturación actualizados.', { position: 'bottom-center' })
+      setEditingBilling(false)
+    } catch {
+      toast.error(locale === 'en' ? 'Could not update billing info.' : 'No se pudieron actualizar los datos de facturación.', { position: 'bottom-center' })
+    } finally {
+      setSavingBilling(false)
+    }
+  }
+
 
   // ===== (NUEVO) Destinatarios guardados =====
   const [recipients, setRecipients] = useState<Recipient[]>([])
@@ -388,10 +494,10 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   }, [])
 
   const applyRecipient = (r: Recipient) => {
-    // Actualiza ubicación efectiva para cotización
-    if (r.country === 'CU') {
-      setRecipientLoc({ country: 'CU', province: r.province, municipality: r.municipality })
-      // Prellena campos comunes + Cuba
+    const cc = normalizeCountry((r as { country?: string }).country);
+
+    if (cc === 'CU') {
+      setRecipientLoc({ country: 'CU', province: (r as RecipientCU).province, municipality: (r as RecipientCU).municipality });
       setFormData(prev => ({
         ...prev,
         nombre: r.first_name || '',
@@ -400,18 +506,17 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         telefono: toLocalPhone('CU', r.phone),
         instrucciones: r.instructions || '',
         // limpia US
-        address1: '',
-        address2: '',
-        city: '',
-        state: '',
-        zip: '',
+        address1: '', address2: '', city: '', state: '', zip: '',
         // Cuba
-        direccion: r.address || '',
-        ci: r.ci || '',
-      }))
+        direccion: (r as RecipientCU).address || '',
+        ci: (r as RecipientCU).ci || '',
+      }));
     } else {
-      setRecipientLoc({ country: 'US', state: r.state, city: r.city, zip: r.zip })
-      // Prellena campos comunes + US
+      const ru = r as {
+        address_line1?: string; address_line2?: string | null;
+        city?: string; state?: string; zip?: string;
+      };
+      setRecipientLoc({ country: 'US', state: ru.state || '', city: ru.city || '', zip: ru.zip || '' });
       setFormData(prev => ({
         ...prev,
         nombre: r.first_name || '',
@@ -420,103 +525,23 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         telefono: r.phone || '',
         instrucciones: r.instructions || '',
         // US
-        address1: r.address_line1 || '',
-        address2: r.address_line2 || '',
-        city: r.city || '',
-        state: r.state || '',
-        zip: r.zip || '',
+        address1: ru.address_line1 || '',
+        address2: ru.address_line2 || '',
+        city: ru.city || '',
+        state: ru.state || '',
+        zip: ru.zip || '',
         // limpia CU
         direccion: '',
         ci: '',
-      }))
+      }));
     }
+
     try { localStorage.removeItem(LS_FORM_KEY) } catch { /* noop */ }
     try {
-      const key = lsRecipientKeyFor(r.country as 'CU' | 'US');
+      const key = lsRecipientKeyFor(cc);
       localStorage.setItem(key, String(r.id));
     } catch { /* noop */ }
-  }
-
-
-  async function maybeSaveRecipient(): Promise<Recipient | null> {
-    // solo si el user lo pidió y NO hay uno seleccionado
-    if (!saveAsRecipient) return null
-
-    try {
-      setSavingRecipient(true)
-
-      if (isShipCU) {
-        const province = recipientLoc?.country === 'CU' ? recipientLoc.province : location?.province
-        const municipality = recipientLoc?.country === 'CU' ? recipientLoc.municipality : location?.municipality
-        if (!province || !municipality) {
-          toast.error('Selecciona provincia y municipio en el banner para guardar el destinatario.', { position: 'bottom-center' })
-          return null
-        }
-
-        const payload: CreateRecipientCUInput = {
-          country: 'CU',
-          first_name: formData.nombre,
-          last_name: formData.apellidos,
-          email: formData.email || undefined,
-          phone: formData.telefono || undefined,
-          label: undefined,
-          notes: undefined,
-          is_default: false,
-          instructions: formData.instrucciones || undefined,
-          province,
-          municipality,
-          address: formData.direccion,
-          ci: formData.ci,
-        }
-
-        const created = await createRecipient(payload)
-        toast.success(locale === 'en' ? 'Recipient saved' : 'Destinatario guardado')
-        const rows = await listRecipients()
-        setRecipients(rows)
-        setSelectedRecipientId(created.id)
-        applyRecipient(created)
-        return created
-      }
-
-      if (isShipUS) {
-        const payload: CreateRecipientUSInput = {
-          country: 'US',
-          first_name: formData.nombre,
-          last_name: formData.apellidos,
-          email: formData.email || undefined,
-          phone: formData.telefono || undefined,
-          label: undefined,
-          notes: undefined,
-          is_default: false,
-          instructions: formData.instrucciones || undefined,
-          address_line1: formData.address1,
-          address_line2: formData.address2 || undefined,
-          city: formData.city,
-          state: formData.state,
-          zip: formData.zip,
-        }
-
-        const created = await createRecipient(payload)
-        toast.success(locale === 'en' ? 'Recipient saved' : 'Destinatario guardado')
-        const rows = await listRecipients()
-        setRecipients(rows)
-        setSelectedRecipientId(created.id)
-        applyRecipient(created)
-        return created
-      }
-
-      toast.error(locale === 'en' ? 'Select a country in the banner' : 'Selecciona un país en el banner', { position: 'bottom-center' })
-      return null
-    } catch (e: unknown) {
-      if (isRecipientDuplicate(e)) {
-        return null
-      }
-      toast.error(getErrorMessage(e, 'No se pudo guardar el destinatario.'))
-      return null
-    } finally {
-      setSavingRecipient(false)
-    }
-  }
+  };
 
   // ===== FORM DATA (persist) =====
   const [formData, setFormData] = useState({
@@ -571,11 +596,6 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     } catch { /* noop */ }
   }, [formData, selectedRecipientId])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
-
   const transportHydratedRef = useRef(false);
   const recipientHydratedRef = useRef(false);
 
@@ -590,6 +610,11 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {}
+    let firstErrorField: string | null = null
+
+    if (newErrors.buyer_email) {
+      firstErrorField = 'billing_email'
+    }
 
     // helpers
     const onlyDigits = (s: string) => String(s || '').replace(/\D/g, '')
@@ -668,7 +693,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     const orderCU = ['nombre', 'apellidos', 'telefono', 'ci', 'direccion'] as const
     const orderUS = ['nombre', 'apellidos', 'telefono', 'address1', 'city', 'state', 'zip'] as const
 
-    let firstErrorField: string | null = null
+
     if (Object.keys(newErrors).length > 0) {
       if (isShipCU) {
         firstErrorField = orderCU.find(k => newErrors[k] !== undefined) || null
@@ -970,7 +995,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   }, [isShipUS, isShipCU, recipientLoc, formData.address1, formData.city, formData.state, formData.zip, formData.direccion, location?.province, location?.municipality, locale])
 
 
-  const [isPaying] = useState(false)
+  const isPaying = false
 
   // ===== Aceptación de Términos
   const [acceptedTerms, setAcceptedTerms] = useState(false)
@@ -992,12 +1017,20 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   const handleStartDirect = async () => {
     const { ok, firstErrorField } = validate()
     if (!ok) {
+      const needsBillingEmail = !buyer.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyer.email)
+      if (needsBillingEmail) setEditingBilling(true)
       if (firstErrorField) {
-        const el = document.getElementById(firstErrorField)
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          el.focus()
-        }
+        // da un pequeño delay si acabamos de abrir el editor para asegurar que el input existe
+        setTimeout(() => {
+          const el = document.getElementById(firstErrorField)
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              ; (el as HTMLInputElement).focus()
+          } else {
+            const card = document.getElementById('billing-card')
+            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        }, needsBillingEmail ? 120 : 0)
       }
       return
     }
@@ -1037,7 +1070,6 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       toast.error('No se pudo validar disponibilidad. Intenta de nuevo.', { position: 'bottom-center' })
       return
     }
-    await maybeSaveRecipient()
 
     // === shipping final (misma estructura de siempre, pero preferimos el destinatario si fue seleccionado)
     const shipping =
@@ -1222,6 +1254,565 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     },
   };
 
+  // ===== Recipient modal state + helpers (colocar antes de // ===== UI =====) =====
+
+  // Tipado local del borrador para no pelear con el union (CU/US)
+  type RecipientDraft = {
+    id?: number;
+    country?: 'CU' | 'US';
+    first_name?: string;
+    last_name?: string;
+    email?: string | null;
+    phone?: string | null;
+    label?: string | null;
+    notes?: string | null;
+    is_default?: boolean;
+    instructions?: string | null;
+
+    // US
+    address_line1?: string;
+    address_line2?: string | null;
+    city?: string;
+    state?: string;
+    zip?: string;
+
+    // CU
+    address?: string;
+    ci?: string;
+    province?: string;
+    municipality?: string;
+  };
+
+  const [showRecipientModal, setShowRecipientModal] = useState(false);
+  const [recipientModalMode, setRecipientModalMode] = useState<'create' | 'edit'>('create');
+  const [recipientDraft, setRecipientDraft] = useState<RecipientDraft>({});
+  const [savingRecipientInline, setSavingRecipientInline] = useState(false);
+  const [recipientErrors, setRecipientErrors] = useState<Record<string, string>>({});
+
+  // Normaliza cualquier valor de país a 'CU' | 'US'
+  function normalizeCountry(c: unknown): 'CU' | 'US' {
+    const s = String(c ?? '').trim().toUpperCase();
+    if (s === 'CU' || s === 'CUBA') return 'CU';
+    if (s === 'US' || s === 'USA' || s === 'UNITED STATES' || s === 'EEUU' || s === 'EE.UU.') return 'US';
+    return 'CU';
+  }
+
+  function openCreateRecipient() {
+    const defaultCountry: 'CU' | 'US' =
+      (location?.country === 'CU' || location?.country === 'US') ? location.country : 'CU';
+
+    setRecipientModalMode('create');
+
+    if (defaultCountry === 'CU') {
+      // Asegura combinaciones válidas (si banner trae algo raro)
+      const prov = CU_PROVINCES.includes((location?.province ?? '') as CuProvince)
+        ? (location!.province as CuProvince)
+        : CU_PROVINCES[0];
+      const muns = CU_MUNS_BY_PROVINCE[prov];
+      const mun = muns.includes(location?.municipality ?? '') ? (location!.municipality as string) : muns[0];
+
+      setRecipientDraft({
+        country: 'CU',
+        first_name: '',
+        last_name: '',
+        phone: '',
+        email: '',
+        province: prov,
+        municipality: mun,
+        address: '',
+        ci: '',
+        instructions: '',
+      });
+    } else {
+      setRecipientDraft({
+        country: 'US',
+        first_name: '',
+        last_name: '',
+        phone: '',
+        email: '',
+        address_line1: '',
+        address_line2: '',
+        city: '',
+        state: '',
+        zip: '',
+        instructions: '',
+      });
+    }
+    setShowRecipientModal(true);
+  }
+
+  function toRecipientDraft(r: Recipient): RecipientDraft {
+    const country = normalizeCountry((r as { country?: string }).country);
+
+    if (country === 'CU') {
+      const rc = r as RecipientCU;
+      return {
+        id: rc.id,
+        country: 'CU',
+        first_name: rc.first_name,
+        last_name: rc.last_name,
+        email: rc.email ?? null,
+        phone: rc.phone ?? null,
+        label: rc.label ?? null,
+        notes: rc.notes ?? null,
+        is_default: rc.is_default ?? false,
+        instructions: rc.instructions ?? null,
+        province: rc.province,
+        municipality: rc.municipality,
+        address: rc.address,
+        ci: rc.ci,
+      };
+    }
+
+    // US por defecto cuando country === 'US' (evita caer en CU por tener keys "presentes" pero vacías)
+    const ru = r as {
+      id: number;
+      first_name: string; last_name: string;
+      email?: string | null; phone?: string | null;
+      label?: string | null; notes?: string | null;
+      is_default?: boolean; instructions?: string | null;
+      address_line1?: string; address_line2?: string | null;
+      city?: string; state?: string; zip?: string;
+    };
+
+    return {
+      id: ru.id,
+      country: 'US',
+      first_name: ru.first_name,
+      last_name: ru.last_name,
+      email: ru.email ?? null,
+      phone: ru.phone ?? null,
+      label: ru.label ?? null,
+      notes: ru.notes ?? null,
+      is_default: ru.is_default ?? false,
+      instructions: ru.instructions ?? null,
+      address_line1: ru.address_line1 || '',
+      address_line2: (ru.address_line2 ?? null),
+      city: ru.city || '',
+      state: ru.state || '',
+      zip: ru.zip || '',
+    };
+  }
+
+  function openEditRecipient() {
+    if (selectedRecipientId == null) return; // aceptamos id=0 si existiera
+    const r = recipients.find(x => x.id === selectedRecipientId);
+    if (!r) return;
+    setRecipientModalMode('edit');
+
+    const rr = { ...r, country: normalizeCountry(r.country) } as Recipient;
+
+    if (rr.country === 'CU') {
+      const prov: CuProvince = CU_PROVINCES.includes(rr.province as CuProvince)
+        ? (rr.province as CuProvince)
+        : CU_PROVINCES[0];
+      const muns = CU_MUNS_BY_PROVINCE[prov];
+      const mun = muns.includes(rr.municipality) ? rr.municipality : muns[0];
+      setRecipientDraft({ ...toRecipientDraft(rr), province: prov, municipality: mun });
+    } else {
+      setRecipientDraft(toRecipientDraft(rr));
+    }
+    setShowRecipientModal(true);
+  }
+
+  function validateRecipient(d: RecipientDraft): boolean {
+    const E: Record<string, string> = {};
+    const required = (v?: string) => String(v || '').trim().length > 0;
+    const digits = (v?: string | null) => String(v ?? '').replace(/\D/g, '');
+
+    if (!required(d.first_name)) E.first_name = locale === 'en' ? 'First name required' : 'Nombre requerido';
+    if (!required(d.last_name)) E.last_name = locale === 'en' ? 'Last name required' : 'Apellidos requeridos';
+
+    if (d.country === 'US') {
+      if (digits(d.phone).length !== 10) E.phone = locale === 'en' ? '10 digits required' : '10 dígitos requeridos';
+      if (!required(d.address_line1)) E.address_line1 = dict.checkout?.errors?.address1eu || 'Dirección requerida';
+      if (!required(d.city)) E.city = dict.checkout?.errors?.cityeu || 'Ciudad requerida';
+      if (!required(d.state)) E.state = dict.checkout?.errors?.stateeu || 'Estado requerido';
+      if (!/^\d{5}(-\d{4})?$/.test(String(d.zip || ''))) E.zip = dict.checkout?.errors?.zipeu || 'ZIP inválido';
+    }
+
+    if (d.country === 'CU') {
+      if (digits(d.phone).length !== 8) E.phone = locale === 'en' ? '8 digits required' : '8 dígitos requeridos';
+      if (!required(d.ci) || digits(d.ci).length !== 11) E.ci = dict.checkout?.errors?.ci || 'CI inválido';
+      if (!required(d.address)) E.address = dict.checkout?.errors?.address || 'Dirección requerida';
+      if (!required(d.province)) E.province = locale === 'en' ? 'Province required' : 'Provincia requerida';
+      if (!required(d.municipality)) E.municipality = locale === 'en' ? 'Municipality required' : 'Municipio requerido';
+    }
+
+    setRecipientErrors(E);
+    return Object.keys(E).length === 0;
+  }
+
+  async function saveRecipientFromModal() {
+    const d = recipientDraft;
+    if (!d?.country) return;
+    if (!validateRecipient(d)) return;
+
+    try {
+      setSavingRecipientInline(true);
+      if (recipientModalMode === 'create') {
+        // Crear
+        const created = d.country === 'CU'
+          ? await createRecipient({
+            country: 'CU',
+            first_name: d.first_name!, last_name: d.last_name!,
+            email: d.email || undefined, phone: d.phone || undefined,
+            instructions: d.instructions || undefined,
+            province: d.province!, municipality: d.municipality!,
+            address: d.address!, ci: d.ci!,
+          } as CreateRecipientCUInput)
+          : await createRecipient({
+            country: 'US',
+            first_name: d.first_name!, last_name: d.last_name!,
+            email: d.email || undefined, phone: d.phone || undefined,
+            instructions: d.instructions || undefined,
+            address_line1: d.address_line1!, address_line2: d.address_line2 || undefined,
+            city: d.city!, state: d.state!, zip: d.zip!,
+          } as CreateRecipientUSInput);
+
+        setRecipients(prev => [created, ...prev]);
+        setSelectedRecipientId(created.id);
+        applyRecipient(created);
+        try {
+          const key = lsRecipientKeyFor(created.country);
+          localStorage.setItem(key, String(created.id));
+        } catch { }
+        setShowRecipientModal(false);
+        toast.success(locale === 'en' ? 'Recipient saved' : 'Destinatario guardado', { position: 'bottom-center' });
+        return;
+      }
+      // Editar
+      if (!('id' in d) || !d.id) return;
+
+      const patch =
+        d.country === 'CU'
+          ? {
+            country: 'CU' as const,
+            first_name: d.first_name,
+            last_name: d.last_name,
+            email: d.email,
+            phone: d.phone,
+            instructions: d.instructions,
+            province: d.province,
+            municipality: d.municipality,
+            address: d.address,
+            ci: d.ci,
+          }
+          : {
+            country: 'US' as const,
+            first_name: d.first_name,
+            last_name: d.last_name,
+            email: d.email,
+            phone: d.phone,
+            instructions: d.instructions,
+            address_line1: d.address_line1,
+            address_line2: d.address_line2,
+            city: d.city,
+            state: d.state,
+            zip: d.zip,
+          };
+
+      const updated = await updateRecipient(d.id as number, patch);
+      setRecipients(prev => prev.map(x => x.id === updated.id ? updated : x));
+      setSelectedRecipientId(updated.id);
+      applyRecipient(updated);
+      setShowRecipientModal(false);
+      toast.success(locale === 'en' ? 'Recipient updated' : 'Destinatario actualizado', { position: 'bottom-center' });
+
+    } catch (e) {
+      if (isRecipientDuplicate(e)) {
+        toast.info(locale === 'en'
+          ? 'This recipient already exists.'
+          : 'Este destinatario ya existe.', { position: 'bottom-center' });
+    
+        // (Opcional) tratar de autoseleccionarlo
+        try {
+          const rows = await listRecipients();
+          setRecipients(rows);
+    
+          const match = rows.find(r =>
+            r.country === d.country &&
+            r.first_name?.trim().toLowerCase() === (d.first_name || '').trim().toLowerCase() &&
+            r.last_name?.trim().toLowerCase() === (d.last_name || '').trim().toLowerCase() &&
+            (d.country === 'CU'
+              ? (r as RecipientCU).ci?.trim() === (d.ci || '').trim()
+              : (r as any).address_line1?.trim().toLowerCase() === (d.address_line1 || '').trim().toLowerCase() &&
+                (r as any).zip?.trim() === (d.zip || '').trim())
+          );
+    
+          if (match) {
+            setSelectedRecipientId(match.id);
+            applyRecipient(match);
+            setShowRecipientModal(false);
+          }
+        } catch {}
+    
+        return; // no lo tratamos como error fatal
+      }
+      toast.error(getErrorMessage(e, locale === 'en' ? 'Could not save recipient.' : 'No se pudo guardar el destinatario.'), { position: 'bottom-center' });
+    } finally {
+      setSavingRecipientInline(false);
+    }
+  }
+
+  // ===== Modal: Create/Edit Recipient (como constante) =====
+  const recipientModal = showRecipientModal && (
+    <div className="fixed inset-0 z-50">
+      <div
+        className="absolute inset-0 bg-black/40"
+        onClick={() => !savingRecipientInline && setShowRecipientModal(false)}
+      />
+      {/* + overflow-y-auto para poder desplazar el overlay completo si hace falta */}
+      <div className="absolute inset-0 flex items-center justify-center p-4 overflow-y-auto">
+        {/* + max-h y overflow para que el panel no exceda la pantalla y haga scroll interno */}
+        <div className="w-full max-w-2xl rounded-2xl bg-white shadow-xl border max-h-[85vh] overflow-y-auto">
+          {/* + sticky top-0 para mantener visible el header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b sticky top-0 bg-white z-10">
+            <div className="font-semibold">
+              {recipientModalMode === 'create'
+                ? (locale === 'en' ? 'New recipient' : 'Nuevo destinatario')
+                : (locale === 'en' ? 'Edit recipient' : 'Editar destinatario')}
+            </div>
+            <button
+              className="h-9 w-9 inline-flex items-center justify-center rounded-full hover:bg-gray-100"
+              onClick={() => !savingRecipientInline && setShowRecipientModal(false)}
+              aria-label={locale === 'en' ? 'Close' : 'Cerrar'}
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="px-4 py-4 space-y-4">
+            {/* Selector de país (solo creación) */}
+            {recipientModalMode === 'create' && (
+              <div className="flex gap-2">
+                {(['CU', 'US'] as const).map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setRecipientDraft(prev => ({
+                      ...prev,
+                      country: c,
+                      ...(c === 'CU'
+                        ? { province: location?.province || '', municipality: location?.municipality || '', address: '', ci: '' }
+                        : { address_line1: '', address_line2: '', city: '', state: '', zip: '' })
+                    }))}
+                    className={[
+                      "px-3 py-1.5 rounded border",
+                      recipientDraft.country === c ? "bg-emerald-50 border-emerald-300 text-emerald-800" : "hover:bg-gray-50"
+                    ].join(' ')}
+                  >
+                    {c === 'CU' ? 'Cuba' : 'USA'}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Comunes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">{dict.checkout.first_name}</label>
+                <input
+                  className="input"
+                  value={recipientDraft.first_name || ''}
+                  onChange={(e) => setRecipientDraft(d => ({ ...d, first_name: e.target.value }))}
+                />
+                {recipientErrors.first_name && <p className="text-xs text-red-600 mt-1">{recipientErrors.first_name}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">{dict.checkout.last_name}</label>
+                <input
+                  className="input"
+                  value={recipientDraft.last_name || ''}
+                  onChange={(e) => setRecipientDraft(d => ({ ...d, last_name: e.target.value }))}
+                />
+                {recipientErrors.last_name && <p className="text-xs text-red-600 mt-1">{recipientErrors.last_name}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">{dict.checkout.phone}</label>
+                <input
+                  className="input"
+                  placeholder={recipientDraft.country === 'US' ? '10 dígitos' : '8 dígitos'}
+                  value={recipientDraft.phone || ''}
+                  onChange={(e) => setRecipientDraft(d => ({ ...d, phone: e.target.value }))}
+                />
+                {recipientErrors.phone && <p className="text-xs text-red-600 mt-1">{recipientErrors.phone}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  {dict.checkout.email} <span className="text-gray-500">({locale === 'en' ? 'optional' : 'opcional'})</span>
+                </label>
+                <input
+                  className="input"
+                  value={recipientDraft.email || ''}
+                  onChange={(e) => setRecipientDraft(d => ({ ...d, email: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* País-específico */}
+            {recipientDraft.country === 'CU' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.ci}</label>
+                  <input
+                    className="input"
+                    value={recipientDraft.ci || ''}
+                    onChange={(e) => setRecipientDraft(d => ({ ...d, ci: e.target.value }))}
+                  />
+                  {recipientErrors.ci && <p className="text-xs text-red-600 mt-1">{recipientErrors.ci}</p>}
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.addressExact}</label>
+                  <input
+                    className="input"
+                    value={recipientDraft.address || ''}
+                    onChange={(e) => setRecipientDraft(d => ({ ...d, address: e.target.value }))}
+                  />
+                  {recipientErrors.address && <p className="text-xs text-red-600 mt-1">{recipientErrors.address}</p>}
+                </div>
+                {/* Provincia (select) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{locale === 'en' ? 'Province' : 'Provincia'}</label>
+                  <select
+                    className="input"
+                    value={recipientDraft.province || ''}
+                    onChange={(e) => {
+                      const prov = e.target.value as CuProvince;
+                      const muns = CU_MUNS_BY_PROVINCE[prov] ?? [];
+                      setRecipientDraft(d => ({
+                        ...d,
+                        province: prov,
+                        municipality: (muns[0] ?? ''),
+                      }));
+                    }}
+                  >
+                    {CU_PROVINCES.map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                  {recipientErrors.province && <p className="text-xs text-red-600 mt-1">{recipientErrors.province}</p>}
+                </div>
+
+                {/* Municipio (select dependiente) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{locale === 'en' ? 'Municipality' : 'Municipio'}</label>
+                  <select
+                    className="input"
+                    value={recipientDraft.municipality || ''}
+                    onChange={(e) => setRecipientDraft(d => ({ ...d, municipality: e.target.value }))}
+                  >
+                    {(recipientDraft.province
+                      ? CU_MUNS_BY_PROVINCE[recipientDraft.province as CuProvince] ?? []
+                      : []
+                    ).map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  {recipientErrors.municipality && <p className="text-xs text-red-600 mt-1">{recipientErrors.municipality}</p>}
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.instructions_label}</label>
+                  <input
+                    className="input"
+                    value={recipientDraft.instructions || ''}
+                    onChange={(e) => setRecipientDraft(d => ({ ...d, instructions: e.target.value }))}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.address1eu}</label>
+                  <input
+                    className="input"
+                    value={recipientDraft.address_line1 || ''}
+                    onChange={(e) => setRecipientDraft(d => ({ ...d, address_line1: e.target.value }))}
+                  />
+                  {recipientErrors.address_line1 && <p className="text-xs text-red-600 mt-1">{recipientErrors.address_line1}</p>}
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.address2eu} <span className="text-gray-500">(opcional)</span></label>
+                  <input
+                    className="input"
+                    value={recipientDraft.address_line2 || ''}
+                    onChange={(e) => setRecipientDraft(d => ({ ...d, address_line2: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.cityeu}</label>
+                  <input
+                    className="input"
+                    value={recipientDraft.city || ''}
+                    onChange={(e) => setRecipientDraft(d => ({ ...d, city: e.target.value }))}
+                  />
+                  {recipientErrors.city && <p className="text-xs text-red-600 mt-1">{recipientErrors.city}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.stateeu}</label>
+                  <select
+                    className="input"
+                    value={recipientDraft.state || ''}
+                    onChange={(e) => setRecipientDraft(d => ({ ...d, state: e.target.value }))}
+                  >
+                    <option value="">{locale === 'en' ? 'Select' : 'Seleccione'}</option>
+                    {US_STATES.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
+                  </select>
+                  {recipientErrors.state && <p className="text-xs text-red-600 mt-1">{recipientErrors.state}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.zipeu}</label>
+                  <input
+                    className="input"
+                    value={recipientDraft.zip || ''}
+                    onChange={(e) => setRecipientDraft(d => ({ ...d, zip: e.target.value }))}
+                  />
+                  {recipientErrors.zip && <p className="text-xs text-red-600 mt-1">{recipientErrors.zip}</p>}
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.instructions_label}</label>
+                  <input
+                    className="input"
+                    value={recipientDraft.instructions || ''}
+                    onChange={(e) => setRecipientDraft(d => ({ ...d, instructions: e.target.value }))}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* + sticky bottom-0 para mantener visible el footer */}
+          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t sticky bottom-0 bg-white z-10">
+            <button
+              type="button"
+              className="px-3 py-1.5 rounded border hover:bg-gray-50"
+              onClick={() => !savingRecipientInline && setShowRecipientModal(false)}
+              disabled={savingRecipientInline}
+            >
+              {locale === 'en' ? 'Cancel' : 'Cancelar'}
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1.5 rounded text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60"
+              onClick={saveRecipientFromModal}
+              disabled={savingRecipientInline}
+            >
+              {savingRecipientInline
+                ? (locale === 'en' ? 'Saving…' : 'Guardando…')
+                : (recipientModalMode === 'create' ? (locale === 'en' ? 'Save recipient' : 'Guardar destinatario') : (locale === 'en' ? 'Save changes' : 'Guardar cambios'))}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  useEffect(() => {
+    if (!showRecipientModal) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [showRecipientModal]);
 
 
   // ===== UI =====
@@ -1272,84 +1863,169 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         )}
       </div>
 
-      {/* ===== Buyer ===== */}
-      <h2 className="text-2xl font-bold">{locale === 'en' ? 'Buyer information' : 'Datos del comprador'}</h2>
+
+      {/* ===== Billing (Buyer) ===== */}
+      <h2 className="text-2xl font-bold">
+        {locale === 'en' ? 'Billing information' : 'Datos de facturación'}
+      </h2>
+
       <div className="rounded-xl border bg-white shadow-sm">
         <div className="border-b px-4 py-3 sm:px-6">
           <h3 className="text-base font-semibold text-gray-800">
-            {locale === 'en' ? 'Buyer (will receive the receipt)' : 'Comprador (recibe el comprobante)'}
+            {locale === 'en' ? 'Billing contact (will receive the receipt)' : 'Contacto de facturación (recibe el comprobante)'}
           </h3>
           <p className="mt-0.5 text-xs text-gray-500">
             {locale === 'en'
-              ? 'Prefilled from your profile. You can edit before paying.'
-              : 'Precargado desde tu perfil. Puedes editarlo antes de pagar.'}
+              ? 'Prefilled from your profile.'
+              : 'Precargado desde tu perfil.'}
           </p>
         </div>
 
+        {/* Cuerpo de la card (como en Shipping) */}
         <div className="px-4 py-4 sm:px-6 sm:py-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">{dict.checkout.first_name}</label>
-              <input
-                className="input"
-                value={buyer.first_name}
-                onChange={(e) => setBuyer(b => ({ ...b, first_name: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">{dict.checkout.last_name}</label>
-              <input
-                className="input"
-                value={buyer.last_name}
-                onChange={(e) => setBuyer(b => ({ ...b, last_name: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">{dict.checkout.email}</label>
-              <input
-                id="billing_email"
-                className="input"
-                value={buyer.email}
-                onChange={(e) => setBuyer(b => ({ ...b, email: e.target.value }))}
-              />
-              {errors.buyer_email && (
-                <p className="text-red-500 text-xs mt-1">{errors.buyer_email}</p>
+          <div id="billing-card" className="rounded-lg border bg-white p-3 text-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 w-full">
+                <div className="rounded-full p-2 border bg-white">
+                  <UserRound className="h-5 w-5 text-emerald-700" />
+                </div>
+
+                {/* Vista compacta / Editor inline */}
+                {!editingBilling ? (
+                  <div className="space-y-1">
+                    <div className="font-medium text-gray-900">
+                      {buyer.first_name || formData.nombre || '—'} {buyer.last_name || formData.apellidos || ''}
+                    </div>
+
+                    {/* Dirección de facturación */}
+                    <div className="text-gray-700">
+                      {buyer.address ? buyer.address : '—'}
+                    </div>
+
+                    {/* Contactos */}
+                    <div className="text-gray-600">
+                      {buyer.phone ? `📞 ${buyer.phone}` : ''}
+                      {(buyer.phone && buyer.email) ? ' · ' : ''}
+                      {buyer.email ? `✉️ ${buyer.email}` : ''}
+                      {!buyer.email && (
+                        <span className="ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-red-700 border-red-200 bg-red-50">
+                          {locale === 'en' ? 'Required' : 'Requerido'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* ZIP */}
+                    {buyer.zip && (
+                      <div className="text-gray-600">
+                        ZIP: {buyer.zip}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-full">
+                    {/* Editor inline compacto */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">{dict.checkout.first_name}</label>
+                        <input
+                          className="input"
+                          value={buyer.first_name}
+                          onChange={(e) => setBuyer(b => ({ ...b, first_name: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">{dict.checkout.last_name}</label>
+                        <input
+                          className="input"
+                          value={buyer.last_name}
+                          onChange={(e) => setBuyer(b => ({ ...b, last_name: e.target.value }))}
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700">{dict.checkout.email}</label>
+                        <input
+                          id="billing_email"
+                          className="input"
+                          value={buyer.email}
+                          onChange={(e) => setBuyer(b => ({ ...b, email: e.target.value }))}
+                        />
+                        {errors.buyer_email && (
+                          <p className="text-red-500 text-xs mt-1">{errors.buyer_email}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          {locale === 'en' ? 'Buyer phone (US)' : 'Teléfono del comprador (EE. UU.)'}
+                        </label>
+                        <input
+                          className="input"
+                          placeholder={locale === 'en' ? '10 digits' : '10 dígitos'}
+                          value={buyer.phone}
+                          onChange={(e) => setBuyer(b => ({ ...b, phone: e.target.value }))}
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          {locale === 'en' ? 'Billing address' : 'Dirección de facturación'}
+                        </label>
+                        <input
+                          className="input"
+                          value={buyer.address}
+                          onChange={(e) => setBuyer(b => ({ ...b, address: e.target.value }))}
+                        />
+                      </div>
+                      <div className="md:max-w-xs">
+                        <label className="block text-sm font-medium text-gray-700">
+                          {locale === 'en' ? 'ZIP code (billing)' : 'Código ZIP (facturación)'}
+                        </label>
+                        <input
+                          className="input"
+                          value={buyer.zip}
+                          onChange={(e) => setBuyer(b => ({ ...b, zip: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Acciones */}
+                    <div className="flex items-center justify-end gap-2 mt-3">
+                      <button
+                        type="button"
+                        className="px-3 py-1.5 rounded text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60"
+                        onClick={saveBilling}
+                        disabled={savingBilling}
+                      >
+                        {savingBilling ? (locale === 'en' ? 'Saving…' : 'Guardando…') : (locale === 'en' ? 'Save' : 'Guardar')}
+                      </button>
+                      <button
+                        type="button"
+                        className="px-3 py-1.5 rounded border hover:bg-gray-50"
+                        onClick={() => setEditingBilling(false)}
+                        disabled={savingBilling}
+                      >
+                        {locale === 'en' ? 'Cancel' : 'Cancelar'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Botón Editar (solo en vista compacta) */}
+              {!editingBilling && (
+                <button
+                  type="button"
+                  onClick={() => setEditingBilling(true)}
+                  title={locale === 'en' ? 'Edit billing' : 'Editar facturación'}
+                  aria-label={locale === 'en' ? 'Edit billing' : 'Editar facturación'}
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-full border bg-white hover:bg-emerald-50 hover:border-emerald-300 ring-emerald-200 focus:outline-none focus:ring-4 transition mt-3"
+                >
+                  <PencilLine className="h-5 w-5 text-emerald-700" />
+                </button>
               )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                {locale === 'en' ? 'Buyer phone (US)' : 'Teléfono del comprador (EE. UU.)'}
-              </label>
-              <input
-                className="input"
-                placeholder={locale === 'en' ? '10 digits' : '10 dígitos'}
-                value={buyer.phone}
-                onChange={(e) => setBuyer(b => ({ ...b, phone: e.target.value }))}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700">
-                {locale === 'en' ? 'Buyer address' : 'Dirección del comprador'}
-              </label>
-              <input
-                className="input"
-                value={buyer.address}
-                onChange={(e) => setBuyer(b => ({ ...b, address: e.target.value }))}
-              />
-            </div>
-            <div className="md:max-w-xs">
-              <label className="block text-sm font-medium text-gray-700">
-                {locale === 'en' ? 'ZIP code (billing)' : 'Código ZIP (facturación)'}
-              </label>
-              <input
-                className="input"
-                value={buyer.zip}
-                onChange={(e) => setBuyer(b => ({ ...b, zip: e.target.value }))}
-              />
             </div>
           </div>
         </div>
       </div>
+
 
       {/* ===== 1) Datos de envío ===== */}
       <h2 className="text-2xl font-bold">{dict.checkout.shipping}</h2>
@@ -1364,90 +2040,142 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         <div className="px-4 py-4 sm:px-6 sm:py-6 space-y-4">
 
           {/* === NUEVO: Selector de destinatarios guardados (filtrado por país del banner) === */}
-          <div className="rounded-lg border bg-white p-3 text-sm">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div className="font-medium">
-                {locale === 'en' ? 'Select a recipient' : 'Selecciona un destinatario'}
-              </div>
-              <div className="flex gap-2">
-                <select
-                  id="recipient_select"
-                  className="input"
-                  value={selectedRecipientId ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const id = val ? Number(val) : null;
-                    setSelectedRecipientId(id);
-                    if (id !== null) {
-                      const r = filteredRecipients.find(x => x.id === id);
-                      if (r) applyRecipient(r);
-                    } else {
-                      setRecipientLoc(null);
-                      try {
-                        if (location?.country === 'CU' || location?.country === 'US') {
-                          localStorage.removeItem(lsRecipientKeyFor(location.country))
-                        }
-                      } catch { /* noop */ }
-                    }
-                  }}
+          <div>
+            <div className="rounded-lg border bg-white p-3 text-sm">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div className="font-medium">
+                  {locale === 'en' ? 'Recipient' : 'Destinatario'}
+                </div>
 
-                >
-                  <option value="">
-                    {recLoading
-                      ? (locale === 'en' ? 'Loading…' : 'Cargando…')
-                      : noRecipientsForCountry
-                        ? (locale === 'en' ? 'No saved recipients' : 'Sin destinatarios guardados')
-                        : (locale === 'en' ? 'Select a recipient' : 'Selecciona un destinatario')}
-                  </option>
-                  {recipientsForCountry.map(r => (
-                    <option key={r.id} value={r.id}>
-                      {r.first_name} {r.last_name}
-                      {r.label ? ` · ${r.label}` : ''} {' · '}{r.country}{r.is_default ? (locale === 'en' ? '· default' : '· predeterminado') : ''}
+                <div className="flex items-center gap-2">
+                  <select
+                    id="recipient_select"
+                    className="input"
+                    value={selectedRecipientId ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      const id = val ? Number(val) : null
+                      setSelectedRecipientId(id)
+                      if (id !== null) {
+                        const r = recipientsForCountry.find(x => x.id === id)
+                        if (r) applyRecipient(r)
+                      } else {
+                        setRecipientLoc(null)
+                        try {
+                          if (location?.country === 'CU' || location?.country === 'US') {
+                            localStorage.removeItem(lsRecipientKeyFor(location.country))
+                          }
+                        } catch { }
+                      }
+                    }}
+                  >
+                    <option value="">
+                      {recLoading
+                        ? (locale === 'en' ? 'Loading…' : 'Cargando…')
+                        : noRecipientsForCountry
+                          ? (locale === 'en' ? 'No saved recipients' : 'Sin destinatarios guardados')
+                          : (locale === 'en' ? 'Select a recipient' : 'Selecciona un destinatario')}
                     </option>
-                  ))}
+                    {recipientsForCountry.map(r => (
+                      <option key={r.id} value={r.id}>
+                        {r.first_name} {r.last_name} · {r.country}{r.is_default ? (locale === 'en' ? ' · default' : ' · predeterminado') : ''}
+                      </option>
+                    ))}
+                  </select>
 
-                </select>
-
-                {selectedRecipientId && (
+                  {/* Nuevo destinatario */}
                   <button
                     type="button"
-                    className="px-3 py-2 rounded text-white bg-green-600 hover:bg-green-700"
-                    onClick={() => router.push(`/${locale}/account#recipients`)}
+                    onClick={openCreateRecipient}
+                    className="inline-flex items-center justify-center h-9 w-9 rounded-full border bg-white hover:bg-emerald-50 hover:border-emerald-300 focus:outline-none focus:ring-4 ring-emerald-200 transition"
+                    title={locale === 'en' ? 'New recipient' : 'Nuevo destinatario'}
+                    aria-label={locale === 'en' ? 'New recipient' : 'Nuevo destinatario'}
                   >
-                    {locale === 'en' ? 'Add More' : 'Agregar Más'}
+                    <Plus className="h-5 w-5 text-emerald-700" />
                   </button>
-                )}
 
-                {noRecipientsForCountry && (
-                  <button
-                    type="button"
-                    className="px-3 py-2 rounded text-white rounded bg-green-600 hover:bg-green-700 disabled:opacity-60"
-                    onClick={() => router.push(`/${locale}/account#recipients`)}
-                  >
-                    {locale === 'en' ? 'Add Recipient' : 'Crear Destinatario'}
-                  </button>
-                )}
+                  {/* Editar seleccionado */}
+                  {selectedRecipientId && (
+                    <button
+                      type="button"
+                      onClick={openEditRecipient}
+                      className="inline-flex items-center justify-center h-9 w-9 rounded-full border bg-white hover:bg-emerald-50 hover:border-emerald-300 focus:outline-none focus:ring-4 ring-emerald-200 transition"
+                      title={locale === 'en' ? 'Edit recipient' : 'Editar destinatario'}
+                      aria-label={locale === 'en' ? 'Edit recipient' : 'Editar destinatario'}
+                    >
+                      <PencilLine className="h-5 w-5 text-emerald-700" />
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {/* Aviso de país/ubicación mixtos (mantén tu lógica) */}
+              {recipientLoc && location?.country && recipientLoc.country !== location.country && (
+                <div className="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  {locale === 'en'
+                    ? (recipientLoc.country === 'US'
+                      ? 'You selected a recipient in the United States, but the selected destination above is Cuba. The quote will use the United States based on the recipient.'
+                      : 'You selected a recipient in Cuba, but the selected destination above is the United States. The quote will use Cuba based on the recipient.')
+                    : (recipientLoc.country === 'US'
+                      ? 'Has seleccionado un destinatario de Estados Unidos, pero el destino seleccionado está en Cuba. La cotización usará Estados Unidos según el destinatario.'
+                      : 'Has seleccionado un destinatario de Cuba, pero el destino seleccionado está en Estados Unidos. La cotización usará Cuba según el destinatario.')}
+                </div>
+              )}
+
+              {/* Tarjeta de solo lectura cuando hay seleccionado */}
+              {selectedRecipientId ? (() => {
+                const r = recipients.find(x => x.id === selectedRecipientId)
+                if (!r) return null
+                return (
+                  <div className="mt-3 rounded-lg border bg-white p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-full p-2 border bg-white">
+                          <UserRound className="h-5 w-5 text-emerald-700" />
+                        </div>
+                        <div className="text-sm">
+                          <div className="font-medium text-gray-900">
+                            {r.first_name} {r.last_name} {r.label ? `· ${r.label}` : ''}
+                          </div>
+                          <div className="text-gray-700">
+                            {r.country === 'US'
+                              ? [r.address_line1, r.address_line2, r.city, r.state, r.zip, 'United States'].filter(Boolean).join(', ')
+                              : [r.address, r.municipality, r.province, 'Cuba'].filter(Boolean).join(', ')
+                            }
+                          </div>
+                          <div className="text-gray-600">
+                            {r.phone ? `📞 ${r.phone}` : ''} {r.email ? ` · ✉️ ${r.email}` : ''}
+                          </div>
+                          {r.country === 'CU' && r.ci && (
+                            <div className="text-gray-600">{locale === 'en' ? 'ID' : 'CI'}: {r.ci}</div>
+                          )}
+                          {r.instructions && (
+                            <div className="text-gray-600">{locale === 'en' ? 'Instructions:' : 'Instrucciones:'} {r.instructions}</div>
+                          )}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={openEditRecipient}
+                        className="inline-flex items-center justify-center h-9 w-9 rounded-full border bg-white hover:bg-emerald-50 hover:border-emerald-300 focus:outline-none focus:ring-4 ring-emerald-200 transition"
+                        title={locale === 'en' ? 'Edit recipient' : 'Editar destinatario'}
+                        aria-label={locale === 'en' ? 'Edit recipient' : 'Editar destinatario'}
+                      >
+                        <PencilLine className="h-5 w-5 text-emerald-700" />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })() : (
+                <p className="text-xs text-gray-500 mt-2">
+                  {locale === 'en'
+                    ? 'You can pick a saved recipient or create a new one here. If none is selected, you may fill the form below.'
+                    : 'Puedes elegir un destinatario guardado o crear uno nuevo aquí. Si no seleccionas ninguno, puedes llenar el formulario de abajo.'}
+                </p>
+              )}
             </div>
-            <p className="text-xs text-gray-500 mt-2 mb-3">
-              {locale === 'en'
-                ? 'Selecting a recipient will auto-fill this form; you can edit details anytime.'
-                : 'Al elegir un destinatario se autocompleta este formulario; puedes editar los datos en cualquier momento.'}
-            </p>
 
-
-            {/* Aviso de país/ubicación mixtos (si aplica) */}
-            {recipientLoc && location?.country && recipientLoc.country !== location.country && (
-              <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 mb-3">
-                {locale === 'en'
-                  ? (recipientLoc.country === 'US'
-                    ? 'You selected a recipient in the United States, but the selected destination above is Cuba. The quote will use the United States based on the recipient.'
-                    : 'You selected a recipient in Cuba, but the selected destination above is the United States. The quote will use Cuba based on the recipient.')
-                  : (recipientLoc.country === 'US'
-                    ? 'Has seleccionado un destinatario de Estados Unidos, pero el destino seleccionado está en Cuba. La cotización usará Estados Unidos según el destinatario.'
-                    : 'Has seleccionado un destinatario de Cuba, pero el destino seleccionado está en Estados Unidos. La cotización usará Cuba según el destinatario.')}
-              </div>
-            )}
 
             {recipientLoc?.country === 'CU' && location?.country === 'CU' && (
               (recipientLoc.province?.trim() !== (location.province || '').trim()
@@ -1461,122 +2189,6 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             )}
 
 
-            {/* Comunes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{dict.checkout.first_name}</label>
-                <input id="nombre" name="nombre" value={formData.nombre} onChange={handleChange} className="input" />
-                {errors.nombre && <p className="text-red-500 text-xs mt-1">{errors.nombre}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{dict.checkout.last_name}</label>
-                <input id="apellidos" name="apellidos" value={formData.apellidos} onChange={handleChange} className="input" />
-                {errors.apellidos && <p className="text-red-500 text-xs mt-1">{errors.apellidos}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  {isShipUS ? dict.checkout.phoneeu : dict.checkout.phone}{' '}
-                  <span className="text-gray-400">{isShipUS ? '(10 dígitos)' : '(8+ dígitos)'}</span>
-                </label>
-                <input id="telefono" name="telefono" value={formData.telefono} onChange={handleChange} className="input" />
-                {errors.telefono && <p className="text-red-500 text-xs mt-1">{errors.telefono}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">{dict.checkout.email} <span className="text-gray-500">({locale === 'en' ? 'optional' : 'opcional'})</span></label>
-                <input id="email" name="email" value={formData.email} onChange={handleChange} className="input" />
-                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-              </div>
-            </div>
-
-            {/* Cuba */}
-            {isShipCU && (
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.ci}</label>
-                  <input
-                    id="ci"
-                    name="ci"
-                    value={formData.ci}
-                    onChange={handleChange}
-                    className="input w-full"
-                  />
-                  {errors.ci && <p className="text-red-500 text-xs mt-1">{errors.ci}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.addressExact}</label>
-                  <input
-                    id="direccion"
-                    name="direccion"
-                    value={formData.direccion}
-                    onChange={handleChange}
-                    className="input w-full"
-                    placeholder={dict.checkout.addressExact_placeholder}
-                  />
-                  {errors.direccion && <p className="text-red-500 text-xs mt-1">{errors.direccion}</p>}
-                  {errors._cuLoc && <p className="text-red-500 text-xs mt-1">{errors._cuLoc}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    {dict.checkout.instructions_label}
-                  </label>
-                  <input
-                    name="instrucciones"
-                    value={formData.instrucciones}
-                    onChange={handleChange}
-                    className="input w-full"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* US */}
-            {isShipUS && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.address1eu}</label>
-                  <input id="address1" name="address1" value={formData.address1} onChange={handleChange} className="input" />
-                  {errors.address1 && <p className="text-red-500 text-xs mt-1">{errors.address1}</p>}
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    {dict.checkout.address2eu} <span className="text-gray-500">(opcional)</span>
-                  </label>
-                  <input id="address2" name="address2" value={formData.address2} onChange={handleChange} className="input" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.cityeu}</label>
-                  <input id="city" name="city" value={formData.city} onChange={handleChange} className="input" />
-                  {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.stateeu}</label>
-                  <select id="state" name="state" value={formData.state} onChange={handleChange} className="input">
-                    <option value="">{'Seleccione'}</option>
-                    {US_STATES.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
-                  </select>
-                  {errors.state && <p className="text-red-500 text-xs mt-1">{errors.state}</p>}
-                </div>
-                <div className="md:max-w-xs">
-                  <label className="block text-sm font-medium text-gray-700">{dict.checkout.zipeu}</label>
-                  <input id="zip" name="zip" value={formData.zip} onChange={handleChange} className="input" />
-                  {errors.zip && <p className="text-red-500 text-xs mt-1">{errors.zip}</p>}
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center gap-2 mt-3">
-              <input
-                id="saveAsRecipient"
-                type="checkbox"
-                checked={saveAsRecipient}
-                onChange={(e) => setSaveAsRecipient(e.target.checked)}
-                disabled={savingRecipient}
-              />
-              <label htmlFor="saveAsRecipient" className="text-sm text-gray-700">
-                {locale === 'en' ? 'Save as new recipient' : 'Guardar como nuevo destinatario'}
-              </label>
-
-            </div>
           </div>
 
           {/* ===== Método de envío a Cuba ===== */}
@@ -1758,16 +2370,16 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
           )}
 
           {isShipCU && (<div className="rounded-lg border bg-white p-3 text-sm space-y-2">
-            <div className="font-medium">              
-                <div className="mt-2 text-sm text-gray-700">
-                  <span className="font-medium">
-                    {locale === 'en' ? 'Delivery By:' : 'Entrega por:'}
-                  </span>{' '}
-                  {transport === 'air'
-                    ? (locale === 'en' ? 'Air' : 'Avión')
-                    : (locale === 'en' ? 'Sea' : 'Barco')}
-                </div>
-              
+            <div className="font-medium">
+              <div className="mt-2 text-sm text-gray-700">
+                <span className="font-medium">
+                  {locale === 'en' ? 'Delivery By:' : 'Entrega por:'}
+                </span>{' '}
+                {transport === 'air'
+                  ? (locale === 'en' ? 'Air' : 'Avión')
+                  : (locale === 'en' ? 'Sea' : 'Barco')}
+              </div>
+
               {locale === 'en' ? DELIVERY_TIMES.en.title : DELIVERY_TIMES.es.title}
             </div>
 
@@ -1784,7 +2396,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
               ))}
             </ul>
           </div>
-        )}
+          )}
 
 
           <div className="rounded-lg border bg-white p-3 text-sm space-y-2">
@@ -1919,6 +2531,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         <CreditCard size={18} />
         <span>{startingDirect ? dict.common.loading : `${dict.checkout.directPay}`}</span>
       </button>
-    </div>
+      {recipientModal}
+    </div >
   )
 }
