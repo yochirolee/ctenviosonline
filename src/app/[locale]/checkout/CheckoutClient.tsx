@@ -161,27 +161,44 @@ function setupMobileCrashCapture(): void {
 
 
 // ---- Polyfill CustomEvent (por si algún WebView iOS falla) ----
+// ---- Polyfill + helper para CustomEvent en iOS WebViews ----
 (function () {
   if (typeof window === 'undefined') return;
+
+  let ctorOk = true;
   try {
-    // Si existe CustomEvent nativo, no hacemos nada
+    // iOS algunas veces "pasa" aquí pero luego falla al instanciar con detalle.
+    // Probamos con detalle para estar seguros.
     // eslint-disable-next-line no-new
-    new CustomEvent('test');
+    new CustomEvent('test', { detail: { ok: true } });
   } catch {
-    // Polyfill mínimo sin 'implements CustomEvent<T>' para evitar initCustomEvent
-    class CECustomEvent<T = unknown> extends Event {
-      readonly detail: T;
-      constructor(type: string, params: CustomEventInit<T> = {}) {
-        super(type, params);
-        this.detail = params.detail as T;
-      }
+    ctorOk = false;
+  }
+
+  if (!ctorOk) {
+    // Polyfill mínimo compatible con initCustomEvent
+    function CECustomEvent<T = unknown>(type: string, params: CustomEventInit<T> = {}) {
+      const e = document.createEvent('CustomEvent');
+      e.initCustomEvent(type, Boolean(params.bubbles), Boolean(params.cancelable), params.detail as T);
+      return e;
     }
-    // Asignamos manteniendo el tipado, sin usar 'any'
     (window as Window & typeof globalThis).CustomEvent =
       CECustomEvent as unknown as typeof CustomEvent;
   }
 })();
 
+// Emite un evento de forma segura en cualquier WebView iOS
+function safeDispatch(type: string, detail?: unknown): void {
+  try {
+    window.dispatchEvent(new CustomEvent(type, { detail }));
+  } catch {
+    try {
+      const ev = document.createEvent('CustomEvent');
+      ev.initCustomEvent(type, true, true, detail as never);
+      window.dispatchEvent(ev);
+    } catch { /* noop */ }
+  }
+}
 
 
 // ---- Detección de navegadores "embebidos" (IG/FB/TikTok) ----
@@ -466,6 +483,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   const [selectedRecipientId, setSelectedRecipientId] = useState<number | null>(null);
   const [recipientLoc, setRecipientLoc] = useState<ShipLoc | null>(null)
 
+  const selectValue: string = selectedRecipientId != null ? String(selectedRecipientId) : '';
+
   // filtra por país del banner (UX simple)
   const filteredRecipients = useMemo(
     () => recipients.filter(r => r.country === (isCU ? 'CU' : isUS ? 'US' : r.country)),
@@ -479,10 +498,22 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   )
 
   const applyRecipient = useCallback((r: Recipient) => {
-    const cc = normalizeCountry((r as { country?: string }).country);
+    const rawCountry = (r as { country?: string }).country;
+    const cc: 'CU' | 'US' = (() => {
+      const s = String(rawCountry ?? '').trim().toUpperCase();
+      if (s === 'CU' || s === 'CUBA') return 'CU';
+      if (s === 'US' || s === 'USA' || s === 'UNITED STATES' || s === 'EEUU' || s === 'EE.UU.') return 'US';
+      // Heurística por estructura, evita clasificar mal si backend vino sin country.
+      return ('province' in (r as object) || 'municipality' in (r as object)) ? 'CU' : 'US';
+    })();
 
     if (cc === 'CU') {
-      setRecipientLoc({ country: 'CU', province: (r as RecipientCU).province, municipality: (r as RecipientCU).municipality });
+      const rc = r as RecipientCU;
+      setRecipientLoc({
+        country: 'CU',
+        province: rc.province || '',
+        municipality: rc.municipality || ''
+      });
       setFormData(prev => ({
         ...prev,
         nombre: r.first_name || '',
@@ -490,18 +521,21 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         email: r.email || '',
         telefono: toLocalPhone('CU', r.phone),
         instrucciones: r.instructions || '',
-        // limpia US
         address1: '', address2: '', city: '', state: '', zip: '',
-        // Cuba
-        direccion: (r as RecipientCU).address || '',
-        ci: (r as RecipientCU).ci || '',
+        direccion: rc.address || '',
+        ci: rc.ci || '',
       }));
     } else {
       const ru = r as {
         address_line1?: string; address_line2?: string | null;
         city?: string; state?: string; zip?: string;
       };
-      setRecipientLoc({ country: 'US', state: ru.state || '', city: ru.city || '', zip: ru.zip || '' });
+      setRecipientLoc({
+        country: 'US',
+        state: ru.state || '',
+        city: ru.city || '',
+        zip: ru.zip || ''
+      });
       setFormData(prev => ({
         ...prev,
         nombre: r.first_name || '',
@@ -509,24 +543,20 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         email: r.email || '',
         telefono: r.phone || '',
         instrucciones: r.instructions || '',
-        // US
         address1: ru.address_line1 || '',
         address2: ru.address_line2 || '',
         city: ru.city || '',
         state: ru.state || '',
         zip: ru.zip || '',
-        // limpia CU
         direccion: '',
         ci: '',
       }));
     }
 
-    try { localStorage.removeItem(LS_FORM_KEY) } catch { /* noop */ }
-    try {
-      const key = lsRecipientKeyFor(cc);
-      localStorage.setItem(key, String(r.id));
-    } catch { /* noop */ }
+    try { localStorage.removeItem(LS_FORM_KEY) } catch { }
+    try { localStorage.setItem(lsRecipientKeyFor(cc), String(r.id)) } catch { }
   }, []);
+
 
   useEffect(() => {
     if (!location?.country) return;
@@ -922,39 +952,44 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     const run = async () => {
       setQuoting(true)
       try {
-        let shipping: ShippingQuoteInput
+        let shipping: ShippingQuoteInput;
 
         if (recipientLoc?.country === 'CU') {
+          const province = recipientLoc.province?.trim() || '';
+          const municipality = recipientLoc.municipality?.trim() || '';
+          if (!province || !municipality) { setQuoting(false); return; }
           shipping = {
             country: 'CU',
-            province: recipientLoc.province,
-            municipality: recipientLoc.municipality,
-            area_type: computeAreaType(recipientLoc.province, recipientLoc.municipality),
+            province,
+            municipality,
+            area_type: computeAreaType(province, municipality),
             transport,
-          }
+          };
         } else if (recipientLoc?.country === 'US') {
-          shipping = {
-            country: 'US',
-            state: recipientLoc.state,
-            city: recipientLoc.city,
-            zip: recipientLoc.zip,
-          }
+          const state = recipientLoc.state?.trim() || '';
+          const city = recipientLoc.city?.trim() || '';
+          const zip = recipientLoc.zip?.trim() || '';
+          if (!state || !city || !zip) { setQuoting(false); return; }
+          shipping = { country: 'US', state, city, zip };
         } else if (isCU) {
+          const province = (location?.province || '').trim();
+          const municipality = (location?.municipality || '').trim();
+          if (!province || !municipality) { setQuoting(false); return; }
           shipping = {
             country: 'CU',
-            province: location!.province!,
-            municipality: location!.municipality!,
-            area_type: computeAreaType(location!.province!, location!.municipality!),
+            province,
+            municipality,
+            area_type: computeAreaType(province, municipality),
             transport,
-          }
+          };
         } else {
-          shipping = {
-            country: 'US',
-            state: formData.state,
-            city: formData.city,
-            zip: formData.zip,
-          }
+          const state = (formData.state || '').trim();
+          const city = (formData.city || '').trim();
+          const zip = (formData.zip || '').trim();
+          if (!state || !city || !zip) { setQuoting(false); return; }
+          shipping = { country: 'US', state, city, zip };
         }
+
 
         const r = await fetch(`${API_URL}/shipping/quote`, {
           method: 'POST',
@@ -1935,8 +1970,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
               type="button"
               className="underline text-emerald-800 hover:text-emerald-900"
               onClick={() => {
-                try { window.dispatchEvent(new CustomEvent('location:open')) } catch { }
-                window.scrollTo({ top: 0, behavior: 'smooth' })
+                { try { safeDispatch('location:open'); } catch { } window.scrollTo({ top: 0, behavior: 'smooth' }) }
               }}
             >
               {dict.location_banner.location_selected_change}
@@ -1949,7 +1983,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             <button
               type="button"
               className="underline text-emerald-800 hover:text-emerald-900"
-              onClick={() => { try { window.dispatchEvent(new CustomEvent('location:open')) } catch { } window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+              onClick={() => { try { safeDispatch('location:open'); } catch { } window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+
             >
               {dict.location_banner.location_selected}
             </button>
@@ -1962,13 +1997,15 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         )}
       </div>
       {/* Aviso: navegador embebido */}
-      {typeof navigator !== 'undefined' && isInAppBrowserUA(navigator.userAgent) && (
-        <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 mt-3">
-          {locale === 'en'
-            ? 'You are opening this page inside an app browser (e.g. Instagram/Facebook). If you see errors, tap the ••• menu and open in Safari.'
-            : 'Estás abriendo la página dentro del navegador de otra app (por ejemplo Instagram/Facebook). Si ves errores, ábrela en Safari desde el menú •••.'}
-        </div>
-      )}
+      {
+        typeof navigator !== 'undefined' && isInAppBrowserUA(navigator.userAgent) && (
+          <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 mt-3">
+            {locale === 'en'
+              ? 'You are opening this page inside an app browser (e.g. Instagram/Facebook). If you see errors, tap the ••• menu and open in Safari.'
+              : 'Estás abriendo la página dentro del navegador de otra app (por ejemplo Instagram/Facebook). Si ves errores, ábrela en Safari desde el menú •••.'}
+          </div>
+        )
+      }
 
 
 
@@ -2158,20 +2195,21 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                 <div className="flex items-center gap-2">
                   <select
                     id="recipient_select"
+                    key={`recipients-${location?.country ?? 'xx'}`}   // fuerza remount si cambia el país
                     className="input"
-                    value={selectedRecipientId ?? ''}
+                    value={selectValue}                               // ← ahora usa string
                     onChange={(e) => {
-                      const val = e.target.value
-                      const id = val ? Number(val) : null
-                      setSelectedRecipientId(id)
+                      const val = e.target.value;
+                      const id = val ? Number(val) : null;
+                      setSelectedRecipientId(id);
                       if (id !== null) {
-                        const r = recipientsForCountry.find(x => x.id === id)
-                        if (r) applyRecipient(r)
+                        const r = recipientsForCountry.find(x => x.id === id);
+                        if (r) applyRecipient(r);
                       } else {
-                        setRecipientLoc(null)
+                        setRecipientLoc(null);
                         try {
                           if (location?.country === 'CU' || location?.country === 'US') {
-                            localStorage.removeItem(lsRecipientKeyFor(location.country))
+                            localStorage.removeItem(lsRecipientKeyFor(location.country));
                           }
                         } catch { }
                       }
@@ -2184,12 +2222,14 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                           ? (locale === 'en' ? 'No saved recipients' : 'Sin destinatarios guardados')
                           : (locale === 'en' ? 'Select a recipient' : 'Selecciona un destinatario')}
                     </option>
+
                     {recipientsForCountry.map(r => (
-                      <option key={r.id} value={r.id}>
+                      <option key={r.id} value={String(r.id)}>   {/* ← value como string */}
                         {r.first_name} {r.last_name} · {r.country}{r.is_default ? (locale === 'en' ? ' · default' : ' · predeterminado') : ''}
                       </option>
                     ))}
                   </select>
+
 
                   {/* Nuevo destinatario */}
                   <button
