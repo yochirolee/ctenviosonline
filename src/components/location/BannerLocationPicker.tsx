@@ -44,9 +44,38 @@ function computeAreaType(prov: string, mun: string): 'city' | 'municipio' {
 export default function BannerLocationPicker({ dict }: { dict: Dict }) {
   const { location, setLocation } = useLocation()
   const [open, setOpen] = useState(false)
+  const [forced, setForced] = useState(false)  // “modo obligatorio” activado por login/registro
+  const [checkedFlagOnce, setCheckedFlagOnce] = useState(false)
+  const isBlocking = open && (forced || !location)
 
   // abre si no hay location
   useEffect(() => { setOpen(location == null) }, [location])
+  // NUEVO: si venimos de login/registro y no hay location, abrir en modo obligatorio
+
+  useEffect(() => {
+    if (checkedFlagOnce) return
+    setCheckedFlagOnce(true)
+
+    try {
+      const flag = sessionStorage.getItem('openLocationOnNextPage')
+      if (flag === '1' && !location) {
+        setForced(true)
+        setOpen(true)
+        sessionStorage.removeItem('openLocationOnNextPage')
+      }
+    } catch {
+      /* no-op */
+    }
+  }, [location, checkedFlagOnce])
+
+  useEffect(() => {
+    if (isBlocking) {
+      const prev = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      return () => { document.body.style.overflow = prev }
+    }
+  }, [isBlocking])
+  
 
   // drafts locales (solo para el diálogo)
   const [country, setCountry] = useState<'US' | 'CU'>('US')
@@ -99,6 +128,7 @@ export default function BannerLocationPicker({ dict }: { dict: Dict }) {
       const next: DeliveryLocation = { country: 'US' }
       setLocation(next)
       setOpen(false)
+      setForced(false)
       return
     }
     const next: DeliveryLocation = {
@@ -109,9 +139,86 @@ export default function BannerLocationPicker({ dict }: { dict: Dict }) {
     }
     setLocation(next)
     setOpen(false)
+    setForced(false)
   }
 
-  return (
+  return isBlocking ? (
+    <>
+      {/* Overlay bloqueante que evita clics fuera */}
+      <div className="fixed inset-0 z-[9998] bg-black/30" aria-hidden="true" />
+  
+      {/* El banner, igual que el tuyo, pero fijo arriba y por encima del overlay */}
+      <div className="fixed top-0 left-0 right-0 z-[9999] w-full bg-emerald-50 border-b border-emerald-200">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col md:flex-row md:items-end gap-3">
+          <div className="flex-1">
+            <div className="font-semibold text-emerald-800">{dict.location_banner.where_title}</div>
+            <div className="text-sm text-emerald-700">
+              {dict.location_banner.where_subtitle}
+            </div>
+          </div>
+  
+          <div className="flex flex-col md:flex-row gap-2 md:items-center">
+            <select
+              className="input"
+              value={country}
+              onChange={(e) => {
+                const c = e.target.value as 'US' | 'CU'
+                setCountry(c)
+                if (c === 'US') { setProvince(''); setMunicipality('') }
+              }}
+            >
+              <option value="US">{dict.location_banner.country_us}</option>
+              <option value="CU">{dict.location_banner.country_cu}</option>
+            </select>
+  
+            {country === 'CU' && (
+              <>
+                <select
+                  className="input"
+                  value={province}
+                  onChange={(e) => setProvince(e.target.value)}
+                >
+                  <option value="">{dict.location_banner.province_placeholder}</option>
+                  {CUBA_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+  
+                <select
+                  className="input"
+                  value={municipality}
+                  onChange={(e) => setMunicipality(e.target.value)}
+                  disabled={!province}
+                  required
+                >
+                  <option value="">{dict.location_banner.municipality_placeholder}</option>
+                  {municipiosDeProv.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </>
+            )}
+  
+            <div className="flex gap-2">
+              <button
+                onClick={onSave}
+                disabled={!canSave}
+                className={`px-3 py-2 rounded text-white ${canSave ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-gray-400 cursor-not-allowed'}`}
+              >
+                {dict.location_banner.save}
+              </button>
+              {location && (
+                <button
+                  onClick={() => setOpen(true)}
+                  className="px-3 py-2 rounded bg-white border border-emerald-300 text-emerald-700"
+                  title="Cambiar ubicación"
+                >
+                  {dict.location_banner.change}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  ) : (
+    // Modo normal (tu banner tal cual)
     <div className="w-full bg-emerald-50 border-b border-emerald-200">
       <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col md:flex-row md:items-end gap-3">
         <div className="flex-1">
@@ -120,7 +227,7 @@ export default function BannerLocationPicker({ dict }: { dict: Dict }) {
             {dict.location_banner.where_subtitle}
           </div>
         </div>
-
+  
         <div className="flex flex-col md:flex-row gap-2 md:items-center">
           <select
             className="input"
@@ -134,7 +241,7 @@ export default function BannerLocationPicker({ dict }: { dict: Dict }) {
             <option value="US">{dict.location_banner.country_us}</option>
             <option value="CU">{dict.location_banner.country_cu}</option>
           </select>
-
+  
           {country === 'CU' && (
             <>
               <select
@@ -145,7 +252,7 @@ export default function BannerLocationPicker({ dict }: { dict: Dict }) {
                 <option value="">{dict.location_banner.province_placeholder}</option>
                 {CUBA_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
-
+  
               <select
                 className="input"
                 value={municipality}
@@ -158,7 +265,7 @@ export default function BannerLocationPicker({ dict }: { dict: Dict }) {
               </select>
             </>
           )}
-
+  
           <div className="flex gap-2">
             <button
               onClick={onSave}
@@ -181,4 +288,5 @@ export default function BannerLocationPicker({ dict }: { dict: Dict }) {
       </div>
     </div>
   )
+  
 }

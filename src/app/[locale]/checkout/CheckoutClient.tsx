@@ -389,6 +389,43 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     zip: "",
   })
 
+  useEffect(() => {
+    try {
+      const flag = sessionStorage.getItem('forceCreateRecipientForCountry') as 'CU' | 'US' | null
+      if (!flag) return
+      sessionStorage.removeItem('forceCreateRecipientForCountry')
+  
+      setRecipientModalMode('create')
+      if (flag === 'CU') {
+        const prov = CU_PROVINCES.includes((location?.province ?? '') as CuProvince)
+          ? (location!.province as CuProvince)
+          : CU_PROVINCES[0]
+        const muns = CU_MUNS_BY_PROVINCE[prov]
+        const mun = muns.includes(location?.municipality ?? '') ? (location!.municipality as string) : muns[0]
+  
+        setRecipientDraft({
+          country: 'CU',
+          first_name: '', last_name: '',
+          phone: '', email: '',
+          province: prov, municipality: mun,
+          address: '', ci: '',
+          instructions: '',
+        })
+      } else {
+        setRecipientDraft({
+          country: 'US',
+          first_name: '', last_name: '',
+          phone: '', email: '',
+          address_line1: '', address_line2: '',
+          city: '', state: '', zip: '',
+          instructions: '',
+        })
+      }
+      setShowRecipientModal(true)
+    } catch { /* noop */ }
+  }, [location?.province, location?.municipality])
+  
+
   // Precargar desde API del customer
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
@@ -732,7 +769,6 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
   // ===== Validación =====
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
-
   const effectiveCountry: 'CU' | 'US' | null =
     (recipientLoc?.country ?? (isCU ? 'CU' : isUS ? 'US' : null))
 
@@ -1136,6 +1172,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
   // ===== Aceptación de Términos
   const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [attemptedPay, setAttemptedPay] = useState(false)
 
   const payDisabled =
     isPaying ||
@@ -1152,6 +1189,23 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   const [directSession, setDirectSession] = useState<{ id: string; amount: number } | null>(null)
 
   const handleStartDirect = async () => {
+    if (!acceptedTerms) {
+      setAttemptedPay(true)
+      toast.error(
+        locale === 'en'
+          ? 'Please accept the Terms and Conditions to continue.'
+          : 'Debes aceptar los Términos y Condiciones para continuar.',
+        { position: 'bottom-center' }
+      )
+      setTimeout(() => {
+        const el = document.getElementById('terms-checkbox') as HTMLInputElement | null
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          el.focus()
+        }
+      }, 50)
+      return
+    }
     const { ok, firstErrorField } = validate()
     if (!ok) {
       const needsBillingEmail = !buyer.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyer.email)
@@ -2671,12 +2725,22 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       </div>
 
       {/* ===== Términos ===== */}
-      <div className="rounded border bg-white p-4">
+      <div
+        id="terms-container"
+        className={`rounded border bg-white p-4 ${attemptedPay && !acceptedTerms ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'
+          }`}
+      >
         <label className="inline-flex items-start gap-2 text-sm text-gray-700">
           <input
+            id="terms-checkbox"
             type="checkbox"
             checked={acceptedTerms}
-            onChange={(e) => setAcceptedTerms(e.target.checked)}
+            onChange={(e) => {
+              setAcceptedTerms(e.target.checked)
+              if (e.target.checked) setAttemptedPay(false)
+            }}
+            aria-invalid={attemptedPay && !acceptedTerms}
+            aria-describedby="terms-error"
             className="mt-1"
           />
           <span>
@@ -2692,12 +2756,20 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             .
           </span>
         </label>
-        {!acceptedTerms && (
+
+        {attemptedPay && !acceptedTerms ? (
+          <p id="terms-error" className="mt-2 text-sm text-red-600">
+            {locale === 'en'
+              ? 'You must accept the Terms and Conditions to enable payment.'
+              : 'Debes aceptar los Términos y Condiciones para habilitar el pago.'}
+          </p>
+        ) : (
           <p className="mt-1 text-xs text-gray-500">
             {locale === 'en' ? 'Required to continue.' : 'Obligatorio para continuar.'}
           </p>
         )}
       </div>
+
 
       {/* ===== 3) Pago ===== */}
       <h2 className="text-2xl font-bold">{dict.checkout.payment}</h2>

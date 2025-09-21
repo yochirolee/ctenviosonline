@@ -14,6 +14,8 @@ import { useCart } from '../context/CartContext'
 import { usePathname, useRouter } from 'next/navigation'
 import type { Dict } from '@/types/Dict'
 import { toast } from 'sonner'
+import { useLocation } from '@/context/LocationContext'
+import { listRecipients } from '@/lib/recipients'
 
 type CartItemMeta = {
   base_cents?: number
@@ -40,7 +42,7 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
   const cart = useCart()
   const items = cart.items as CartItem[]
   const { removeItem, addItem, isCartOpen, setIsCartOpen, refreshCartNow } = cart
-
+  const { location } = useLocation()
   const router = useRouter()
   const pathname = usePathname()
   const locale = pathname?.split('/')[1] || 'es'
@@ -102,6 +104,32 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
         : 0
     return sum + perItemTax * item.quantity
   }, 0)
+
+  async function handleProceedToCheckout() {
+    // 1) Chequear país seleccionado en el banner
+    const country = location?.country as 'CU' | 'US' | undefined
+    if (country !== 'CU' && country !== 'US') {
+      try { window.dispatchEvent(new CustomEvent('location:open')) } catch { }
+      toast.error('Selecciona el destino de entrega para continuar.')
+      return
+    }
+
+    // 2) Ver si existen destinatarios para ese país
+    try {
+      const rows = await listRecipients()
+      const hasForCountry = rows.some(r => String(r.country ?? '').toUpperCase() === country)
+      if (!hasForCountry) {
+        sessionStorage.setItem('forceCreateRecipientForCountry', country)
+      }
+    } catch {
+      // Si falla (ej: no autenticado), dejamos que el checkout maneje el flujo
+    }
+
+    // 3) Cerrar drawer y navegar al checkout
+    setIsCartOpen(false)
+    router.push(`/${locale}/checkout`)
+  }
+
 
   return (
     <Dialog open={isCartOpen} onClose={() => setIsCartOpen(false)} className="fixed inset-0 z-50 overscroll-contain touch-pan-y">
@@ -310,13 +338,12 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
                       <p className="mt-0.5 text-xs text-gray-500">{dict.cart.subtotaldetails}</p>
 
                       <div className="mt-4">
-                        <Link
-                          href={`/${locale}/checkout`}
-                          onClick={() => setIsCartOpen(false)}
+                        <button
+                          onClick={handleProceedToCheckout}
                           className="flex items-center justify-center rounded-md bg-green-600 px-6 py-3 text-base font-medium text-white hover:bg-green-700 w-full"
                         >
                           {dict.cart.checkout}
-                        </Link>
+                        </button>
                       </div>
 
                       <div className="mt-4 flex justify-center text-sm text-gray-500">
