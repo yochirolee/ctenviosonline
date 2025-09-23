@@ -94,7 +94,8 @@ export default function HeroShowcase({ className, autoPlayMs = 7000, dict  }: Pr
 
   const [i, setI] = useState(0)
   const timer = useRef<number | null>(null)
-  const go = (n: number) => setI((p) => (n + SLIDES.length) % SLIDES.length)
+  const go = (n: number) =>
+    setI(((n % SLIDES.length) + SLIDES.length) % SLIDES.length)
   const next = () => go(i + 1)
   const prev = () => go(i - 1)
 
