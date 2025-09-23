@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { getCategories } from '@/lib/products'
-import { useLocation } from '@/context/LocationContext'
+//import { useLocation } from '@/context/LocationContext'
 import type { Dict } from '@/types/Dict'
 
 type Category = { slug: string; image?: string }
@@ -15,8 +15,9 @@ type RawCategory = { slug: string; image_url?: string | null }
 export default function HeroCategories({ dict }: Props) {
   const { locale } = useParams() as { locale: string }
   const [cats, setCats] = useState<Category[]>([])
-  const { location } = useLocation()
+ // const { location } = useLocation()
 
+  /*
   // Abrir selector si venimos de login/registro
   useEffect(() => {
     try {
@@ -26,7 +27,7 @@ export default function HeroCategories({ dict }: Props) {
         window.dispatchEvent(new CustomEvent('location:open'))
       }
     } catch {}
-  }, [])
+  }, [])  */
 
   // Cargar categorías una sola vez (no depende de dict)
   useEffect(() => {
@@ -49,7 +50,7 @@ export default function HeroCategories({ dict }: Props) {
 
   return (
     <section id="hero" className="py-8 px-4 md:px-12 lg:px-20 bg-white scroll-mt-24">
-      {/* Faja de ubicación con altura reservada (evita CLS) */}
+      {/* Faja de ubicación con altura reservada (evita CLS) 
       <div className="mb-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900
                       flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-h-[48px]">
         <div>
@@ -77,7 +78,7 @@ export default function HeroCategories({ dict }: Props) {
             {location ? dict.location_banner.location_selected_change : dict.location_banner.location_select}
           </button>
         </div>
-      </div>
+      </div> */}
 
       <div className="text-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">{dict.categories.title}</h1>
