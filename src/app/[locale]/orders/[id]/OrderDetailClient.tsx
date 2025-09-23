@@ -18,6 +18,7 @@ const round2 = (n: number) => Math.round((Number(n || 0) + Number.EPSILON) * 100
 type Item = {
   product_id: number | null
   product_name?: string
+  product_name_en?: string
   quantity: number
   unit_price: number
   image_url?: string
@@ -351,6 +352,16 @@ export default function OrderDetailClient({
     )
   }
 
+  const itemTitle = (it: Item) => {
+    const en = (it.product_name_en || '').trim()
+    const base = (it.product_name || '').trim()
+    const fallback = `${dict.order_detail.product_fallback} #${it.product_id ?? ''}`
+    return (locale || 'es').toLowerCase().startsWith('en')
+      ? (en || base || fallback)
+      : (base || en || fallback)
+  }
+  
+
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       {/* Header */}
@@ -683,13 +694,13 @@ export default function OrderDetailClient({
             {order.items.map((it, idx) => (
               <li key={`${it.product_id}-${idx}`} className="p-4 flex items-center gap-3">
                 {it.image_url ? (
-                  <Thumb src={it.image_url} alt={it.product_name || `Producto ${it.product_id}`} size={48} />
+                  <Thumb src={it.image_url} alt={itemTitle(it) || `Producto ${it.product_id}`} size={48} />
                 ) : (
                   <div className="w-12 h-12 rounded border bg-gray-100" />
                 )}
                 <div className="flex-1">
                   <div className="text-sm font-medium">
-                    {it.product_name || `${dict.order_detail.product_fallback} #${it.product_id}`}
+                    { itemTitle(it) || `${dict.order_detail.product_fallback} #${it.product_id}`}
                   </div>
                   <div className="text-xs text-gray-600">x{it.quantity}</div>
                 </div>

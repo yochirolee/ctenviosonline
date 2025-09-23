@@ -23,7 +23,11 @@ type ProductMeta = {
   price_cents?: number
   archived?: boolean
 }
-type ProductForm = Partial<Omit<Product, 'metadata'>> & { metadata?: ProductMeta }
+type ProductForm = Partial<Omit<Product, 'metadata'>> & {
+  metadata?: ProductMeta
+  duty_usd?: number | undefined   // input de UI (se convierte a cents en el backend)
+  keywords_text?: string | undefined // caja de texto separada por comas
+}
 // headers con token para endpoints admin
 const authHeaders = (): HeadersInit => {
   const h: Record<string, string> = {}
@@ -52,6 +56,10 @@ export default function AdminProductsPage() {
     metadata: { taxable: true, tax_pct: undefined, margin_pct: undefined, price_cents: undefined },
     stock_qty: 0,
     owner_id: null,
+    title_en: '',
+    description_en: '',
+    duty_usd: undefined,
+    keywords_text: '',
   })
 
   // filtros / paginación
@@ -117,16 +125,27 @@ export default function AdminProductsPage() {
 
   // valores form para validar/preview
   const meta: ProductMeta = form.metadata ?? {}
-  const baseUSD = Number(form.price || 0)
-  const marginPct = Number(meta.margin_pct || 0)
-  const taxPct = Number(meta.tax_pct || 0)
-  const taxable = meta.taxable !== false
+  const baseUSD = Number(form.price || 0);
+  const dutyUSD = Number(form.duty_usd || 0);
+  const marginPct = Number(meta.margin_pct || 0);
+  const taxPct = Number(meta.tax_pct || 0);
+  const taxable = meta.taxable !== false;
+
+  // costo = base + arancel
+  const costUSD = baseUSD + dutyUSD;
+  // ganancia = cost * margin%
+  const gainUSD = costUSD * (marginPct / 100);
+  // subtotal antes de tax = cost + gain
+  const subtotalUSD = costUSD + gainUSD;
+  // impuesto
+  const estTax = taxable ? subtotalUSD * (taxPct / 100) : 0;
+  // total
+  const estTotal = subtotalUSD + estTax;
+
 
   // base + ganancia
   const priceWithMargin = baseUSD * (1 + marginPct / 100)
-  // impuesto (solo si taxable)
-  const estTax = taxable ? priceWithMargin * (taxPct / 100) : 0
-  const estTotal = priceWithMargin + estTax
+
 
   // validación price ↔ price_cents
   const expectedPriceCents = dollarsToCents(form.price)
@@ -160,17 +179,32 @@ export default function AdminProductsPage() {
       archived: !!m.archived,
     }
 
-    const body: Omit<Product, 'id'> & { owner_id?: number | null; metadata?: ProductMeta } = {
+    const body: Omit<Product, 'id'> & {
+      owner_id?: number | null;
+      metadata?: ProductMeta;
+      title_en?: string | null;
+      description_en?: string | null;
+      duty_usd?: number | undefined;
+      keywords?: string[] | undefined;
+    } = {
       title: String(form.title || '').trim(),
+      title_en: form.title_en ? String(form.title_en).trim() : undefined,
       price: Number(form.price || undefined),
       weight: form.weight ?? undefined,
       category_id: form.category_id ?? undefined,
       image_url: form.image_url || '',
       description: form.description || '',
+      description_en: form.description_en ?? undefined,
       metadata: cleanMeta,
       stock_qty: Number.isInteger(Number(form.stock_qty)) ? Number(form.stock_qty) : 0,
       owner_id: typeof form.owner_id === 'number' ? form.owner_id : null,
-    }
+      duty_usd: form.duty_usd, // el backend lo convertirá a cents
+      keywords: (form.keywords_text || '')
+        .split(',')
+        .map(s => s.trim().toLowerCase())
+        .filter(s => s.length > 0),
+    };
+
 
     try {
       if (editing) {
@@ -181,6 +215,7 @@ export default function AdminProductsPage() {
         toast.success('Producto creado')
         setPage(1)
       }
+
       setForm({
         title: '',
         price: undefined,
@@ -211,15 +246,18 @@ export default function AdminProductsPage() {
   const onEdit = (p: Product) => {
     const px = p as ProductLike
     const m = (px.metadata ?? {}) as ProductMeta & { archived?: boolean }
-
+    const dutyUsd = typeof px.duty_cents === 'number' ? px.duty_cents / 100 : undefined;
+    const kwText = Array.isArray(px.keywords) ? px.keywords.join(', ') : '';
     setEditing(p)
     setForm({
       title: p.title,
+      title_en: (p as Product).title_en ?? '',
       price: Number(p.price),
       weight: px.weight ?? undefined,
       category_id: px.category_id ?? undefined,
       image_url: p.image_url || '',
       description: p.description || '',
+      description_en: (p as Product).description_en ?? '',
       stock_qty: px.stock_qty ?? 0,
       metadata: {
         taxable: m.taxable ?? true,
@@ -229,7 +267,10 @@ export default function AdminProductsPage() {
         archived: m.archived ?? false,
       },
       owner_id: px.owner_id ?? null,
+      duty_usd: dutyUsd,
+      keywords_text: kwText,
     })
+
   }
 
   const onDelete = async (id: number) => {
@@ -352,6 +393,44 @@ export default function AdminProductsPage() {
               />
             </div>
 
+            {/* Inglés */}
+            <div>
+              <label htmlFor="p-title-en" className="block text-sm font-medium text-gray-700">Title (EN)</label>
+              <input
+                id="p-title-en"
+                className="input"
+                value={form.title_en ?? ''}
+                onChange={e => setForm(s => ({ ...s, title_en: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="p-desc" className="block text-sm font-medium text-gray-700">Descripción</label>
+              <textarea
+                id="p-desc"
+                className="input"
+                rows={3}
+                placeholder="Descripción breve del producto"
+                value={form.description ?? ''}
+                onChange={e => setForm(s => ({ ...s, description: e.target.value }))}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Se mostrará en la tienda (listado y detalle).
+              </p>
+            </div>
+            
+
+            <div>
+              <label htmlFor="p-desc-en" className="block text-sm font-medium text-gray-700">Description (EN)</label>
+              <textarea
+                id="p-desc-en"
+                className="input"
+                rows={3}
+                value={form.description_en ?? ''}
+                onChange={e => setForm(s => ({ ...s, description_en: e.target.value }))}
+              />
+            </div>
+
             <div>
               <label htmlFor="p-price" className="block text-sm font-medium text-gray-700">Precio base (USD)</label>
               <input
@@ -362,6 +441,17 @@ export default function AdminProductsPage() {
               <p className="text-xs text-gray-500 mt-1">Equivale a <strong>{expectedPriceCents ?? 0}</strong> centavos.</p>
             </div>
 
+            {/* Arancel (USD) */}
+            <div>
+              <label htmlFor="p-duty" className="block text-sm font-medium text-gray-700">Arancel (USD por unidad)</label>
+              <input
+                id="p-duty" className="input" type="number" step="0.01" min={0}
+                value={form.duty_usd == null || Number.isNaN(form.duty_usd) ? '' : String(form.duty_usd)}
+                onChange={e => setForm(s => ({ ...s, duty_usd: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)) }))}
+              />
+            </div>
+
+                       
             <div>
               <label htmlFor="p-stock" className="block text-sm font-medium text-gray-700">Stock</label>
               <input
@@ -407,22 +497,19 @@ export default function AdminProductsPage() {
               />
             </div>
 
+            {/* Keywords */}
             <div>
-              <label htmlFor="p-desc" className="block text-sm font-medium text-gray-700">Descripción</label>
-              <textarea
-                id="p-desc"
-                className="input"
-                rows={3}
-                placeholder="Descripción breve del producto"
-                value={form.description ?? ''}
-                onChange={e => setForm(s => ({ ...s, description: e.target.value }))}
+              <label htmlFor="p-kw" className="block text-sm font-medium text-gray-700">Keywords (coma separadas)</label>
+              <input
+                id="p-kw" className="input"
+                placeholder="ej: crema, piel seca, hidratante"
+                value={form.keywords_text ?? ''}
+                onChange={e => setForm(s => ({ ...s, keywords_text: e.target.value }))}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Se mostrará en la tienda (listado y detalle).
-              </p>
+              <p className="text-xs text-gray-500 mt-1">Se usarán en el buscador global además del título/descr en ES/EN.</p>
             </div>
 
-            {/* Owner real (owner_id) */}
+           {/* Owner real (owner_id) */}
             <div>
               <label htmlFor="p-owner" className="block text-sm font-medium text-gray-700">Owner</label>
               <select
@@ -488,7 +575,7 @@ export default function AdminProductsPage() {
             </fieldset>
 
             <div className="text-sm text-gray-600">
-              Preview: Precio+ganancia ${priceWithMargin.toFixed(2)} · {taxable ? `Tax ${taxPct}% = $${estTax.toFixed(2)}` : 'exento'} · Total estimado ${estTotal.toFixed(2)}
+              Preview: Precio+Arancel+ganancia ${subtotalUSD.toFixed(2)} · {taxable ? `Tax ${taxPct}% = $${estTax.toFixed(2)}` : 'exento'} · Total estimado ${estTotal.toFixed(2)}
             </div>
 
             <div className="flex gap-2 pt-1">
@@ -544,9 +631,12 @@ export default function AdminProductsPage() {
                           const marginPct = Number(m.margin_pct || 0)
                           const taxPct = Number(m.tax_pct || 0)
                           const taxable = m.taxable !== false
-                          const priceWithMargin = base * (1 + marginPct / 100)
-                          const estTax = taxable ? priceWithMargin * (taxPct / 100) : 0
-                          const estTotal = priceWithMargin + estTax
+                          const dutyUsd = typeof px.duty_cents === 'number' ? px.duty_cents / 100 : 0
+                          
+                          const cost = base + dutyUsd
+                          const subtotal = cost * (1 + marginPct / 100)
+                          const estTax = taxable ? subtotal * (taxPct / 100) : 0
+                          const estTotal = subtotal + estTax
                           return `$${estTotal.toFixed(2)}`
                         })()}
                       </span>

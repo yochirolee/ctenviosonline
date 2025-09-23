@@ -64,9 +64,10 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
       try {
         setLoading(true)
         const list = await getProductsByCategory(
-          params.category,
-          location as DeliveryLocation | undefined
-        )
+                    params.category,
+                    location as DeliveryLocation | undefined,
+                    params.locale === 'en' ? 'en' : 'es' 
+                  )
         if (!cancelled) setItems(list as Product[]) // <-- sin `any`
       } catch {
         if (!cancelled) setItems(products)
@@ -76,7 +77,7 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
     }
     load()
     return () => { cancelled = true }
-  }, [params.category, location?.country, location?.province, location?.municipality, location?.area_type, products])
+  }, [params.category, params.locale, location?.country, location?.province, location?.municipality, location?.area_type, products])
 
   const handleAddToCart = async (product: Product) => {
     const isLoggedIn = await checkCustomerAuth()

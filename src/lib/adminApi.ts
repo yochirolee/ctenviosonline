@@ -119,16 +119,20 @@ export type ProductMetadata = {
 export type Product = {
   id: number
   title: string
+  title_en?: string | null
   price: number
   weight?: number | null
   category_id?: number | null
   image_url?: string | null
   description?: string | null
-  /** NUEVO: relación al owner */
+  description_en?: string | null
   owner_id?: number | null
   metadata?: ProductMetadata | null
   stock_qty: number
+  duty_cents?: number | null
+  keywords?: string[] | null
 }
+
 
 export async function listProducts(): Promise<Product[]> {
   const r = await fetch(`${API_URL}/products`, { cache: 'no-store' });
@@ -386,6 +390,7 @@ export type PayoutRow = {
   orders_count: number
   items_count: number
   base_cents: number
+  duty_cents: number
   margin_cents: number
   tax_cents: number
   shipping_owner_cents: number
@@ -415,6 +420,7 @@ export type PayoutTotals = {
   orders_count: number
   items_count: number
   base_cents: number
+  duty_cents: number
   margin_cents: number
   tax_cents: number
   shipping_owner_cents: number

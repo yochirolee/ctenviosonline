@@ -12,7 +12,7 @@ function usd(n: number) {
 export default function AdminPayoutsReportPage() {
   const [from, setFrom] = useState(() => new Date().toISOString().slice(0, 10))
   const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10))
-  const [deliveredOnly, setDeliveredOnly] = useState(true)
+  const [deliveredOnly, setDeliveredOnly] = useState(false)
   const [includePaid, setIncludePaid] = useState(false)
   const [data, setData] = useState<PayoutResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -50,7 +50,7 @@ export default function AdminPayoutsReportPage() {
     }
   }
 
-  
+
   useEffect(() => { void load() }, []) // primera carga
 
   return (
@@ -204,6 +204,7 @@ export default function AdminPayoutsReportPage() {
                   <th className="px-3 py-2 text-right">Órdenes</th>
                   <th className="px-3 py-2 text-right">Items</th>
                   <th className="px-3 py-2 text-right">Base (owner)</th>
+                  <th className="px-3 py-2 text-right">Aranceles</th>
                   <th className="px-3 py-2 text-right">Envío (owner)</th>
                   <th className="px-3 py-2 text-right">Owner Total</th>
                   <th className="px-3 py-2 text-right">Fee pasarela</th>
@@ -219,6 +220,7 @@ export default function AdminPayoutsReportPage() {
                     <td className="px-3 py-2 text-right">{r.orders_count}</td>
                     <td className="px-3 py-2 text-right">{r.items_count}</td>
                     <td className="px-3 py-2 text-right">{usd(r.base_cents)}</td>
+                    <td className="px-3 py-2 text-right">{usd(r.duty_cents)}</td>
                     <td className="px-3 py-2 text-right">{usd(r.shipping_owner_cents)}</td>
                     <td className="px-3 py-2 text-right">{usd(r.owner_total_cents_without_tax)}</td>
                     <td className="px-3 py-2 text-right">{usd(r.gateway_fee_cents)}</td>
@@ -236,6 +238,7 @@ export default function AdminPayoutsReportPage() {
                   <td className="px-3 py-2 text-right font-semibold">{data.totals.orders_count}</td>
                   <td className="px-3 py-2 text-right font-semibold">{data.totals.items_count}</td>
                   <td className="px-3 py-2 text-right font-semibold">{usd(data.totals.base_cents)}</td>
+                  <td className="px-3 py-2 text-right font-semibold">{usd(data.totals.duty_cents)}</td>
                   <td className="px-3 py-2 text-right font-semibold">{usd(data.totals.shipping_owner_cents)}</td>
                   <td className="px-3 py-2 text-right font-semibold">{usd(data.totals.owner_total_cents_without_tax)}</td>
                   <td className="px-3 py-2 text-right font-semibold">{usd(data.totals.gateway_fee_cents)}</td>

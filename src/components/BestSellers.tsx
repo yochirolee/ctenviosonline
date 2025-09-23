@@ -61,7 +61,11 @@ export default function BestSellers({ dict }: { dict: Dict }) {
     const load = async () => {
       try {
         setLoading(true)
-        const list = await getBestSellers(loc, { limit: 12, days: 60 })
+        const list = await getBestSellers(
+                    loc,
+                  { limit: 12, days: 60 },
+                  locale === 'en' ? 'en' : 'es'
+                )
         if (!cancelled) {
           const data = list ?? []
           setItems(data)
@@ -86,7 +90,7 @@ export default function BestSellers({ dict }: { dict: Dict }) {
     }
     load()
     return () => { cancelled = true }
-  }, [loc])
+  }, [loc, locale])
 
   const fmt = useMemo(
     () => new Intl.NumberFormat(locale || 'es', { style: 'currency', currency: 'USD' }),

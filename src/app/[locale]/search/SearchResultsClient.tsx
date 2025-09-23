@@ -39,7 +39,12 @@ export default function SearchResultsClient({ locale, dict, initialQuery, initia
     const load = async () => {
       setLoading(true)
       try {
-        const res = await searchProductsPaged(q, location as DeliveryLocation | undefined, { page, limit: 12 })
+        const res = await searchProductsPaged(
+                    q,
+                    location as DeliveryLocation | undefined,
+                    { page, limit: 12 },
+                    locale === 'en' ? 'en' : 'es' 
+                  )
         if (!cancelled) {
           setItems(res.items)
           setHasMore(res.has_more)
@@ -53,7 +58,7 @@ export default function SearchResultsClient({ locale, dict, initialQuery, initia
       cancelled = true
     }
     // Incluimos `location` para satisfacer la regla sin cambiar la lógica
-  }, [q, page, location, location?.country, location?.province, location?.municipality, location?.area_type])
+  }, [q, page, locale, location, location?.country, location?.province, location?.municipality, location?.area_type])
 
   useEffect(() => {
     const params = new URLSearchParams(sp?.toString())

@@ -11,7 +11,7 @@ type PageProps = { params: Promise<Params> }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { locale, id } = await params
-    const prod = await getProductById(Number(id))
+    const prod = await getProductById(Number(id), locale === 'en' ? 'en' : 'es')
     if (!prod) return {}
   
     const title = prod.name
@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProductPage({ params }: PageProps) {
   const { locale, id } = await params
-  const product = await getProductById(Number(id))
+  const product = await getProductById(Number(id), locale === 'en' ? 'en' : 'es')
   if (!product) notFound()
 
   const fmt = new Intl.NumberFormat(locale || 'es', { style: 'currency', currency: 'USD' })

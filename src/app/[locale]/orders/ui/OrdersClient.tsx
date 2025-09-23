@@ -11,9 +11,13 @@ const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
 type Item = {
   product_id: number
   product_name?: string
+  product_name_en?: string | null
   quantity: number
   unit_price: number // USD
   image_url?: string
+  metadata?: {                      
+    title_en?: string | null
+  } | null
 }
 
 type PricingCentsLite = {
@@ -227,6 +231,19 @@ export default function OrdersClient({ locale, dict }: { locale: string; dict: D
     )
   }
 
+  const displayProductName = (it: Item): string => {
+    if (locale === 'en') {
+      // prioridad: campo directo → metadata → español → fallback
+      return (it.product_name_en && it.product_name_en.trim())
+          || (it.metadata?.title_en && it.metadata.title_en.trim())
+          || (it.product_name && it.product_name.trim())
+          || `${dict.orders.product_fallback} #${it.product_id}`
+    }
+    return (it.product_name && it.product_name.trim())
+        || `${dict.orders.product_fallback} #${it.product_id}`
+  }
+  
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <button
@@ -296,7 +313,7 @@ export default function OrdersClient({ locale, dict }: { locale: string; dict: D
                     {it.image_url ? (
                       <Thumb
                         src={it.image_url}
-                        alt={it.product_name || `${dict.orders.product_fallback} ${it.product_id}`}
+                        alt={displayProductName(it) || `${dict.orders.product_fallback} ${it.product_id}`}
                         size={56}            // 56px = w-14 h-14
                       // unoptimized        // descomenta si aún no agregaste los dominios en next.config.js
                       />
@@ -305,7 +322,7 @@ export default function OrdersClient({ locale, dict }: { locale: string; dict: D
                     )}
                     <div className="flex-1">
                       <div className="text-sm font-medium">
-                        {it.product_name || `${dict.orders.product_fallback} #${it.product_id}`}
+                        {displayProductName(it)|| `${dict.orders.product_fallback} #${it.product_id}`}
                       </div>
                       <div className="text-xs text-gray-600">
                         x{it.quantity} · {fmtUsd(Number(it.unit_price))}

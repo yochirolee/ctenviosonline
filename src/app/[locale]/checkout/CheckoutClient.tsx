@@ -345,6 +345,7 @@ const getToken = () =>
 type CartLine = {
   id: number | string
   title: string
+  title_en?: string | null
   quantity: number
   unit_price?: number
   thumbnail?: string | null
@@ -354,8 +355,11 @@ type CartLine = {
     price_with_margin_cents?: number
     tax_cents?: number
     owner?: string
+    title_en?: string | null
+    description_en?: string | null
   } | null
 }
+
 
 // === NUEVO: tipo ubicación tomada de destinatario seleccionado ===
 type ShipLoc =
@@ -370,6 +374,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     [items]
   )
 
+ 
   const router = useRouter()
   const { locale } = useParams<{ locale: string }>()
   const { location } = useLocation() // <- fuente de verdad para CU/US (banner)
@@ -378,6 +383,15 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   const isUS = location?.country === 'US'
   const [transport, setTransport] = useState<ShippingTransport>('sea');
 
+  const displayTitle = useCallback((it: CartLine) => {
+    if (locale === 'en') {
+      return (it.title_en && it.title_en.trim())
+          || (it.metadata?.title_en && it.metadata.title_en.trim())
+          || it.title
+    }
+    return it.title
+  }, [locale])
+  
 
   // ===== (NUEVO) Datos del comprador (perfil) =====
   const [buyer, setBuyer] = useState({
@@ -2658,7 +2672,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                     />
                     <div>
                       <p className="text-sm font-medium text-gray-900">
-                        {item.title} <span className="text-gray-600">x{item.quantity}</span>
+                      {displayTitle(item)}  <span className="text-gray-600">x{item.quantity}</span>
                       </p>
                       {Number(item?.weight) > 0 && (
                         <p className="text-xs text-gray-500">

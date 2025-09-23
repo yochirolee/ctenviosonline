@@ -56,7 +56,12 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
       if (!term) { setResults([]); return }
       setLoading(true)
       try {
-        const rows = await searchProducts(term, location as DeliveryLocation | undefined, { limit: 12 })
+        const rows = await searchProducts(
+                    term,
+                    location as DeliveryLocation | undefined,
+                    { limit: 12 },
+                    locale === 'en' ? 'en' : 'es'
+                  )
         setResults(rows)
       } finally {
         setLoading(false)
@@ -65,7 +70,7 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
     return () => {
       if (timer.current) clearTimeout(timer.current)
     }
-  }, [q, open, location]) // ← incluye `location` para satisfacer la regla de deps
+  }, [q, open, location, locale])
 
   const handleAdd = async (p: SimplifiedProduct) => {
     const isLoggedIn = await checkCustomerAuth()

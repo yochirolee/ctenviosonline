@@ -22,6 +22,9 @@ type CartItemMeta = {
   margin_pct?: number
   tax_cents?: number
   owner?: string
+  duty_cents?: number
+  title_en?: string
+  description_en?: string
   [k: string]: unknown
 }
 
@@ -29,6 +32,7 @@ type CartItem = {
   id: number | string
   product_id: number
   title: string
+  title_en?: string
   unit_price?: number
   quantity: number
   thumbnail?: string
@@ -78,8 +82,15 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
       typeof item?.metadata?.margin_pct === 'number' && isFinite(item.metadata.margin_pct)
         ? Number(item.metadata.margin_pct)
         : 0
+
+    const duty =
+      typeof item?.metadata?.duty_cents === 'number' && item.metadata.duty_cents >= 0
+        ? item.metadata.duty_cents
+        : 0
     if (base == null) return undefined
-    return Math.round((base * (100 + marginPct)) / 100)
+    // Preview consistente con "Precio+Arancel+ganancia"
+    const basePlusDuty = base + duty
+    return Math.round((basePlusDuty * (100 + marginPct)) / 100)
   }
 
   function normalizeUnitPriceToCents(item: CartItem): number {
@@ -91,6 +102,14 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
 
   function itemUnitCents(item: CartItem): number {
     return priceWithMarginCentsFromMeta(item) ?? normalizeUnitPriceToCents(item)
+  }
+
+  const displayTitle = (item: CartItem) => {
+    if (locale === 'en') {
+      const metaTitleEn = typeof item?.metadata?.title_en === 'string' ? item.metadata!.title_en! : undefined
+      return item.title_en || metaTitleEn || item.title
+    }
+    return item.title
   }
 
   // Subtotal (centavos)
@@ -203,7 +222,7 @@ export default function CartDrawer({ dict }: { dict: Dict }) {
                                   className={`pr-2 text-base font-medium leading-snug break-words line-clamp-2 ${over ? 'text-red-700' : 'text-gray-900'
                                     }`}
                                 >
-                                  {item.title}
+                                  {displayTitle(item)}
                                 </h3>
                                 <p
                                   className={`shrink-0 whitespace-nowrap text-base font-medium ${over ? 'text-red-700' : 'text-gray-900'

@@ -28,13 +28,20 @@ export type ProductMetadata = {
 
 type ProductFromAPI = {
   id: number | string
-  title?: string
+  // ES
+  title?: string | null
+  description?: string | null
+  // EN
+  title_en?: string | null
+  description_en?: string | null
+
   price: string | number                // base (no usar para mostrar)
   image_url?: string | null
-  description?: string
+
   // campos de precio calculado (si el backend los expone)
-  price_with_margin_cents?: number
-  price_with_margin_usd?: number | string
+  price_with_margin_cents?: number | null
+  price_with_margin_usd?: number | string | null
+
   metadata?: ProductMetadata | null
 }
 
@@ -62,20 +69,31 @@ function buildLocParams(loc?: DeliveryLocation) {
   return sp
 }
 
-/** Mapea un producto del API al formato simplificado que usa el front. */
-function mapApiProduct(p: ProductFromAPI): SimplifiedProduct {
+/** Mapea un producto del API al formato simplificado que usa el front, resolviendo idioma. */
+function mapApiProduct(p: ProductFromAPI, locale: 'en' | 'es' = 'es'): SimplifiedProduct {
   const priceUsd =
     p.price_with_margin_cents != null
       ? Number(p.price_with_margin_cents) / 100
       : (p.price_with_margin_usd != null ? Number(p.price_with_margin_usd) : Number(p.price))
 
+  // Resuelve nombre/descr con fallback limpio
+  const name =
+    locale === 'en'
+      ? (p.title_en && p.title_en.trim()) || (p.title && p.title.trim()) || ''
+      : (p.title && p.title.trim()) || (p.title_en && p.title_en.trim()) || ''
+
+  const description =
+    locale === 'en'
+      ? ((p.description_en && p.description_en.trim()) || (p.description && p.description.trim()) || '')
+      : ((p.description && p.description.trim()) || (p.description_en && p.description_en.trim()) || '')
+
   return {
     id: Number(p.id),
-    name: p.title ?? '',
+    name,
     price: Number.isFinite(priceUsd) ? priceUsd : 0,
     imageSrc: p.image_url || '/product.webp',
     variant_id: String(p.id),
-    description: p.description || '',
+    description,
   }
 }
 
@@ -98,7 +116,8 @@ export async function getCategories(): Promise<
 /** Productos por categoría, filtrando por ubicación cuando se provee. */
 export async function getProductsByCategory(
   category: string,
-  loc?: DeliveryLocation
+  loc?: DeliveryLocation,
+  locale: 'en' | 'es' = 'es'
 ): Promise<SimplifiedProduct[]> {
   const sp = buildLocParams(loc)
   const url = `${API_URL}/products/category/${encodeURIComponent(category)}${
@@ -109,11 +128,14 @@ export async function getProductsByCategory(
   if (!res.ok) return []
 
   const data: ProductFromAPI[] = await res.json()
-  return data.map(mapApiProduct)
+  return data.map((p) => mapApiProduct(p, locale))
 }
 
 /** Productos generales (home/listados), también acepta filtro por ubicación. */
-export async function getProducts(loc?: DeliveryLocation): Promise<SimplifiedProduct[]> {
+export async function getProducts(
+  loc?: DeliveryLocation,
+  locale: 'en' | 'es' = 'es'
+): Promise<SimplifiedProduct[]> {
   const sp = buildLocParams(loc)
   const url = `${API_URL}/products${sp.toString() ? `?${sp.toString()}` : ''}`
 
@@ -121,13 +143,14 @@ export async function getProducts(loc?: DeliveryLocation): Promise<SimplifiedPro
   if (!res.ok) return []
 
   const data: ProductFromAPI[] = await res.json()
-  return data.map(mapApiProduct)
+  return data.map((p) => mapApiProduct(p, locale))
 }
 
 /** Más vendidos (puede venir sold_qty como string/number/null desde el backend) */
 export async function getBestSellers(
   loc?: DeliveryLocation,
-  opts?: { limit?: number; days?: number; status?: string }
+  opts?: { limit?: number; days?: number; status?: string },
+  locale: 'en' | 'es' = 'es'
 ): Promise<(SimplifiedProduct & { sold_qty: number })[]> {
   const sp = buildLocParams(loc)
   if (opts?.limit) sp.set('limit', String(opts.limit))
@@ -141,7 +164,7 @@ export async function getBestSellers(
   const data: BestSellerFromAPI[] = await res.json()
 
   return data.map((p) => ({
-    ...mapApiProduct(p),
+    ...mapApiProduct(p, locale),
     sold_qty: Number(p.sold_qty ?? 0),
   }))
 }
@@ -150,7 +173,8 @@ export async function getBestSellers(
 export async function searchProducts(
   q: string,
   loc?: DeliveryLocation,
-  opts?: { page?: number; limit?: number }
+  opts?: { page?: number; limit?: number },
+  locale: 'en' | 'es' = 'es'
 ): Promise<SimplifiedProduct[]> {
   const sp = buildLocParams(loc)
   if (q) sp.set('q', q)
@@ -163,14 +187,15 @@ export async function searchProducts(
 
   const data: SearchResponse = await res.json()
   const rows: ProductFromAPI[] = data.items ?? []
-  return rows.map(mapApiProduct)
+  return rows.map((p) => mapApiProduct(p, locale))
 }
 
 /** Búsqueda con paginado */
 export async function searchProductsPaged(
   q: string,
   loc?: DeliveryLocation,
-  opts?: { page?: number; limit?: number }
+  opts?: { page?: number; limit?: number },
+  locale: 'en' | 'es' = 'es'
 ): Promise<{ items: SimplifiedProduct[]; page: number; limit: number; has_more: boolean }> {
   const sp = buildLocParams(loc)
   if (q) sp.set('q', q)
@@ -186,7 +211,7 @@ export async function searchProductsPaged(
   const data: SearchResponse = await res.json()
   const rows: ProductFromAPI[] = data.items ?? []
   return {
-    items: rows.map(mapApiProduct),
+    items: rows.map((p) => mapApiProduct(p, locale)),
     page: Number(data.page ?? opts?.page ?? 1),
     limit: Number(data.limit ?? opts?.limit ?? 12),
     has_more: Boolean(data.has_more),
@@ -194,14 +219,16 @@ export async function searchProductsPaged(
 }
 
 // === Detalle de producto por ID ===
-export async function getProductById(id: number): Promise<SimplifiedProduct | null> {
+export async function getProductById(
+  id: number,
+  locale: 'en' | 'es' = 'es'
+): Promise<SimplifiedProduct | null> {
   try {
     const res = await fetch(`${API_URL}/products/${id}`, { cache: 'no-store' })
     if (!res.ok) return null
     const raw: ProductFromAPI = await res.json()
-    return mapApiProduct(raw)
+    return mapApiProduct(raw, locale)
   } catch {
     return null
   }
 }
-

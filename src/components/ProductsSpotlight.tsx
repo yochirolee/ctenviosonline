@@ -61,7 +61,7 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     const load = async () => {
       try {
         setLoading(true)
-        const list = await getProducts(loc)
+        const list = await getProducts(loc, locale === 'en' ? 'en' : 'es')
         if (!cancelled) {
           const trimmed = (list ?? []).slice(0, 20)
           setItems(trimmed)
