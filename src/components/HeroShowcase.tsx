@@ -94,17 +94,18 @@ export default function HeroShowcase({ className, autoPlayMs = 7000, dict  }: Pr
 
   const [i, setI] = useState(0)
   const timer = useRef<number | null>(null)
-  const go = (n: number) =>
-    setI(((n % SLIDES.length) + SLIDES.length) % SLIDES.length)
-  const next = () => go(i + 1)
-  const prev = () => go(i - 1)
+  const go = (n: number) => setI(((n % SLIDES.length) + SLIDES.length) % SLIDES.length)
+  const nextSlide = () => setI((prev) => (prev + 1) % SLIDES.length)
+  const prevSlide = () => setI((prev) => (prev - 1 + SLIDES.length) % SLIDES.length)
 
-  useEffect(() => {
-    if (!autoPlayMs || SLIDES.length < 2) return
-    if (timer.current) window.clearInterval(timer.current)
-    timer.current = window.setInterval(next, autoPlayMs)
-    return () => { if (timer.current) window.clearInterval(timer.current) }
-  }, [i, autoPlayMs])
+ // y este useEffect:
+useEffect(() => {
+  if (!autoPlayMs || SLIDES.length < 2) return
+  const id = window.setInterval(() => {
+    setI((prev) => (prev + 1) % SLIDES.length)
+  }, autoPlayMs)
+  return () => window.clearInterval(id)
+}, [autoPlayMs])
 
   // swipe móvil
   const startX = useRef<number | null>(null)
