@@ -121,7 +121,7 @@ export default function HeroShowcase({ className, autoPlayMs = 7000, dict }: Pro
       className={`relative w-full overflow-hidden bg-white ${className ?? ''}`}
       aria-roledescription="carousel"
     >
-      <div id="heroloc" className="py-6 px-4 md:px-12 lg:px-20 bg-white scroll-mt-24">
+      <div id="loc" className="py-6 px-4 md:px-12 lg:px-20 bg-white scroll-mt-24">
         {/* Faja de ubicación */}
         <div className="mb-2 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-h-[48px]">
           <div>

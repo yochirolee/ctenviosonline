@@ -10,6 +10,8 @@ import type { Dict } from '@/types/Dict'
 import ConfirmLogoutButton from '@/components/ConfirmLogoutButton'
 import { useEffect, useRef, useState, useReducer } from 'react'
 import { LogIn, LogOut, Menu, X } from 'lucide-react'
+import { getCategories } from '@/lib/products'
+import { ChevronDown } from 'lucide-react'
 
 type Props = { dict: Dict }
 
@@ -35,6 +37,15 @@ export default function Navbar({ dict }: Props) {
 
   const [mobileOpen, setMobileOpen] = useState(false)
 
+  type RawCategory = { slug: string; image_url?: string | null }
+  type Cat = { slug: string }
+
+  const [cats, setCats] = useState<Cat[]>([])
+  const [catsOpen, setCatsOpen] = useState(false)
+  const [catsLoading, setCatsLoading] = useState(false)
+  const [catsLoaded, setCatsLoaded] = useState(false)
+
+
   const [, forceRerender] = useReducer((x: number) => x + 1, 0)
   useEffect(() => {
     const bump = () => forceRerender()
@@ -47,6 +58,34 @@ export default function Navbar({ dict }: Props) {
       window.removeEventListener('encargos:completed', bump)
     }
   }, [])
+
+  // Carga categorías solo cuando se abre el drawer por primera vez
+  useEffect(() => {
+    if (!mobileOpen || catsLoaded) return
+    let alive = true
+      ; (async () => {
+        try {
+          setCatsLoading(true)
+          const rows = (await getCategories()) as RawCategory[]
+          const normalized: Cat[] = (rows ?? [])
+            .filter((c): c is RawCategory => !!c && typeof c.slug === 'string' && c.slug in dict.categories.list)
+            .map((c) => ({ slug: c.slug }))
+          if (alive) {
+            setCats(normalized)
+            setCatsLoaded(true)
+          }
+        } catch {
+          if (alive) {
+            setCats([])
+            setCatsLoaded(true)
+          }
+        } finally {
+          if (alive) setCatsLoading(false)
+        }
+      })()
+    return () => { alive = false }
+  }, [mobileOpen, catsLoaded, dict.categories.list])
+
 
   const firstLinkRef = useRef<HTMLAnchorElement>(null)
 
@@ -329,8 +368,63 @@ export default function Navbar({ dict }: Props) {
 
               <li>
                 <button onClick={() => goToSection('#hero')} className="block w-full text-left rounded">
-                  {locale === 'en' ? 'Products' : 'Productos'}
+                  {locale === 'en' ? 'All Products' : 'Todos los Productos'}
                 </button>
+              </li>
+
+              {/* Categorías (solo móvil) */}
+              <li className="mt-2">
+                {/* Botón igual que el resto de links */}
+                <button
+                  onClick={() => setCatsOpen(v => !v)}
+                  aria-expanded={catsOpen}
+                  aria-controls="mobile-categories-panel"
+                  className="!flex w-full items-center justify-between px-3 py-2 rounded
+               hover:bg-gray-100 transition text-gray-700 font-medium
+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30"
+                >
+                  <span className="min-w-0 truncate">
+                    {locale === 'en' ? 'Categories' : 'Categorías'}
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 transition-transform ${catsOpen ? 'rotate-180' : ''}`}
+                    aria-hidden
+                  />
+                </button>
+
+                {/* Panel con fondo verde (solo cuando está abierto) */}
+                <div
+                  id="mobile-categories-panel"
+                  hidden={!catsOpen}
+                  className="mx-2 mt-1 rounded-md border border-green-100 bg-green-50/60"
+                >
+                  {catsLoading ? (
+                    <div className="px-3 py-2 space-y-2">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="h-4 w-40 bg-green-100 rounded animate-pulse" />
+                      ))}
+                    </div>
+                  ) : cats.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-gray-600">
+                      {locale === 'en' ? 'No categories yet.' : 'Aún no hay categorías.'}
+                    </div>
+                  ) : (
+                    <ul className="max-h-[50vh] overflow-y-auto py-1">
+                      {cats.map((c) => (
+                        <li key={c.slug}>
+                          <Link
+                            href={`/${locale}/categories/${c.slug}`}
+                            onClick={() => setMobileOpen(false)}
+                            className="block px-5 py-2 text-sm rounded hover:bg-green-100/80 transition
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30"
+                          >
+                            {dict.categories.list[c.slug as keyof typeof dict.categories.list] ?? c.slug}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </li>
               <li>
                 <button onClick={() => goToSection('#about')} className="block w-full text-left rounded">
@@ -359,7 +453,7 @@ export default function Navbar({ dict }: Props) {
                   <button
                     onClick={() => {
                       setMobileOpen(false)
-                      logout().catch(() => {})
+                      logout().catch(() => { })
                     }}
                     className="block w-full text-left rounded"
                   >

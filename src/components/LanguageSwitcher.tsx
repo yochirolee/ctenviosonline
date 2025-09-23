@@ -26,7 +26,7 @@ export default function LanguageSwitcher() {
       onClick={handleChange}
       title={otherLocale.toUpperCase()}
       aria-label={`Switch language to ${otherLocale.toUpperCase()}`}
-      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 hover:bg-green-50 lg:rounded-none lg:bg-transparent lg:px-0 lg:py-0 lg:text-sm lg:hover:bg-transparent lg:hover:text-green-600"
+      className="inline-flex items-center gap-1.5 rounded-lg px-0 py-1 text-sm font-semibold text-gray-700 hover:bg-green-50 lg:rounded-none lg:bg-transparent lg:px-0 lg:py-0 lg:text-sm lg:hover:bg-transparent lg:hover:text-green-600"
     >
       <Globe className="h-4 w-4" strokeWidth={1.75} aria-hidden />
       <span className="tracking-wide">{otherLocale.toUpperCase()}</span>
