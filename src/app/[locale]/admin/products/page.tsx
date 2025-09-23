@@ -144,7 +144,7 @@ export default function AdminProductsPage() {
 
 
   // base + ganancia
-  const priceWithMargin = baseUSD * (1 + marginPct / 100)
+  //const priceWithMargin = baseUSD * (1 + marginPct / 100)
 
 
   // validación price ↔ price_cents
