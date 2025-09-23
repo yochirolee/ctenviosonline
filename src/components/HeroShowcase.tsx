@@ -70,7 +70,6 @@ export default function HeroShowcase({ className, autoPlayMs = 7000, dict }: Pro
   const { locale } = useParams() as { locale: 'en' | 'es' }
   const { location } = useLocation()
 
-  // abre selector de ubicación si viene marcado
   useEffect(() => {
     try {
       const flag = sessionStorage.getItem('openLocationOnNextPage')
@@ -89,14 +88,11 @@ export default function HeroShowcase({ className, autoPlayMs = 7000, dict }: Pro
   })
 
   const [i, setI] = useState(0)
-
-  const go = (n: number) =>
-    setI(((n % SLIDES.length) + SLIDES.length) % SLIDES.length)
-
+  const go = (n: number) => setI(((n % SLIDES.length) + SLIDES.length) % SLIDES.length)
   const nextSlide = () => setI((prev) => (prev + 1) % SLIDES.length)
   const prevSlide = () => setI((prev) => (prev - 1 + SLIDES.length) % SLIDES.length)
 
-  // autoplay sin dependencias innecesarias
+  // autoplay
   useEffect(() => {
     if (!autoPlayMs || SLIDES.length < 2) return
     const id = window.setInterval(() => {
@@ -125,9 +121,9 @@ export default function HeroShowcase({ className, autoPlayMs = 7000, dict }: Pro
       className={`relative w-full overflow-hidden bg-white ${className ?? ''}`}
       aria-roledescription="carousel"
     >
-      <div id="heroloc" className="py-8 px-4 md:px-12 lg:px-20 bg-white scroll-mt-24">
+      <div id="heroloc" className="py-6 px-4 md:px-12 lg:px-20 bg-white scroll-mt-24">
         {/* Faja de ubicación */}
-        <div className="mb-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-h-[48px]">
+        <div className="mb-2 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-h-[48px]">
           <div>
             {location ? (
               <>
@@ -173,12 +169,41 @@ export default function HeroShowcase({ className, autoPlayMs = 7000, dict }: Pro
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
+        {/* Flechas (z-20) */}
+        {SLIDES.length > 1 && (
+          <>
+            <button
+              aria-label="Previous slide"
+              onClick={prevSlide}
+              className="z-20 absolute left-1.5 sm:left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-1.5 sm:p-2 hover:bg-white shadow"
+            >
+              <ChevronLeft className="h-5 w-5 text-gray-800" />
+            </button>
+            <button
+              aria-label="Next slide"
+              onClick={nextSlide}
+              className="z-20 absolute right-1.5 sm:right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-1.5 sm:p-2 hover:bg-white shadow"
+            >
+              <ChevronRight className="h-5 w-5 text-gray-800" />
+            </button>
+          </>
+        )}
+
+        {/* Track */}
         <div
           className="absolute inset-0 flex transition-transform duration-700 ease-out"
           style={{ transform: `translateX(-${i * 100}%)` }}
         >
           {SLIDES.map((s) => {
             const tt = t(s)
+            // zona segura en móvil según alineación (evita que el texto choque con las flechas)
+            const safePad =
+              s.align === 'left'
+                ? 'pl-12 sm:pl-8'
+                : s.align === 'right'
+                ? 'pr-12 sm:pr-8'
+                : 'px-12 sm:px-8'
+
             return (
               <div key={s.id} className="relative min-w-full h-full">
                 <Image
@@ -189,9 +214,10 @@ export default function HeroShowcase({ className, autoPlayMs = 7000, dict }: Pro
                   className="object-cover"
                   sizes="100vw"
                 />
+
                 {(tt.title || tt.subtitle) && (
                   <div
-                    className={`absolute inset-0 flex items-center p-4 sm:p-8 lg:p-12 ${
+                    className={`absolute inset-0 flex items-center p-4 sm:p-8 lg:p-12 ${safePad} ${
                       s.align === 'center'
                         ? 'justify-center text-center'
                         : s.align === 'right'
@@ -199,20 +225,20 @@ export default function HeroShowcase({ className, autoPlayMs = 7000, dict }: Pro
                         : 'justify-start text-left'
                     }`}
                   >
-                    <div className="max-w-xl text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
+                    <div className="relative z-10 max-w-xl text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
                       {tt.title && (
                         <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold leading-tight">
                           {tt.title}
                         </h2>
                       )}
                       {tt.subtitle && (
-                        <p className="mt-2 text-sm sm:text-base lg:text-lg">
+                        <p className="mt-2 text-xs sm:text-base lg:text-lg leading-snug sm:leading-normal line-clamp-2 sm:line-clamp-none">
                           {tt.subtitle}
                         </p>
                       )}
                       <Link
                         href={tt.href}
-                        className="mt-5 inline-block rounded-xl bg-green-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-700"
+                        className="mt-4 sm:mt-5 inline-block rounded-xl bg-green-600 px-4 sm:px-5 py-2 sm:py-2.5 text-sm font-semibold text-white hover:bg-green-700"
                       >
                         {tt.cta}
                       </Link>
@@ -224,25 +250,7 @@ export default function HeroShowcase({ className, autoPlayMs = 7000, dict }: Pro
           })}
         </div>
 
-        {SLIDES.length > 1 && (
-          <>
-            <button
-              aria-label="Previous slide"
-              onClick={prevSlide}
-              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 hover:bg-white shadow"
-            >
-              <ChevronLeft className="h-5 w-5 text-gray-800" />
-            </button>
-            <button
-              aria-label="Next slide"
-              onClick={nextSlide}
-              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 hover:bg-white shadow"
-            >
-              <ChevronRight className="h-5 w-5 text-gray-800" />
-            </button>
-          </>
-        )}
-
+        {/* Dots */}
         {SLIDES.length > 1 && (
           <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2">
             {SLIDES.map((_, idx) => (
