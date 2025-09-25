@@ -138,7 +138,7 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
   }, [items.length])
 
   return (
-    <section className="py-8 px-4 md:px-12 lg:px-20 bg-white">
+    <section id="populars" className="py-8 px-4 md:px-12 lg:px-20 bg-white">
       <div className="mb-4 flex items-end justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">{t.title}</h2>
