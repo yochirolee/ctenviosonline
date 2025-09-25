@@ -131,6 +131,7 @@ function toMini(p: SimplifiedProduct): MiniProduct {
 // ======================================================
 
 export default function ContinueAndBuyAgain({ dict: _dict }: { dict: AppDict }) {
+    void _dict;
     const pathname = usePathname()
     const locale = (pathname?.split('/')[1] || 'es') as 'es' | 'en'
     const isEn = locale === 'en'
