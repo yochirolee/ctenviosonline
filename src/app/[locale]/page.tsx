@@ -7,6 +7,7 @@ import type { Dict } from '@/types/Dict'
 import ProductsSpotlight from '@/components/ProductsSpotlight'
 import BestSellers from '@/components/BestSellers'
 import BestSellersPromo from '@/components/BestSellersPromo'
+import ContinueAndBuyAgain from '@/components/ContinueAndBuyAgain'
 
 export default async function Home({
   params,
@@ -22,7 +23,7 @@ export default async function Home({
       <BestSellersPromo />
       <ProductsSpotlight dict={dict} />
       <BestSellers dict={dict} />
-      
+      <ContinueAndBuyAgain dict={dict} />      
       <Footer dict={dict} />
     </div>
   )
