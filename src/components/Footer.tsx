@@ -102,6 +102,7 @@ const Footer: React.FC<{ dict: Dict; mode?: 'full' | 'legal' }> = ({ dict, mode 
           </div>
 
           {/* Enlaces rápidos */}
+          
           {mode === 'full' ? (
             <div>
               <h4 className="text-base sm:text-lg font-semibold mb-3">{f.quickLinksTitle}</h4>
