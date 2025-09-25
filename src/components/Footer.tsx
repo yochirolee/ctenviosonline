@@ -76,7 +76,6 @@ const Footer: React.FC<{ dict: Dict; mode?: 'full' | 'legal' }> = ({ dict, mode 
   const locale = (pathname?.split("/")[1] || "es") as 'es' | 'en';
   const f = dict.footer;
   const nav = dict.nav;
-
   return (
     <footer className="bg-green-950 border-t border-white/10 text-white">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
