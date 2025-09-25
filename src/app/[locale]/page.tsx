@@ -6,6 +6,7 @@ import Footer from '../../components/Footer'
 import type { Dict } from '@/types/Dict'
 import ProductsSpotlight from '@/components/ProductsSpotlight'
 import BestSellers from '@/components/BestSellers'
+import BestSellersPromo from '@/components/BestSellersPromo'
 
 export default async function Home({
   params,
@@ -18,6 +19,7 @@ export default async function Home({
   return (
     <div className="flex flex-col min-h-screen">      
       <HeroSection dict={dict} />
+      <BestSellersPromo dict={dict} />
       <ProductsSpotlight dict={dict} />
       <BestSellers dict={dict} />
       
