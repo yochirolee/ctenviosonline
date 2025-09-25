@@ -1,8 +1,6 @@
 export type Dict = {
   nav: {
     services: string
-    about: string
-    faq: string
     contact: string
   }
   hero: {

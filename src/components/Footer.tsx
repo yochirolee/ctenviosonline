@@ -66,8 +66,6 @@ type Dict = { footer: FooterDict; nav: NavLinks };
 
 const navUrls: Record<string, string> = {
   services: "#hero",
-  about: "#about",
-  faq: "#faq",
   contact: "#contact",
 };
 

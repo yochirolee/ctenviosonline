@@ -178,11 +178,8 @@ export default function Navbar({ dict }: Props) {
 
         <Link href={`/${locale}#hero`} className={navLinkBase}>
           {locale === 'en' ? 'See Products' : 'Ver Productos'}
-        </Link>
-        <Link href={`/${locale}#about`} className={navLinkBase}>
-          {locale === 'en' ? 'About us' : 'Acerca de nosotros'}
-        </Link>
-        <Link href={`/${locale}#faq`} className={navLinkBase}>FAQ</Link>
+        </Link>   
+        
         <Link href={`/${locale}#contact`} className={navLinkBase}>
           {locale === 'en' ? 'Contact' : 'Contacto'}
         </Link>
@@ -420,16 +417,6 @@ export default function Navbar({ dict }: Props) {
                 </div>
               </li>
 
-              <li>
-                <button onClick={() => goToSection('#about')} className="block w-full text-left rounded">
-                  {locale === 'en' ? 'About us' : 'Acerca de nosotros'}
-                </button>
-              </li>
-              <li>
-                <button onClick={() => goToSection('#faq')} className="block w-full text-left rounded">
-                  FAQ
-                </button>
-              </li>
               <li>
                 <button onClick={() => goToSection('#contact')} className="block w-full text-left rounded">
                   {locale === 'en' ? 'Contact' : 'Contacto'}
