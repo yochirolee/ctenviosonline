@@ -142,6 +142,8 @@ export type Dict = {
       appliances: string
       hygiene: string
       technology: string
+      school:string
+      toys:string
     }
   }
   cart: {

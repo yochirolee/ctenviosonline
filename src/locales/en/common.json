@@ -181,7 +181,9 @@
       "medicine": "Medicine",
       "appliances": "Appliances",
       "hygiene": "Health & Beauty",
-      "technology": "Technology"
+      "technology": "Technology",      
+      "school": "School Supplies",
+      "toys": "Toys"
     }
   },
   "cart": {

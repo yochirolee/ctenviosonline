@@ -9,9 +9,8 @@ import { useCustomer } from '@/context/CustomerContext'
 import type { Dict } from '@/types/Dict'
 import ConfirmLogoutButton from '@/components/ConfirmLogoutButton'
 import { useEffect, useRef, useState, useReducer } from 'react'
-import { LogIn, LogOut, Menu, X } from 'lucide-react'
+import { LogIn, LogOut, Menu, X, ChevronDown } from 'lucide-react'
 import { getCategories } from '@/lib/products'
-import { ChevronDown } from 'lucide-react'
 
 type Props = { dict: Dict }
 
@@ -31,9 +30,10 @@ export default function Navbar({ dict }: Props) {
   const isAccount = pathname?.startsWith(`/${locale}/account`)
   const role = customer?.metadata?.role
 
+  // ---- Nueva identidad visual (verde CTEnvios) ----
   const navLinkBase =
-    'inline-flex items-center whitespace-nowrap leading-none px-1 py-1 text-sm font-medium text-gray-800 hover:text-green-300 lg:px-2 lg:py-1'
-  const navLinkActive = '!font-bold !text-gray-900'
+    'inline-flex items-center whitespace-nowrap leading-none px-1 py-1 text-sm font-medium text-white/90 hover:text-white lg:px-2 lg:py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 rounded'
+  const navLinkActive = '!font-semibold !text-white'
 
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -44,7 +44,6 @@ export default function Navbar({ dict }: Props) {
   const [catsOpen, setCatsOpen] = useState(false)
   const [catsLoading, setCatsLoading] = useState(false)
   const [catsLoaded, setCatsLoaded] = useState(false)
-
 
   const [, forceRerender] = useReducer((x: number) => x + 1, 0)
   useEffect(() => {
@@ -59,7 +58,6 @@ export default function Navbar({ dict }: Props) {
     }
   }, [])
 
-  // Carga categorías solo cuando se abre el drawer por primera vez
   useEffect(() => {
     if (!mobileOpen || catsLoaded) return
     let alive = true
@@ -86,7 +84,6 @@ export default function Navbar({ dict }: Props) {
     return () => { alive = false }
   }, [mobileOpen, catsLoaded, dict.categories.list])
 
-
   const firstLinkRef = useRef<HTMLAnchorElement>(null)
 
   const goToSection = (hash: string) => {
@@ -107,40 +104,34 @@ export default function Navbar({ dict }: Props) {
     return () => { document.body.style.overflow = prev }
   }, [mobileOpen])
 
-  useEffect(() => {
-    setMobileOpen(false)
-  }, [pathname])
+  useEffect(() => { setMobileOpen(false) }, [pathname])
 
   useEffect(() => {
     if (!mobileOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMobileOpen(false)
-    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false) }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [mobileOpen])
 
-  useEffect(() => {
-    if (mobileOpen) firstLinkRef.current?.focus()
-  }, [mobileOpen])
+  useEffect(() => { if (mobileOpen) firstLinkRef.current?.focus() }, [mobileOpen])
 
   return (
-    <header
-      id="navbar"
-      className="sticky top-0 z-50 flex items-center h-14 md:h-16 pl-3 pr-6 md:pl-6 md:pr-16 lg:pl-8 lg:pr-24 bg-white shadow"
-    >
+    <header id="navbar" className="sticky top-0 z-50 relative flex items-center h-14 md:h-16 pl-3 pr-6 md:pl-6 md:pr-16 lg:pl-8 lg:pr-24 bg-emerald-800 text-white shadow-md shadow-green-900/10 border-b border-green-700/40">
+
       {/* Izquierda: logo (cuadrado) */}
       <Link href={`/${locale}`} aria-label="Ir al inicio" className="flex items-center gap-3">
-        <div className="relative h-9 w-9 md:h-10 md:w-10 lg:h-11 lg:w-11 shrink-0">
+        <div className="relative h-12 w-12 md:h-14 md:w-14 lg:h-16 lg:w-16 shrink-0">
           <Image
             src={LOGO_SRC}
             alt={LOGO_ALT}
             fill
-            sizes="(max-width: 768px) 36px, (max-width: 1024px) 40px, 44px"
-            className="object-contain cursor-pointer brightness-110 contrast-110"
+            sizes="(max-width: 850px) 64px, (max-width: 1024px) 56px, 64px"
+            className="relative z-10 object-contain cursor-pointer               
+               brightness-[1.18] contrast-[1.15]"
             priority
           />
         </div>
+
       </Link>
 
       {/* Links desktop (centrales) */}
@@ -191,9 +182,7 @@ export default function Navbar({ dict }: Props) {
         <Link href={`/${locale}#about`} className={navLinkBase}>
           {locale === 'en' ? 'About us' : 'Acerca de nosotros'}
         </Link>
-        <Link href={`/${locale}#faq`} className={navLinkBase}>
-          FAQ
-        </Link>
+        <Link href={`/${locale}#faq`} className={navLinkBase}>FAQ</Link>
         <Link href={`/${locale}#contact`} className={navLinkBase}>
           {locale === 'en' ? 'Contact' : 'Contacto'}
         </Link>
@@ -204,15 +193,20 @@ export default function Navbar({ dict }: Props) {
 
       {/* Derecha: idioma + carrito + (login/logout) + menú móvil */}
       <div className="ml-auto lg:ml-0 flex items-center gap-2 sm:gap-3">
-        <LanguageSwitcher />
-        <CartIcon />
+        {/* Forzamos blanco en iconos hijxs (CartIcon usa currentColor) */}
+        <div className="text-white">
+          <LanguageSwitcher />
+        </div>
+        <div className="text-white">
+          <CartIcon />
+        </div>
 
         {/* Login/Logout (desktop) */}
         <div className="hidden lg:block">
           {!loading && customer ? (
             <div className="relative w-8 h-8">
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <LogOut className="h-5 w-5 text-gray-700" />
+                <LogOut className="h-5 w-5 text-white" />
               </div>
               <div className="absolute inset-0 opacity-0">
                 <ConfirmLogoutButton logout={logout} dict={dict} />
@@ -223,16 +217,16 @@ export default function Navbar({ dict }: Props) {
               href={`/${locale}/login`}
               aria-label={dict.common.login}
               title={dict.common.login}
-              className="inline-flex h-8 w-8 items-center justify-center rounded hover:bg-gray-100 transition"
+              className="inline-flex h-8 w-8 items-center justify-center rounded hover:bg-white/10 transition"
             >
-              <LogIn className="h-5 w-5 text-gray-700" />
+              <LogIn className="h-5 w-5 text-white" />
             </Link>
           )}
         </div>
 
         {/* Botón menú móvil */}
         <button
-          className="lg:hidden p-2 text-gray-700 hover:bg-gray-100 rounded"
+          className="lg:hidden p-2 text-white hover:bg-white/10 rounded"
           onClick={() => setMobileOpen(true)}
           aria-label="Abrir menú"
           aria-controls="mobile-drawer"
@@ -253,22 +247,24 @@ export default function Navbar({ dict }: Props) {
             id="mobile-drawer"
             role="dialog"
             aria-modal="true"
-            className="absolute right-0 top-0 w-72 h-full bg-white shadow-lg flex flex-col"
+             className="absolute right-0 top-0 w-72 h-full bg-white shadow-lg flex flex-col text-gray-800"
           >
-            <div className="flex items-center justify-between p-4 border-b">
-              <div className="relative h-9 w-9 shrink-0">
+            {/* Encabezado del drawer en verde */}
+            <div className="flex items-center justify-between p-4 border-b">      
+
+              <div className="relative h-10 w-10 shrink-0">
                 <Image
                   src={LOGO_SRC}
                   alt={LOGO_ALT}
                   fill
                   sizes="36px"
-                  className="object-contain brightness-110 contrast-110 drop-shadow"
+                  className="object-contain cursor-pointer brightness-[1.18] contrast-[1.15]"
                   priority
                 />
               </div>
               <button
                 onClick={() => setMobileOpen(false)}
-                className="p-2 text-gray-700 hover:bg-gray-100 rounded"
+                className="p-2 rounded hover:bg-white/10"
                 aria-label="Cerrar menú"
               >
                 <X className="h-5 w-5" />
@@ -304,10 +300,9 @@ export default function Navbar({ dict }: Props) {
             )}
 
             <ul
-              className="flex-1 overflow-y-auto p-2 text-gray-700 font-medium active:transition-none
+              className="flex-1 overflow-y-auto p-2 font-medium
               [&>li>a]:block [&>li>a]:px-3 [&>li>a]:py-2 [&>li>a]:rounded [&>li>a]:transition-colors
               [&>li>button]:block [&>li>button]:w-full [&>li>button]:text-left [&>li>button]:px-3 [&>li>button]:py-2 [&>li>button]:rounded [&>li>button]:transition-colors
-              [&_a]:text-gray-700 [&_button]:text-gray-700
               [&_a:active]:bg-green-600 [&_a:active]:!text-white
               [&_button:active]:bg-green-600 [&_button:active]:!text-white
               [&_a:focus-visible]:outline-none [&_a:focus-visible]:ring-2 [&_a:focus-visible]:ring-green-500/30
@@ -374,14 +369,13 @@ export default function Navbar({ dict }: Props) {
 
               {/* Categorías (solo móvil) */}
               <li className="mt-2">
-                {/* Botón igual que el resto de links */}
                 <button
                   onClick={() => setCatsOpen(v => !v)}
                   aria-expanded={catsOpen}
                   aria-controls="mobile-categories-panel"
                   className="!flex w-full items-center justify-between px-3 py-2 rounded
-               hover:bg-gray-100 transition text-gray-700 font-medium
-               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30"
+                  hover:bg-gray-100 transition text-gray-700 font-medium
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30"
                 >
                   <span className="min-w-0 truncate">
                     {locale === 'en' ? 'Categories' : 'Categorías'}
@@ -392,7 +386,6 @@ export default function Navbar({ dict }: Props) {
                   />
                 </button>
 
-                {/* Panel con fondo verde (solo cuando está abierto) */}
                 <div
                   id="mobile-categories-panel"
                   hidden={!catsOpen}
@@ -416,7 +409,7 @@ export default function Navbar({ dict }: Props) {
                             href={`/${locale}/categories/${c.slug}`}
                             onClick={() => setMobileOpen(false)}
                             className="block px-5 py-2 text-sm rounded hover:bg-green-100/80 transition
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30"
+                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30"
                           >
                             {dict.categories.list[c.slug as keyof typeof dict.categories.list] ?? c.slug}
                           </Link>
@@ -426,6 +419,7 @@ export default function Navbar({ dict }: Props) {
                   )}
                 </div>
               </li>
+
               <li>
                 <button onClick={() => goToSection('#about')} className="block w-full text-left rounded">
                   {locale === 'en' ? 'About us' : 'Acerca de nosotros'}

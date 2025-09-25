@@ -181,7 +181,9 @@
       "medicine": "Medicinas",
       "appliances": "Electrodomesticos",
       "hygiene": "Salud y Belleza",
-      "technology": "Tecnologia"
+      "technology": "Tecnologia",
+      "school": "Útiles escolares",
+      "toys": "Juguetes"
     }
   },
   "cart": {
