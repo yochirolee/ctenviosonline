@@ -19,7 +19,7 @@ export default async function Home({
   return (
     <div className="flex flex-col min-h-screen">      
       <HeroSection dict={dict} />
-      <BestSellersPromo dict={dict} />
+      <BestSellersPromo />
       <ProductsSpotlight dict={dict} />
       <BestSellers dict={dict} />
       
