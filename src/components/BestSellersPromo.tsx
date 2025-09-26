@@ -4,13 +4,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useLocation } from '@/context/LocationContext'
 import { getBestSellers, type DeliveryLocation, type SimplifiedProduct } from '@/lib/products'
-
+import type { Dict as AppDict } from '@/types/Dict'
 import Link from 'next/link'
 import Image from 'next/image'
 
 type BestItem = SimplifiedProduct
 
-export default function RecomendadosTiles({ dict }: { dict: any }) {
+export default function RecomendadosTiles({  dict: _dict }: { dict: AppDict }) {
+  void _dict
   const { locale } = useParams() as { locale: string }
   const { location } = useLocation()
 
