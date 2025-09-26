@@ -10,7 +10,7 @@ import Image from 'next/image'
 
 type BestItem = SimplifiedProduct
 
-export default function RecomendadosTiles( ) {
+export default function RecomendadosTiles({ dict }: { dict: any }) {
   const { locale } = useParams() as { locale: string }
   const { location } = useLocation()
 
@@ -79,25 +79,25 @@ export default function RecomendadosTiles( ) {
             {/* MÓVIL: 2 cols x 4 filas (todas visibles, fotos siempre aparecen) */}
             <div className="grid md:hidden h-full grid-cols-2 grid-rows-4 gap-2">
               {/* #0 ancho arriba (2x2) */}
-              <Tile p={items[0]} locale={locale} fmt={fmt} className={`${BG[0 % BG.length]}`} style={{ gridColumn: '1 / span 2', gridRow: '1 / span 2' }} />
+              {items[0] && <Tile p={items[0]} locale={locale} fmt={fmt} className={`${BG[0 % BG.length]}`} style={{ gridColumn: '1 / span 2', gridRow: '1 / span 2' }} />}
               {/* #1 alto izq (1x2) */}
-              <Tile p={items[1]} locale={locale} fmt={fmt} className={`${BG[1 % BG.length]}`} style={{ gridColumn: '1 / span 1', gridRow: '3 / span 2' }} />
+              {items[1] && <Tile p={items[1]} locale={locale} fmt={fmt} className={`${BG[1 % BG.length]}`} style={{ gridColumn: '1 / span 1', gridRow: '3 / span 2' }} />}
               {/* #2 derecha arriba (1x1) compacto */}
-              <Tile p={items[2]} locale={locale} fmt={fmt} className={`${BG[2 % BG.length]}`} style={{ gridColumn: '2 / span 1', gridRow: '3 / span 1' }} compact />
+              {items[2] && <Tile p={items[2]} locale={locale} fmt={fmt} className={`${BG[2 % BG.length]}`} style={{ gridColumn: '2 / span 1', gridRow: '3 / span 1' }} compact />}
               {/* #3 derecha abajo (1x1) compacto */}
-              <Tile p={items[3]} locale={locale} fmt={fmt} className={`${BG[3 % BG.length]}`} style={{ gridColumn: '2 / span 1', gridRow: '4 / span 1' }} compact />
+              {items[3] && <Tile p={items[3]} locale={locale} fmt={fmt} className={`${BG[3 % BG.length]}`} style={{ gridColumn: '2 / span 1', gridRow: '4 / span 1' }} compact />}
             </div>
 
             {/* DESKTOP: ninguna card ocupa todo el viewport */}
             <div className="hidden md:grid h-full grid-cols-12 grid-rows-6 gap-4">
               {/* #0  (7x3) */}
-              <Tile p={items[0]} locale={locale} fmt={fmt} className={`${BG[0 % BG.length]}`} style={{ gridColumn: '1 / span 7', gridRow: '1 / span 3' }} />
+              {items[0] && <Tile p={items[0]} locale={locale} fmt={fmt} className={`${BG[0 % BG.length]}`} style={{ gridColumn: '1 / span 7', gridRow: '1 / span 3' }} />}
               {/* #1  (5x3) */}
-              <Tile p={items[1]} locale={locale} fmt={fmt} className={`${BG[1 % BG.length]}`} style={{ gridColumn: '8 / span 5', gridRow: '1 / span 3' }} />
+              {items[1] && <Tile p={items[1]} locale={locale} fmt={fmt} className={`${BG[1 % BG.length]}`} style={{ gridColumn: '8 / span 5', gridRow: '1 / span 3' }} />}
               {/* #2  (5x3) */}
-              <Tile p={items[2]} locale={locale} fmt={fmt} className={`${BG[2 % BG.length]}`} style={{ gridColumn: '1 / span 5', gridRow: '4 / span 3' }} />
+              {items[2] && <Tile p={items[2]} locale={locale} fmt={fmt} className={`${BG[2 % BG.length]}`} style={{ gridColumn: '1 / span 5', gridRow: '4 / span 3' }} />}
               {/* #3  (7x3) — NO ocupa 12 cols ni 6 filas */}
-              <Tile p={items[3]} locale={locale} fmt={fmt} className={`${BG[3 % BG.length]}`} style={{ gridColumn: '6 / span 7', gridRow: '4 / span 3' }} />
+              {items[3] && <Tile p={items[3]} locale={locale} fmt={fmt} className={`${BG[3 % BG.length]}`} style={{ gridColumn: '6 / span 7', gridRow: '4 / span 3' }} />}
             </div>
           </>
         )}
@@ -123,6 +123,8 @@ function Tile({
   style?: React.CSSProperties
   compact?: boolean
 }) {
+  if (!p) return null
+  
   return (
     <Link
       href={`/${locale}/product/${p.id}`}
