@@ -137,9 +137,11 @@ export default function ContinueAndBuyAgain({ dict: _dict }: { dict: AppDict }) 
   const isEn = locale === 'en'
 
   const { customer } = useCustomer()
-  const { items: cartItems, setIsCartOpen } = useCart()
+  const isAuthed = !!customer
 
+  const { items: cartItems, setIsCartOpen } = useCart()
   const { location } = useLocation()
+
   const loc: DeliveryLocation | undefined = useMemo(() => {
     if (!location) return undefined
     return {
@@ -163,6 +165,8 @@ export default function ContinueAndBuyAgain({ dict: _dict }: { dict: AppDict }) 
     viewCart: isEn ? 'View cart' : 'Ver carrito',
     checkout: isEn ? 'Checkout' : 'Pagar',
     viewAll: isEn ? 'More' : 'Más productos',
+    prev: isEn ? 'Scroll left' : 'Desplazar a la izquierda',
+    next: isEn ? 'Scroll right' : 'Desplazar a la derecha',
   }
 
   const fmt = useMemo(
@@ -173,89 +177,94 @@ export default function ContinueAndBuyAgain({ dict: _dict }: { dict: AppDict }) 
   // ----- Comprar de nuevo (orders) -----
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      try {
-        setLoading(true)
-        if (!customer) { setBuyAgain([]); return }
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-        const res = await fetch(`${API_URL}/customers/${customer.id}/orders`, {
-          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-          cache: 'no-store',
-        })
-        const raw: unknown = await res.json().catch(() => null)
-        if (!isOrderRows(raw)) { setBuyAgain([]); return }
+      ; (async () => {
+        if (!isAuthed) { setBuyAgain([]); setLoading(false); return }
+        try {
+          setLoading(true)
+          const token = typeof window === 'undefined' ? null : localStorage.getItem('token')
+          const res = await fetch(`${API_URL}/customers/${customer!.id}/orders`, {
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            cache: 'no-store',
+          })
+          const raw: unknown = await res.json().catch(() => null)
+          if (!isOrderRows(raw)) { setBuyAgain([]); return }
 
-        type Agg = { p: MiniProduct; count: number; last: number }
-        const map = new Map<number, Agg>()
-        for (const o of raw) {
-          const last = o.created_at ? new Date(o.created_at).getTime() : 0
-          for (const it of o.items) {
-            const id = Number(it.product_id)
-            if (!id) continue
-            const name = nameForLocaleOrder(it, locale)
-            const price = Number(it.unit_price || 0) // USD
-            const img = it.image_url || null
-            const prev = map.get(id)
-            if (prev) { prev.count += 1; prev.last = Math.max(prev.last, last) }
-            else { map.set(id, { p: { id, name, price, imageSrc: img }, count: 1, last }) }
+          type Agg = { p: MiniProduct; count: number; last: number }
+          const map = new Map<number, Agg>()
+          for (const o of raw) {
+            const last = o.created_at ? new Date(o.created_at).getTime() : 0
+            for (const it of o.items) {
+              const id = Number(it.product_id)
+              if (!id) continue
+              const name = nameForLocaleOrder(it, locale)
+              const price = Number(it.unit_price || 0) // USD
+              const img = it.image_url || null
+              const prev = map.get(id)
+              if (prev) { prev.count += 1; prev.last = Math.max(prev.last, last) }
+              else { map.set(id, { p: { id, name, price, imageSrc: img }, count: 1, last }) }
+            }
           }
+          const ordered = Array.from(map.values())
+            .sort((a, b) => (b.last - a.last) || (b.count - a.count))
+            .map(a => a.p)
+          if (!cancelled) setBuyAgain(ordered.slice(0, 12))
+        } finally {
+          if (!cancelled) setLoading(false)
         }
-        const ordered = Array.from(map.values())
-          .sort((a, b) => (b.last - a.last) || (b.count - a.count))
-          .map(a => a.p)
-        if (!cancelled) setBuyAgain(ordered.slice(0, 12))
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
+      })()
     return () => { cancelled = true }
-  }, [customer, locale])
+  }, [isAuthed, customer, locale])
 
   // ----- Continúa donde te quedaste (cart) -----
+  // Detecta si hay items válidos en carrito
+  const hasCartItems = useMemo(() => {
+    const src = Array.isArray(cartItems) ? (cartItems as unknown[]).filter(isCartLine) as CartLine[] : []
+    return src.length > 0
+  }, [cartItems])
+
   useEffect(() => {
-    const fromCart = (): MiniProduct[] => {
-      const src: CartLine[] = Array.isArray(cartItems) ? (cartItems as unknown[]).filter(isCartLine) as CartLine[] : []
-      const uniq = new Map<number, MiniProduct>()
-      for (const it of src) {
-        const id = Number(it.product_id)
-        if (!id || uniq.has(id)) continue
+    if (!isAuthed) { setContinueItems([]); return }
+    const src = Array.isArray(cartItems) ? (cartItems as unknown[]).filter(isCartLine) as CartLine[] : []
+    const uniq = new Map<number, MiniProduct>()
+    for (const it of src) {
+      const id = Number(it.product_id)
+      if (!id || uniq.has(id)) continue
 
-        const fallback = isEn ? `Product #${id}` : `Producto #${id}`
-        const titleBase = (it.title || '').trim()
-        const titleEn = titleEnFromCartMeta(it.metadata)
-        const name = isEn ? (titleEn || titleBase || fallback) : (titleBase || fallback)
+      const fallback = isEn ? `Product #${id}` : `Producto #${id}`
+      const titleBase = (it.title || '').trim()
+      const titleEn = titleEnFromCartMeta(it.metadata)
+      const name = isEn ? (titleEn || titleBase || fallback) : (titleBase || fallback)
 
-        uniq.set(id, {
-          id,
-          name,
-          price: Number(it.unit_price || 0) / 100, // carrito en CENTAVOS → USD
-          imageSrc: it.thumbnail || null,
-        })
-      }
-      return Array.from(uniq.values()).slice(0, 12)
+      uniq.set(id, {
+        id,
+        name,
+        price: Number(it.unit_price || 0) / 100, // carrito en CENTAVOS → USD
+        imageSrc: it.thumbnail || null,
+      })
     }
-
-    const cartPick = fromCart()
+    const cartPick = Array.from(uniq.values()).slice(0, 12)
     if (cartPick.length) { setContinueItems(cartPick); return }
+    // si no hay del carrito, puedes sugerir algunos de "comprar de nuevo" como fallback limitado
     setContinueItems(buyAgain.slice(0, 4))
-  }, [cartItems, buyAgain, isEn])
+  }, [isAuthed, cartItems, buyAgain, isEn])
 
-  // ----- Populares ahora (para 3ra columna condicional) -----
+  // ----- Populares ahora (condicional) -----
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      try {
-        const list = await getProducts(loc, isEn ? 'en' : 'es')
-        if (!cancelled) {
-          const mapped = (list ?? []).slice(0, 12).map(toMini)
-          setPopularItems(mapped)
+      ; (async () => {
+        if (!isAuthed) { setPopularItems([]); return }
+        try {
+          const list = await getProducts(loc, isEn ? 'en' : 'es')
+          if (!cancelled) {
+            const mapped = (list ?? []).slice(0, 12).map(toMini)
+            setPopularItems(mapped)
+          }
+        } catch {
+          if (!cancelled) setPopularItems([])
         }
-      } catch {
-        if (!cancelled) setPopularItems([])
-      }
-    })()
+      })()
     return () => { cancelled = true }
-  }, [loc, isEn])
+  }, [isAuthed, loc, isEn])
 
   // acciones
   const openCartDrawer = (e?: React.MouseEvent<HTMLButtonElement>) => {
@@ -263,58 +272,83 @@ export default function ContinueAndBuyAgain({ dict: _dict }: { dict: AppDict }) 
     setIsCartOpen(true)
   }
 
-  // layout: 3ra sección solo en pantallas grandes y si hay espacio real
+  // layout: 3ra sección solo si hay espacio y sirve para llenar hueco
   const isLg = useIsLg()
   const { containerRef, canFitThree } = useCanFitThree(380, 24)
-  const fewLeft = continueItems.length <= 2
-  const fewRight = buyAgain.length <= 2
-  const showPopular = isLg && canFitThree && (fewLeft || fewRight) && popularItems.length > 0
+
+  // Reglas de visibilidad de secciones:
+  const showContinue = isAuthed && hasCartItems && continueItems.length > 0
+  const showBuyAgain = isAuthed && buyAgain.length > 0
+
+  // La tercera solo aparece si existe al menos una de las anteriores,
+  // y si alguna tiene pocos elementos (<=2), y si hay espacio real para 3 columnas.
+  const fewLeft = showContinue ? continueItems.length <= 2 : false
+  const fewRight = showBuyAgain ? buyAgain.length <= 2 : false
+  const showPopular =
+    isAuthed &&
+    (showContinue || showBuyAgain) &&
+    (fewLeft || fewRight) &&
+    isLg &&
+    canFitThree &&
+    popularItems.length > 0
+
+  // Si no hay sesión, no mostramos nada
+  if (!isAuthed) return null
+
+  // Si ninguna sección aplica, no renderizamos el bloque completo
+  if (!showContinue && !showBuyAgain) return null
+
+  const gridCols = showPopular ? 'lg:grid-cols-3' : 'lg:grid-cols-2'
 
   return (
     <section className="px-4 md:px-12 lg:px-20 py-6">
       <div
         ref={containerRef}
-        className={`grid grid-cols-1 ${showPopular ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-6 items-start`}
+        className={`grid grid-cols-1 ${gridCols} gap-6 items-start`}
       >
         {/* Continúa */}
-        <Panel title={t.continueTitle} bg="bg-blue-100">
-          <TilesRow items={continueItems} locale={locale} fmt={fmt} loading={loading} emptyText={t.empty} />
-          {continueItems.length > 0 && (
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button
-                onClick={openCartDrawer}
-                className="inline-flex items-center justify-center rounded-md border border-emerald-600 px-4 py-2 text-sm font-medium text-emerald-600 hover:bg-emerald-700 hover:text-white"
-              >
-                {t.viewCart}
-              </button>
-              <Link
-                href={`/${locale}/checkout`}
-                className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-              >
-                {t.checkout}
-              </Link>
-            </div>
-          )}
-        </Panel>
+        {showContinue && (
+          <Panel title={t.continueTitle} bg="bg-blue-100">
+            <TilesRow items={continueItems} locale={locale} fmt={fmt} loading={loading} emptyText={t.empty} t={t} />
+            {continueItems.length > 0 && (
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={openCartDrawer}
+                  className="inline-flex items-center justify-center rounded-md border border-emerald-600 px-4 py-2 text-sm font-medium text-emerald-600 hover:bg-emerald-700 hover:text-white"
+                >
+                  {t.viewCart}
+                </button>
+                <Link
+                  href={`/${locale}/checkout`}
+                  className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                >
+                  {t.checkout}
+                </Link>
+              </div>
+            )}
+          </Panel>
+        )}
 
         {/* Comprar de nuevo */}
-        <Panel title={t.buyAgainTitle} bg="bg-green-100">
-          <TilesRow items={buyAgain} locale={locale} fmt={fmt} loading={loading} emptyText={t.empty} />
-          <div className="mt-4">
-            <Link
-              href={`/${locale}#populars`}
-              aria-label={isEn ? 'View all popular products' : 'Ver todos los populares'}
-              className="inline-flex items-center justify-center rounded-md border border-emerald-600 px-4 py-2 text-sm font-medium text-emerald-600 hover:bg-emerald-700 hover:text-white"
-            >
-              {t.viewAll}
-            </Link>
-          </div>
-        </Panel>
+        {showBuyAgain && (
+          <Panel title={t.buyAgainTitle} bg="bg-green-100">
+            <TilesRow items={buyAgain} locale={locale} fmt={fmt} loading={loading} emptyText={t.empty} t={t} />
+            <div className="mt-4">
+              <Link
+                href={`/${locale}#populars`}
+                aria-label={isEn ? 'View all popular products' : 'Ver todos los populares'}
+                className="inline-flex items-center justify-center rounded-md border border-emerald-600 px-4 py-2 text-sm font-medium text-emerald-600 hover:bg-emerald-700 hover:text-white"
+              >
+                {t.viewAll}
+              </Link>
+            </div>
+          </Panel>
+        )}
 
-        {/* Populares ahora (condicional) */}
+        {/* Populares ahora (solo para rellenar hueco) */}
         {showPopular && (
           <Panel title={t.popularTitle} bg="bg-amber-50">
-            <TilesRow items={popularItems} locale={locale} fmt={fmt} loading={false} emptyText={t.empty} />
+            <TilesRow items={popularItems} locale={locale} fmt={fmt} loading={false} emptyText={t.empty} t={t} />
             <div className="mt-4">
               <Link
                 href={`/${locale}#populars`}
@@ -343,11 +377,76 @@ function Panel({ title, bg, children }: { title: string; bg: string; children: R
 }
 
 function TilesRow({
-  items, locale, fmt, loading, emptyText,
-}: { items: MiniProduct[]; locale: string; fmt: Intl.NumberFormat; loading: boolean; emptyText: string }) {
+  items, locale, fmt, loading, emptyText, t,
+}: {
+  items: MiniProduct[]
+  locale: string
+  fmt: Intl.NumberFormat
+  loading: boolean
+  emptyText: string
+  t: { prev: string; next: string }
+}) {
+  const railRef = useRef<HTMLDivElement | null>(null)
+  const [canPrev, setCanPrev] = useState(false)
+  const [canNext, setCanNext] = useState(false)
+
+  // Actualiza si hay más para desplazar
+  useEffect(() => {
+    const el = railRef.current
+    if (!el) return
+    const update = () => {
+      const maxScroll = el.scrollWidth - el.clientWidth
+      setCanPrev(el.scrollLeft > 0)
+      setCanNext(el.scrollLeft < maxScroll - 1)
+    }
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('scroll', update)
+      ro.disconnect()
+    }
+  }, [items.length])
+
+  const scrollStep = () => {
+    const el = railRef.current
+    if (!el) return 0
+    // Desplaza ~ el ancho visible menos un gap para que “salte” una pantalla
+    return Math.max(0, el.clientWidth - 24)
+  }
+
+  const onPrev = () => {
+    const el = railRef.current
+    if (!el) return
+    el.scrollBy({ left: -scrollStep(), behavior: 'smooth' })
+  }
+  const onNext = () => {
+    const el = railRef.current
+    if (!el) return
+    el.scrollBy({ left: scrollStep(), behavior: 'smooth' })
+  }
+
   const Rail: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <div className="relative">
+      {/* Botón IZQ */}
+      <button
+        type="button"
+        aria-label={t.prev}
+        onClick={onPrev}
+        disabled={!canPrev}
+        className={`
+          absolute left-0 top-1/2 -translate-y-1/2 z-10
+          rounded-full border bg-white/90 shadow
+          w-8 h-8 flex items-center justify-center
+          disabled:opacity-40 disabled:cursor-not-allowed
+          ${items.length <= 1 ? 'hidden' : ''}
+        `}
+      />
+
+      {/* Carril */}
       <div
+        ref={railRef}
         className="
           flex gap-3 pr-px
           overflow-x-auto overflow-y-hidden
@@ -360,6 +459,22 @@ function TilesRow({
       >
         {children}
       </div>
+
+      {/* Botón DER */}
+      <button
+        type="button"
+        aria-label={t.next}
+        onClick={onNext}
+        disabled={!canNext}
+        className={`
+          absolute right-0 top-1/2 -translate-y-1/2 z-10
+          rounded-full border bg-white/90 shadow
+          w-8 h-8 flex items-center justify-center
+          disabled:opacity-40 disabled:cursor-not-allowed
+          ${items.length <= 1 ? 'hidden' : ''}
+          `}
+      />
+
     </div>
   )
 
@@ -393,19 +508,21 @@ function TilesRow({
 
   return (
     <Rail>
-      {items.map((p) => (
-        <div
-          key={p.id}
-          className="
-            snap-start flex-shrink-0
-            basis-[calc((100%-0.75rem)/2-1px)]
-            min-w-[calc((100%-0.75rem)/2-1px)]
-            max-w-[calc((100%-0.75rem)/2-1px)]
-          "
-        >
-          <MiniTile p={p} locale={locale} fmt={fmt} />
-        </div>
-      ))}
+      {items.map((p, idx) => {
+        const twoUp =
+          items.length >= 2
+            ? 'basis-[calc((100%-0.75rem)/2-1px)] min-w-[calc((100%-0.75rem)/2-1px)] max-w-[calc((100%-0.75rem)/2-1px)]'
+            : 'basis-[calc(100%-1px)] min-w-[calc(100%-1px)] max-w-[calc(100%-1px)]'
+
+        return (
+          <div
+            key={p.id ?? idx}
+            className={`snap-start flex-shrink-0 ${twoUp}`}
+          >
+            <MiniTile p={p} locale={locale} fmt={fmt} />
+          </div>
+        )
+      })}
     </Rail>
   )
 }
@@ -413,14 +530,15 @@ function TilesRow({
 /** Tarjeta uniforme (alto consistente) */
 function MiniTile({ p, locale, fmt }: { p: MiniProduct; locale: string; fmt: Intl.NumberFormat }) {
   return (
+
     <Link
       href={`/${locale}/product/${p.id}`}
       prefetch={false}
-      className="block group rounded-xl border overflow-hidden bg-white"
+      className="block group rounded-xl border overflow-hidden bg-white max-h-[320px] md:max-h-[340px]"
       aria-label={p.name}
     >
       {/* Imagen con aspect ratio fijo para altura pareja */}
-      <div className="relative bg-white aspect-[4/3]">
+      <div className="relative bg-white h-[150px] sm:h-[160px] md:h-[180px] lg:h-[200px]">
         {p.imageSrc ? (
           <Image
             src={p.imageSrc}
