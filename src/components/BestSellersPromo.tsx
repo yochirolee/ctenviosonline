@@ -41,7 +41,6 @@ export default function OwnersShowcase({ dict: _dict }: { dict: AppDict }) {
     [locale]
   )
 
-  // Cargar owners (varios por fila) y asegurar hasta 4 productos por owner
   useEffect(() => {
     let canceled = false
       ; (async () => {
@@ -56,10 +55,9 @@ export default function OwnersShowcase({ dict: _dict }: { dict: AppDict }) {
             }
             : undefined
 
-          // Traemos suficientes owners para llenar la sección con varias tarjetas
           const owners = await getByOwners(loc, {
-            owners_limit: 9, // 2–3 filas en desktop
-            per_owner: 6,    // **hasta 4 por owner**
+            owners_limit: 12, // margen para 3x4 si hay data
+            per_owner: 6,     // hasta 6 productos por owner
           })
           if (!canceled) setGroups(owners)
         } catch {
@@ -111,18 +109,20 @@ export default function OwnersShowcase({ dict: _dict }: { dict: AppDict }) {
         ) : groups.length === 0 ? (
           <div className="py-16 text-center text-gray-500">{t.empty}</div>
         ) : (
-          // === GRID DE OWNERS (2 cols en sm, 3 en lg) ===
-          <div className="flex flex-wrap justify-center gap-4 md:gap-6">
-            {groups.map((g) => (
-              <OwnerPanel
-                key={g.owner_id}
-                g={g}
-                locale={locale}
-                fmt={fmt}
-                onAdd={handleAdd}
-                viewAllLabel={t.viewAll}
-              />
-            ))}
+          /* Contenedor centrado: móvil 1 col, tablet 2 col, desktop 3 col si hay espacio */
+          <div className="mx-auto max-w-screen-2xl">
+            <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+              {groups.map((g) => (
+                <OwnerPanel
+                  key={g.owner_id}
+                  g={g}
+                  locale={locale}
+                  fmt={fmt}
+                  onAdd={handleAdd}
+                  viewAllLabel={t.viewAll}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -143,18 +143,23 @@ function OwnerPanel({
   onAdd: (id: number, nameForToast: string) => void
   viewAllLabel: string
 }) {
-  // Hasta 4 productos por owner (si hay menos, mostramos los que existan sin “estirar”)
   const items = Array.isArray(g.products) ? g.products.slice(0, 6) : []
 
   return (
-    <div className="w-full sm:w-[520px] lg:w-[560px] rounded-2xl border border-emerald-100 bg-emerald-50 p-4 shadow-[0_1px_0_rgba(16,185,129,0.1)]">
+    /* Anchos fijos responsivos → determinan columnas y permiten centrar última fila */
+    <div className="
+      w-full
+      md:w-[360px]
+      lg:w-[380px]
+      xl:w-[400px]
+      rounded-2xl border border-emerald-100 bg-emerald-50 p-4
+      shadow-[0_1px_0_rgba(16,185,129,0.1)]
+    ">
       {/* Header centrado y en mayúsculas */}
       <div className="mb-3">
         <h3 className="text-center text-sm md:text-base font-extrabold tracking-wide text-emerald-900 uppercase">
           {g.owner_name ? g.owner_name : (locale === 'en' ? 'Seller' : 'Dueño')}
         </h3>
-
-        {/* “Ver todos” centrado debajo (opcional). Si prefieres a la derecha, mueve el contenedor y usa text-right */}
         <div className="mt-1 text-center">
           <Link
             href={`/${locale}/owners/${g.owner_id}`}
@@ -166,11 +171,9 @@ function OwnerPanel({
         </div>
       </div>
 
-      {/* Grid interno de productos, manteniendo 2x2 en móviles y fluido arriba */}
-      <div
-        className="grid gap-3 grid-cols-2 lg:grid-cols-3 [&>*:nth-child(n+5)]:hidden
-    lg:[&>*:nth-child(n+5)]:block"
-      >
+      {/* Grid interno: 2 cols móvil, 3 cols lg; solo 4 visibles en móvil, 6 en lg */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 items-stretch [&>*:nth-child(n+5)]:hidden lg:[&>*:nth-child(n+5)]:block">
+
         {items.map((p) => {
           const name =
             locale === 'en'
@@ -181,7 +184,7 @@ function OwnerPanel({
           return (
             <article
               key={p.id}
-              className="group rounded-lg border border-gray-200 bg-white overflow-hidden hover:shadow-md transition-shadow flex flex-col"
+              className="group h-full rounded-lg border border-gray-200 bg-white overflow-hidden hover:shadow-md transition-shadow flex flex-col"
             >
               <Link
                 href={`/${locale}/product/${p.id}`}
@@ -193,7 +196,7 @@ function OwnerPanel({
                   src={p.image_url || '/product.webp'}
                   alt={name}
                   fill
-                  sizes="(max-width: 640px) 45vw, (max-width:1024px) 25vw, 18vw"  // ← ajustado para 3 cols en lg
+                  sizes="(max-width: 640px) 45vw, (max-width:1024px) 25vw, 18vw"
                   className="object-contain p-2"
                   loading="lazy"
                   decoding="async"
@@ -203,23 +206,31 @@ function OwnerPanel({
 
               <div className="p-2 flex-1 flex flex-col">
                 <Link href={`/${locale}/product/${p.id}`} prefetch={false}>
-                  <h4 className="text-[12px] md:text-[13px] font-semibold text-gray-900 line-clamp-2 hover:underline">
+                  <h4
+                    className="
+                    text-sm leading-5 font-semibold text-gray-900 hover:underline
+                    line-clamp-2 h-[2.5rem] overflow-hidden break-words
+                        "
+                  >
                     {name}
                   </h4>
                 </Link>
 
-                <div className="mt-1 text-[12px] md:text-sm font-semibold text-emerald-700">
-                  {fmt.format(price)}
+                {/* Footer SIEMPRE abajo */}
+                <div className="mt-auto pt-1">
+                  <div className="text-[12px] md:text-sm font-semibold text-emerald-700 text-center">
+                    {fmt.format(price)}
+                  </div>
+                  <button
+                    onClick={() => onAdd(p.id, name)}
+                    className="mt-2 w-full bg-green-600 text-white text-sm py-2 rounded hover:bg-green-700 transition"
+                  >
+                    {locale === 'en' ? 'Add to Cart' : 'Agregar al carrito'}
+                  </button>
                 </div>
-
-                <button
-                  onClick={() => onAdd(p.id, name)}
-                  className="mt-2 w-full bg-green-600 text-white text-sm py-2 rounded hover:bg-green-700 transition"
-                >
-                  {locale === 'en' ? 'Add to Cart' : 'Agregar al carrito'}
-                </button>
               </div>
             </article>
+
           )
         })}
       </div>
@@ -229,25 +240,29 @@ function OwnerPanel({
 
 function SkeletonGrid() {
   return (
-    <div className="flex flex-wrap justify-center gap-4 md:gap-6">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="w-full sm:w-[520px] lg:w-[560px] rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-          <div className="h-5 w-40 bg-emerald-100/60 animate-pulse rounded mb-3 mx-auto" />
-          <div className="grid grid-cols-2 gap-3">
-            {Array.from({ length: 6 }).map((__, j) => (
-              <div key={j} className="rounded-lg border bg-white overflow-hidden">
-                <div className="aspect-[4/3] bg-gray-100 animate-pulse" />
-                <div className="p-2 space-y-1.5">
-                  <div className="h-3 bg-gray-100 rounded" />
-                  <div className="h-3 w-1/2 bg-gray-100 rounded" />
-                  <div className="h-7 bg-gray-100 rounded mt-1.5" />
+    <div className="mx-auto max-w-screen-2xl">
+      <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className="w-full md:w-[360px] lg:w-[380px] xl:w-[400px] rounded-2xl border border-emerald-100 bg-emerald-50 p-4"
+          >
+            <div className="h-5 w-40 bg-emerald-100/60 animate-pulse rounded mb-3 mx-auto" />
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              {Array.from({ length: 6 }).map((__, j) => (
+                <div key={j} className="rounded-lg border bg-white overflow-hidden">
+                  <div className="aspect-[4/3] bg-gray-100 animate-pulse" />
+                  <div className="p-2 space-y-1.5">
+                    <div className="h-3 bg-gray-100 rounded" />
+                    <div className="h-3 w-1/2 bg-gray-100 rounded" />
+                    <div className="h-7 bg-gray-100 rounded mt-1.5" />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
-
   )
 }
