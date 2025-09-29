@@ -42,6 +42,9 @@ type ProductFromAPI = {
   price_with_margin_cents?: number | null
   price_with_margin_usd?: number | string | null
 
+  display_total_usd?: number | string | null
+  display_total_cents?: number | null
+
   metadata?: ProductMetadata | null
 }
 
@@ -69,14 +72,18 @@ function buildLocParams(loc?: DeliveryLocation) {
   return sp
 }
 
-/** Mapea un producto del API al formato simplificado que usa el front, resolviendo idioma. */
 function mapApiProduct(p: ProductFromAPI, locale: 'en' | 'es' = 'es'): SimplifiedProduct {
+  // Preferimos el total listo para UI si el backend lo envía (owner / by-owners),
+  // si no, caemos al precio con margen; si no, al base.
   const priceUsd =
-    p.price_with_margin_cents != null
+    p.display_total_usd != null
+      ? Number(p.display_total_usd)
+      : p.price_with_margin_cents != null
       ? Number(p.price_with_margin_cents) / 100
-      : (p.price_with_margin_usd != null ? Number(p.price_with_margin_usd) : Number(p.price))
+      : p.price_with_margin_usd != null
+      ? Number(p.price_with_margin_usd)
+      : Number(p.price)
 
-  // Resuelve nombre/descr con fallback limpio
   const name =
     locale === 'en'
       ? (p.title_en && p.title_en.trim()) || (p.title && p.title.trim()) || ''
@@ -96,6 +103,7 @@ function mapApiProduct(p: ProductFromAPI, locale: 'en' | 'es' = 'es'): Simplifie
     description,
   }
 }
+
 
 /** Categorías (incluye nombre e imagen por si quieres mostrarlos en grillas/nav). */
 export async function getCategories(): Promise<
@@ -266,5 +274,45 @@ export async function getByOwners(
   const r = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/products/by-owners?${params.toString()}`, { cache: 'no-store' })
   const json = await r.json().catch(() => ({ owners: [] }))
   return Array.isArray(json?.owners) ? json.owners as OwnerGroup[] : []
+}
+
+// --- Tipado de la respuesta del backend /products/owner/:owner_id ---
+type OwnerListResponse = {
+  owner?: { id: number; name: string | null }
+  items: ProductFromAPI[]
+  page: number
+  limit: number
+  has_more: boolean
+}
+
+/**
+ * Lista de productos por owner (paginado) respetando filtros de entrega.
+ * Usa el mapeo estándar SimplifiedProduct (name/price/imageSrc...).
+ */
+export async function getProductsByOwnerPaged(
+  ownerId: number,
+  loc?: DeliveryLocation,
+  opts?: { page?: number; limit?: number },
+  locale: 'en' | 'es' = 'es'
+): Promise<{ ownerId: number; ownerName: string; items: SimplifiedProduct[]; page: number; limit: number; has_more: boolean }> {
+  const sp = buildLocParams(loc)
+  if (opts?.page) sp.set('page', String(opts.page))
+  if (opts?.limit) sp.set('limit', String(opts.limit))
+
+  const url = `${API_URL}/products/owner/${ownerId}${sp.toString() ? `?${sp.toString()}` : ''}`
+  const res = await fetch(url, { cache: 'no-store' })
+  if (!res.ok) {
+    return { ownerId, ownerName: '', items: [], page: opts?.page || 1, limit: opts?.limit || 24, has_more: false }
+  }
+
+  const data: OwnerListResponse = await res.json()
+  return {
+    ownerId,
+    ownerName: data.owner?.name ?? '',
+    items: (data.items ?? []).map(p => mapApiProduct(p, locale)),
+    page: Number(data.page ?? 1),
+    limit: Number(data.limit ?? 24),
+    has_more: Boolean(data.has_more),
+  }
 }
 

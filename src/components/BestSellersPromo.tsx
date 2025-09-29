@@ -44,30 +44,30 @@ export default function OwnersShowcase({ dict: _dict }: { dict: AppDict }) {
   // Cargar owners (varios por fila) y asegurar hasta 4 productos por owner
   useEffect(() => {
     let canceled = false
-    ;(async () => {
-      try {
-        setLoading(true)
-        const loc = location
-          ? {
+      ; (async () => {
+        try {
+          setLoading(true)
+          const loc = location
+            ? {
               country: location.country,
               province: location.province,
               area_type: location.area_type,
               municipality: location.municipality,
             }
-          : undefined
+            : undefined
 
-        // Traemos suficientes owners para llenar la sección con varias tarjetas
-        const owners = await getByOwners(loc, {
-          owners_limit: 9, // 2–3 filas en desktop
-          per_owner: 4,    // **hasta 4 por owner**
-        })
-        if (!canceled) setGroups(owners)
-      } catch {
-        if (!canceled) setGroups([])
-      } finally {
-        if (!canceled) setLoading(false)
-      }
-    })()
+          // Traemos suficientes owners para llenar la sección con varias tarjetas
+          const owners = await getByOwners(loc, {
+            owners_limit: 9, // 2–3 filas en desktop
+            per_owner: 6,    // **hasta 4 por owner**
+          })
+          if (!canceled) setGroups(owners)
+        } catch {
+          if (!canceled) setGroups([])
+        } finally {
+          if (!canceled) setLoading(false)
+        }
+      })()
     return () => { canceled = true }
   }, [location?.country, location?.province, location?.area_type, location?.municipality, locale])
 
@@ -112,7 +112,7 @@ export default function OwnersShowcase({ dict: _dict }: { dict: AppDict }) {
           <div className="py-16 text-center text-gray-500">{t.empty}</div>
         ) : (
           // === GRID DE OWNERS (2 cols en sm, 3 en lg) ===
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="flex flex-wrap justify-center gap-4 md:gap-6">
             {groups.map((g) => (
               <OwnerPanel
                 key={g.owner_id}
@@ -144,33 +144,32 @@ function OwnerPanel({
   viewAllLabel: string
 }) {
   // Hasta 4 productos por owner (si hay menos, mostramos los que existan sin “estirar”)
-  const items = Array.isArray(g.products) ? g.products.slice(0, 4) : []
+  const items = Array.isArray(g.products) ? g.products.slice(0, 6) : []
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-amber-50 p-3">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 mb-2">
-        <h3 className="text-base md:text-lg font-semibold text-gray-900 line-clamp-1">
-          {g.owner_name || (locale === 'en' ? 'Seller' : 'Dueño')}
+    <div className="w-full sm:w-[520px] lg:w-[560px] rounded-2xl border border-emerald-100 bg-emerald-50 p-4 shadow-[0_1px_0_rgba(16,185,129,0.1)]">
+      {/* Header centrado y en mayúsculas */}
+      <div className="mb-3">
+        <h3 className="text-center text-sm md:text-base font-extrabold tracking-wide text-emerald-900 uppercase">
+          {g.owner_name ? g.owner_name : (locale === 'en' ? 'Seller' : 'Dueño')}
         </h3>
 
-        {/* Ajusta esta ruta si tienes otra página/listado por owner */}
-        <Link
-          href={`/${locale}/owners/${g.owner_id}`}
-          prefetch={false}
-          className="text-emerald-700 text-sm hover:underline whitespace-nowrap"
-        >
-          {viewAllLabel}
-        </Link>
+        {/* “Ver todos” centrado debajo (opcional). Si prefieres a la derecha, mueve el contenedor y usa text-right */}
+        <div className="mt-1 text-center">
+          <Link
+            href={`/${locale}/owners/${g.owner_id}`}
+            prefetch={false}
+            className="inline-block text-emerald-700 text-xs md:text-sm hover:underline"
+          >
+            {viewAllLabel}
+          </Link>
+        </div>
       </div>
 
-      {/* Grid interno de productos: 2x2 en móviles, fluido en pantallas mayores */}
+      {/* Grid interno de productos, manteniendo 2x2 en móviles y fluido arriba */}
       <div
-        className="
-          grid gap-3
-          grid-cols-2
-          sm:[grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]
-        "
+        className="grid gap-3 grid-cols-2 lg:grid-cols-3 [&>*:nth-child(n+5)]:hidden
+    lg:[&>*:nth-child(n+5)]:block"
       >
         {items.map((p) => {
           const name =
@@ -182,7 +181,7 @@ function OwnerPanel({
           return (
             <article
               key={p.id}
-              className="group rounded-lg border bg-white overflow-hidden hover:shadow-sm transition-shadow flex flex-col"
+              className="group rounded-lg border border-gray-200 bg-white overflow-hidden hover:shadow-md transition-shadow flex flex-col"
             >
               <Link
                 href={`/${locale}/product/${p.id}`}
@@ -194,7 +193,7 @@ function OwnerPanel({
                   src={p.image_url || '/product.webp'}
                   alt={name}
                   fill
-                  sizes="(max-width: 640px) 45vw, (max-width:1024px) 25vw, 20vw"
+                  sizes="(max-width: 640px) 45vw, (max-width:1024px) 25vw, 18vw"  // ← ajustado para 3 cols en lg
                   className="object-contain p-2"
                   loading="lazy"
                   decoding="async"
@@ -230,12 +229,12 @@ function OwnerPanel({
 
 function SkeletonGrid() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+    <div className="flex flex-wrap justify-center gap-4 md:gap-6">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="rounded-xl border border-gray-200 bg-amber-50 p-3">
-          <div className="h-5 w-40 bg-amber-100 animate-pulse rounded mb-3" />
+        <div key={i} className="w-full sm:w-[520px] lg:w-[560px] rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+          <div className="h-5 w-40 bg-emerald-100/60 animate-pulse rounded mb-3 mx-auto" />
           <div className="grid grid-cols-2 gap-3">
-            {Array.from({ length: 4 }).map((__, j) => (
+            {Array.from({ length: 6 }).map((__, j) => (
               <div key={j} className="rounded-lg border bg-white overflow-hidden">
                 <div className="aspect-[4/3] bg-gray-100 animate-pulse" />
                 <div className="p-2 space-y-1.5">
@@ -249,5 +248,6 @@ function SkeletonGrid() {
         </div>
       ))}
     </div>
+
   )
 }
