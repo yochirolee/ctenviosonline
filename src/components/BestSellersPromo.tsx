@@ -1,187 +1,253 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
-import { useLocation } from '@/context/LocationContext'
-import { getBestSellers, type DeliveryLocation, type SimplifiedProduct } from '@/lib/products'
-import type { Dict as AppDict } from '@/types/Dict'
-import Link from 'next/link'
+import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
+import Link from 'next/link'
+import { toast } from 'sonner'
 
-type BestItem = SimplifiedProduct
+import { useLocation } from '@/context/LocationContext'
+import { useCart } from '@/context/CartContext'
+import { checkCustomerAuth } from '@/lib/auth'
 
-export default function RecomendadosTiles({  dict: _dict }: { dict: AppDict }) {
+import type { Dict as AppDict } from '@/types/Dict'
+import type { OwnerGroup } from '@/lib/products'
+import { getByOwners } from '@/lib/products'
+
+export default function OwnersShowcase({ dict: _dict }: { dict: AppDict }) {
   void _dict
-  const { locale } = useParams() as { locale: string }
+  const { locale } = useParams() as { locale: 'es' | 'en' }
+  const router = useRouter()
   const { location } = useLocation()
+  const { addItem } = useCart()
 
-  const [items, setItems] = useState<BestItem[]>([])
+  const [groups, setGroups] = useState<OwnerGroup[]>([])
   const [loading, setLoading] = useState(true)
 
   const t = {
-    title:  (locale === 'en' ? 'Recommended for you' : 'Recomendados'),
-    empty: locale === 'en' ? 'No recommendations yet.' : 'Aún no hay recomendados.',
+    title: locale === 'en' ? 'From our sellers' : 'De nuestros dueños',
+    empty: locale === 'en' ? 'No items available.' : 'No hay productos disponibles.',
+    viewAll: locale === 'en' ? 'View all' : 'Ver todos',
+    addToCart: locale === 'en' ? 'Add to Cart' : 'Agregar al carrito',
+    added: locale === 'en' ? 'added to the cart' : 'agregado al carrito',
+    login_required:
+      locale === 'en'
+        ? 'You must be logged in to add products to your cart.'
+        : 'Debes iniciar sesión para agregar productos a tu carrito.',
   }
-
-  const loc = useMemo(
-    () =>
-      location
-        ? ({
-            country: location.country,
-            province: location.province,
-            municipality: location.municipality,
-            area_type: location.area_type,
-          } as DeliveryLocation)
-        : undefined,
-    [location?.country, location?.province, location?.municipality, location?.area_type]
-  )
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        setLoading(true)
-        const list = await getBestSellers(loc, { limit: 8, days: 60 }, locale === 'en' ? 'en' : 'es')
-        if (!cancelled) setItems((list ?? []).slice(0, 4))
-      } catch {
-        if (!cancelled) setItems([])
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => { cancelled = true }
-  }, [loc, locale])
 
   const fmt = useMemo(
     () => new Intl.NumberFormat(locale || 'es', { style: 'currency', currency: 'USD' }),
     [locale]
   )
 
-  const BG = ['bg-amber-100', 'bg-yellow-100', 'bg-emerald-50', 'bg-orange-50', 'bg-sky-50', 'bg-amber-50']
+  // Cargar owners (varios por fila) y asegurar hasta 4 productos por owner
+  useEffect(() => {
+    let canceled = false
+    ;(async () => {
+      try {
+        setLoading(true)
+        const loc = location
+          ? {
+              country: location.country,
+              province: location.province,
+              area_type: location.area_type,
+              municipality: location.municipality,
+            }
+          : undefined
+
+        // Traemos suficientes owners para llenar la sección con varias tarjetas
+        const owners = await getByOwners(loc, {
+          owners_limit: 9, // 2–3 filas en desktop
+          per_owner: 4,    // **hasta 4 por owner**
+        })
+        if (!canceled) setGroups(owners)
+      } catch {
+        if (!canceled) setGroups([])
+      } finally {
+        if (!canceled) setLoading(false)
+      }
+    })()
+    return () => { canceled = true }
+  }, [location?.country, location?.province, location?.area_type, location?.municipality, locale])
+
+  const handleAdd = useCallback(async (id: number, nameForToast: string) => {
+    const isLoggedIn = await checkCustomerAuth()
+    if (!isLoggedIn) {
+      toast.error(t.login_required, { position: 'bottom-center' })
+      router.push(`/${locale}/login`)
+      return
+    }
+    try {
+      await addItem(Number(id), 1)
+      toast.success(`${nameForToast} ${t.added}`, { position: 'bottom-center' })
+    } catch (e: unknown) {
+      const err = (e ?? {}) as { code?: string; available?: number }
+      if (err.code === 'OUT_OF_STOCK') {
+        toast.error(
+          `Sin stock${Number.isFinite(err.available) ? ` (disp: ${err.available})` : ''}`,
+          { position: 'bottom-center' }
+        )
+      } else {
+        toast.error(
+          locale === 'en'
+            ? 'At the moment, you can’t add products to the cart.'
+            : 'En este momento no se pueden agregar productos al carrito.',
+          { position: 'bottom-center' }
+        )
+      }
+    }
+  }, [addItem, locale, router, t.added, t.login_required])
 
   return (
-    <section className="h-svh overflow-hidden bg-white">
-      <div className="px-4 md:px-12 lg:px-20 pt-3 pb-2">
+    <section className="bg-white">
+      <div className="px-4 md:px-12 lg:px-20 pt-4 pb-2">
         <h2 className="text-lg md:text-xl font-bold text-gray-900">{t.title}</h2>
       </div>
 
-      <div className="px-4 md:px-12 lg:px-20 h-[calc(100svh-56px-44px)] md:h-[calc(100svh-64px-52px)]">
+      <div className="px-4 md:px-12 lg:px-20 pb-6">
         {loading ? (
-          <div className="grid h-full grid-cols-2 md:grid-cols-12 grid-rows-4 md:grid-rows-6 gap-2 md:gap-4">
-            <div className="col-span-2 md:col-span-7 md:row-span-3 rounded-xl animate-pulse bg-amber-100" />
-            <div className="col-span-1 md:col-span-5 md:row-span-3 rounded-xl animate-pulse bg-yellow-100" />
-            <div className="col-span-1 md:col-span-5 md:row-span-3 rounded-xl animate-pulse bg-emerald-50" />
-            <div className="col-span-1 md:col-span-7 md:row-span-3 rounded-xl animate-pulse bg-orange-50" />
-          </div>
-        ) : items.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-gray-500">{t.empty}</div>
+          <SkeletonGrid />
+        ) : groups.length === 0 ? (
+          <div className="py-16 text-center text-gray-500">{t.empty}</div>
         ) : (
-          <>
-            {/* MÓVIL: 2 cols x 4 filas (todas visibles, fotos siempre aparecen) */}
-            <div className="grid md:hidden h-full grid-cols-2 grid-rows-4 gap-2">
-              {/* #0 ancho arriba (2x2) */}
-              {items[0] && <Tile p={items[0]} locale={locale} fmt={fmt} className={`${BG[0 % BG.length]}`} style={{ gridColumn: '1 / span 2', gridRow: '1 / span 2' }} />}
-              {/* #1 alto izq (1x2) */}
-              {items[1] && <Tile p={items[1]} locale={locale} fmt={fmt} className={`${BG[1 % BG.length]}`} style={{ gridColumn: '1 / span 1', gridRow: '3 / span 2' }} />}
-              {/* #2 derecha arriba (1x1) compacto */}
-              {items[2] && <Tile p={items[2]} locale={locale} fmt={fmt} className={`${BG[2 % BG.length]}`} style={{ gridColumn: '2 / span 1', gridRow: '3 / span 1' }} compact />}
-              {/* #3 derecha abajo (1x1) compacto */}
-              {items[3] && <Tile p={items[3]} locale={locale} fmt={fmt} className={`${BG[3 % BG.length]}`} style={{ gridColumn: '2 / span 1', gridRow: '4 / span 1' }} compact />}
-            </div>
-
-            {/* DESKTOP: ninguna card ocupa todo el viewport */}
-            <div className="hidden md:grid h-full grid-cols-12 grid-rows-6 gap-4">
-              {/* #0  (7x3) */}
-              {items[0] && <Tile p={items[0]} locale={locale} fmt={fmt} className={`${BG[0 % BG.length]}`} style={{ gridColumn: '1 / span 7', gridRow: '1 / span 3' }} />}
-              {/* #1  (5x3) */}
-              {items[1] && <Tile p={items[1]} locale={locale} fmt={fmt} className={`${BG[1 % BG.length]}`} style={{ gridColumn: '8 / span 5', gridRow: '1 / span 3' }} />}
-              {/* #2  (5x3) */}
-              {items[2] && <Tile p={items[2]} locale={locale} fmt={fmt} className={`${BG[2 % BG.length]}`} style={{ gridColumn: '1 / span 5', gridRow: '4 / span 3' }} />}
-              {/* #3  (7x3) — NO ocupa 12 cols ni 6 filas */}
-              {items[3] && <Tile p={items[3]} locale={locale} fmt={fmt} className={`${BG[3 % BG.length]}`} style={{ gridColumn: '6 / span 7', gridRow: '4 / span 3' }} />}
-            </div>
-          </>
+          // === GRID DE OWNERS (2 cols en sm, 3 en lg) ===
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {groups.map((g) => (
+              <OwnerPanel
+                key={g.owner_id}
+                g={g}
+                locale={locale}
+                fmt={fmt}
+                onAdd={handleAdd}
+                viewAllLabel={t.viewAll}
+              />
+            ))}
+          </div>
         )}
       </div>
     </section>
   )
 }
 
-
-/* ---- Card: imagen arriba (con aspecto fijo en móvil) + texto debajo ---- */
-function Tile({
-  p,
+function OwnerPanel({
+  g,
   locale,
   fmt,
-  className,
-  style,
-  compact = false,
+  onAdd,
+  viewAllLabel,
 }: {
-  p: BestItem
-  locale: string
+  g: OwnerGroup
+  locale: 'es' | 'en'
   fmt: Intl.NumberFormat
-  className?: string
-  style?: React.CSSProperties
-  compact?: boolean
+  onAdd: (id: number, nameForToast: string) => void
+  viewAllLabel: string
 }) {
-  if (!p) return null
-  
-  return (
-    <Link
-      href={`/${locale}/product/${p.id}`}
-      prefetch={false}
-      // IMPORTANTE: pasamos a flex-col (no grid)
-      className={`group rounded-xl overflow-hidden ring-1 ring-black/5 ${className} flex flex-col`}
-      style={style}
-      aria-label={p.name}
-    >
-      {/* Imagen:
-          - En móvil: altura definida por relación de aspecto (no se come el texto).
-          - En desktop: crece para ocupar el espacio disponible del tile. */}
-      <div
-        className={[
-          'relative overflow-hidden',
-          compact ? 'aspect-[5/4]' : 'aspect-[16/10]', // móvil: asegura espacio de imagen
-          'md:aspect-auto md:flex-1 md:min-h-[120px]', // desktop: rellena alto del tile
-        ].join(' ')}
-      >
-        <Image
-          src={p.imageSrc}
-          alt={p.name}
-          fill
-          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 35vw, 25vw"
-          className={`object-contain ${compact ? 'p-2' : 'p-2'} md:p-4 transition-transform duration-300 ${
-            compact ? '' : 'md:group-hover:scale-[1.02]'
-          }`}
-          loading="lazy"
-          fetchPriority="low"
-          decoding="async"
-          draggable={false}
-        />
-      </div>
+  // Hasta 4 productos por owner (si hay menos, mostramos los que existan sin “estirar”)
+  const items = Array.isArray(g.products) ? g.products.slice(0, 4) : []
 
-      {/* Texto: SIEMPRE debajo de la imagen */}
-      <div className="px-2.5 md:px-3 pt-2 md:pt-3 pb-2.5 md:pb-3">
-        <h3
-          className={`font-semibold text-gray-900 ${
-            compact ? 'text-[12px] leading-tight line-clamp-1' : 'text-[13px] md:text-base line-clamp-2'
-          } group-hover:underline underline-offset-4`}
-        >
-          {p.name}
+  return (
+    <div className="rounded-xl border border-gray-200 bg-amber-50 p-3">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <h3 className="text-base md:text-lg font-semibold text-gray-900 line-clamp-1">
+          {g.owner_name || (locale === 'en' ? 'Seller' : 'Dueño')}
         </h3>
 
-        {!compact && p.description && (
-          <p className="mt-0.5 text-[12px] md:text-sm text-gray-700 line-clamp-2">{p.description}</p>
-        )}
-
-        <div className={`mt-1 font-semibold text-emerald-700 ${compact ? 'text-[12px]' : 'text-[13px] md:text-sm'}`}>
-          {fmt.format(p.price)}
-        </div>
+        {/* Ajusta esta ruta si tienes otra página/listado por owner */}
+        <Link
+          href={`/${locale}/owners/${g.owner_id}`}
+          prefetch={false}
+          className="text-emerald-700 text-sm hover:underline whitespace-nowrap"
+        >
+          {viewAllLabel}
+        </Link>
       </div>
-    </Link>
+
+      {/* Grid interno de productos: 2x2 en móviles, fluido en pantallas mayores */}
+      <div
+        className="
+          grid gap-3
+          grid-cols-2
+          sm:[grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]
+        "
+      >
+        {items.map((p) => {
+          const name =
+            locale === 'en'
+              ? (p.title_en?.trim() || p.title?.trim() || '')
+              : (p.title?.trim() || p.title_en?.trim() || '')
+          const price = Number(p.display_total_usd || 0)
+
+          return (
+            <article
+              key={p.id}
+              className="group rounded-lg border bg-white overflow-hidden hover:shadow-sm transition-shadow flex flex-col"
+            >
+              <Link
+                href={`/${locale}/product/${p.id}`}
+                prefetch={false}
+                className="relative aspect-[4/3] bg-white block"
+                aria-label={name}
+              >
+                <Image
+                  src={p.image_url || '/product.webp'}
+                  alt={name}
+                  fill
+                  sizes="(max-width: 640px) 45vw, (max-width:1024px) 25vw, 20vw"
+                  className="object-contain p-2"
+                  loading="lazy"
+                  decoding="async"
+                  draggable={false}
+                />
+              </Link>
+
+              <div className="p-2 flex-1 flex flex-col">
+                <Link href={`/${locale}/product/${p.id}`} prefetch={false}>
+                  <h4 className="text-[12px] md:text-[13px] font-semibold text-gray-900 line-clamp-2 hover:underline">
+                    {name}
+                  </h4>
+                </Link>
+
+                <div className="mt-1 text-[12px] md:text-sm font-semibold text-emerald-700">
+                  {fmt.format(price)}
+                </div>
+
+                <button
+                  onClick={() => onAdd(p.id, name)}
+                  className="mt-2 w-full bg-green-600 text-white text-sm py-2 rounded hover:bg-green-700 transition"
+                >
+                  {locale === 'en' ? 'Add to Cart' : 'Agregar al carrito'}
+                </button>
+              </div>
+            </article>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
-
-
-
+function SkeletonGrid() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="rounded-xl border border-gray-200 bg-amber-50 p-3">
+          <div className="h-5 w-40 bg-amber-100 animate-pulse rounded mb-3" />
+          <div className="grid grid-cols-2 gap-3">
+            {Array.from({ length: 4 }).map((__, j) => (
+              <div key={j} className="rounded-lg border bg-white overflow-hidden">
+                <div className="aspect-[4/3] bg-gray-100 animate-pulse" />
+                <div className="p-2 space-y-1.5">
+                  <div className="h-3 bg-gray-100 rounded" />
+                  <div className="h-3 w-1/2 bg-gray-100 rounded" />
+                  <div className="h-7 bg-gray-100 rounded mt-1.5" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}

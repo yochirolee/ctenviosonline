@@ -232,3 +232,39 @@ export async function getProductById(
     return null
   }
 }
+
+export type OwnerGroup = {
+  owner_id: number
+  owner_name: string
+  products: Array<{
+    id: number
+    title: string
+    title_en?: string | null
+    image_url?: string | null
+    display_total_usd: number
+    display_total_cents: number
+    price_with_margin_cents: number
+    tax_cents: number
+    metadata?: Record<string, unknown> | null
+    stock_qty?: number | null
+  }>
+}
+
+export async function getByOwners(
+  loc?: { country?: string; province?: string; area_type?: string; municipality?: string },
+  opts?: { owners_limit?: number; per_owner?: number; owner_ids?: number[]; locale?: 'es'|'en' }
+): Promise<OwnerGroup[]> {
+  const params = new URLSearchParams()
+  if (loc?.country) params.set('country', loc.country)
+  if (loc?.province) params.set('province', loc.province)
+  if (loc?.area_type) params.set('area_type', String(loc.area_type))
+  if (loc?.municipality) params.set('municipality', loc.municipality)
+  if (opts?.owners_limit) params.set('owners_limit', String(opts.owners_limit))
+  if (opts?.per_owner) params.set('per_owner', String(opts.per_owner))
+  if (opts?.owner_ids?.length) params.set('owner_ids', opts.owner_ids.join(','))
+
+  const r = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/products/by-owners?${params.toString()}`, { cache: 'no-store' })
+  const json = await r.json().catch(() => ({ owners: [] }))
+  return Array.isArray(json?.owners) ? json.owners as OwnerGroup[] : []
+}
+
