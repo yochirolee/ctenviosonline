@@ -9,6 +9,7 @@ import { useCart } from '@/context/CartContext'
 import { useLocation } from '@/context/LocationContext'
 import { getProducts, type DeliveryLocation, type SimplifiedProduct } from '@/lib/products'
 import type { Dict as AppDict } from '@/types/Dict'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
 
@@ -308,19 +309,21 @@ export default function ContinueAndBuyAgain({ dict: _dict }: { dict: AppDict }) 
       >
         {/* Continúa */}
         {showContinue && (
-          <Panel title={t.continueTitle} bg="bg-blue-100">
+          <Panel title={t.continueTitle} bg="bg-orange-100">
             <TilesRow items={continueItems} locale={locale} fmt={fmt} loading={loading} emptyText={t.empty} t={t} />
             {continueItems.length > 0 && (
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <button
                   onClick={openCartDrawer}
-                  className="inline-flex items-center justify-center rounded-md border border-emerald-600 px-4 py-2 text-sm font-medium text-emerald-600 hover:bg-emerald-700 hover:text-white"
+                  className="inline-flex items-center justify-center rounded-md border border-orange-500 px-4 py-2 text-sm font-medium
+                   text-orange-500 hover:bg-orange-700 hover:text-white"
                 >
                   {t.viewCart}
                 </button>
                 <Link
                   href={`/${locale}/checkout`}
-                  className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                  className="inline-flex items-center justify-center rounded-md bg-orange-500 px-4 py-2 text-sm font-semibold text-white 
+                  hover:bg-orange-700"
                 >
                   {t.checkout}
                 </Link>
@@ -329,15 +332,16 @@ export default function ContinueAndBuyAgain({ dict: _dict }: { dict: AppDict }) 
           </Panel>
         )}
 
-        {/* Comprar de nuevo */}
-        {showBuyAgain && (
-          <Panel title={t.buyAgainTitle} bg="bg-green-100">
+        {/* Comprar de nuevo  */}
+        {showBuyAgain && (  
+          <Panel title={t.buyAgainTitle} bg="bg-blue-200">
             <TilesRow items={buyAgain} locale={locale} fmt={fmt} loading={loading} emptyText={t.empty} t={t} />
             <div className="mt-4">
               <Link
                 href={`/${locale}#populars`}
                 aria-label={isEn ? 'View all popular products' : 'Ver todos los populares'}
-                className="inline-flex items-center justify-center rounded-md border border-emerald-600 px-4 py-2 text-sm font-medium text-emerald-600 hover:bg-emerald-700 hover:text-white"
+                className="inline-flex items-center justify-center rounded-md border border-blue-500 px-4 py-2 text-sm font-medium text-blue-500
+                 hover:bg-blue-600 hover:text-white"
               >
                 {t.viewAll}
               </Link>
@@ -434,7 +438,7 @@ function TilesRow({
         type="button"
         aria-label={t.prev}
         onClick={onPrev}
-        disabled={!canPrev}
+        
         className={`
           absolute left-0 top-1/2 -translate-y-1/2 z-10
           rounded-full border bg-white/90 shadow
@@ -442,7 +446,9 @@ function TilesRow({
           disabled:opacity-40 disabled:cursor-not-allowed
           ${items.length <= 1 ? 'hidden' : ''}
         `}
-      />
+      >
+        <ChevronLeft size={18} aria-hidden="true" />
+        </button>
 
       {/* Carril */}
       <div
@@ -465,7 +471,7 @@ function TilesRow({
         type="button"
         aria-label={t.next}
         onClick={onNext}
-        disabled={!canNext}
+        
         className={`
           absolute right-0 top-1/2 -translate-y-1/2 z-10
           rounded-full border bg-white/90 shadow
@@ -473,7 +479,9 @@ function TilesRow({
           disabled:opacity-40 disabled:cursor-not-allowed
           ${items.length <= 1 ? 'hidden' : ''}
           `}
-      />
+          >
+          <ChevronRight size={18} aria-hidden="true" />
+        </button>
 
     </div>
   )
