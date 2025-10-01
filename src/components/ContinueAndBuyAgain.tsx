@@ -151,7 +151,7 @@ export default function ContinueAndBuyAgain({ dict: _dict }: { dict: AppDict }) 
       municipality: location.municipality,
       area_type: location.area_type,
     }
-  }, [location?.country, location?.province, location?.municipality, location?.area_type])
+  }, [location])
 
   const [buyAgain, setBuyAgain] = useState<MiniProduct[]>([])
   const [continueItems, setContinueItems] = useState<MiniProduct[]>([])
@@ -333,7 +333,7 @@ export default function ContinueAndBuyAgain({ dict: _dict }: { dict: AppDict }) 
         )}
 
         {/* Comprar de nuevo  */}
-        {showBuyAgain && (  
+        {showBuyAgain && (
           <Panel title={t.buyAgainTitle} bg="bg-blue-200">
             <TilesRow items={buyAgain} locale={locale} fmt={fmt} loading={loading} emptyText={t.empty} t={t} />
             <div className="mt-4">
@@ -391,33 +391,24 @@ function TilesRow({
   t: { prev: string; next: string }
 }) {
   const railRef = useRef<HTMLDivElement | null>(null)
-  const [canPrev, setCanPrev] = useState(false)
-  const [canNext, setCanNext] = useState(false)
-
-  // Actualiza si hay más para desplazar
-  useEffect(() => {
-    const el = railRef.current
-    if (!el) return
-    const update = () => {
-      const maxScroll = el.scrollWidth - el.clientWidth
-      setCanPrev(el.scrollLeft > 0)
-      setCanNext(el.scrollLeft < maxScroll - 1)
-    }
-    update()
-    el.addEventListener('scroll', update, { passive: true })
-    const ro = new ResizeObserver(update)
-    ro.observe(el)
-    return () => {
-      el.removeEventListener('scroll', update)
-      ro.disconnect()
-    }
-  }, [items.length])
 
   const scrollStep = () => {
-    const el = railRef.current
-    if (!el) return 0
-    // Desplaza ~ el ancho visible menos un gap para que “salte” una pantalla
-    return Math.max(0, el.clientWidth - 24)
+    const rail = railRef.current
+    if (!rail) return 0
+
+    // lee el gap real del flex (gap-3 ≈ 12px si rem=16)
+    const cs = getComputedStyle(rail)
+    const gap =
+      parseFloat(cs.columnGap || cs.gap || '0') ||
+      12
+
+    const firstChild = rail.firstElementChild as HTMLElement | null
+    const itemWidth = firstChild?.getBoundingClientRect().width ?? 0
+
+    // fallback: ancho visible - gap, por si no se puede medir
+    const fallback = Math.max(0, rail.clientWidth - gap)
+
+    return itemWidth > 0 ? itemWidth + gap : fallback
   }
 
   const onPrev = () => {
@@ -438,9 +429,9 @@ function TilesRow({
         type="button"
         aria-label={t.prev}
         onClick={onPrev}
-        
+
         className={`
-          absolute left-0 top-1/2 -translate-y-1/2 z-10
+          ml-1 absolute left-0 top-1/2 -translate-y-1/2 z-10
           rounded-full border bg-white/90 shadow
           w-8 h-8 flex items-center justify-center
           disabled:opacity-40 disabled:cursor-not-allowed
@@ -448,7 +439,7 @@ function TilesRow({
         `}
       >
         <ChevronLeft size={18} aria-hidden="true" />
-        </button>
+      </button>
 
       {/* Carril */}
       <div
@@ -471,17 +462,17 @@ function TilesRow({
         type="button"
         aria-label={t.next}
         onClick={onNext}
-        
+
         className={`
-          absolute right-0 top-1/2 -translate-y-1/2 z-10
+          mr-1 absolute right-0 top-1/2 -translate-y-1/2 z-10
           rounded-full border bg-white/90 shadow
           w-8 h-8 flex items-center justify-center
           disabled:opacity-40 disabled:cursor-not-allowed
           ${items.length <= 1 ? 'hidden' : ''}
           `}
-          >
-          <ChevronRight size={18} aria-hidden="true" />
-        </button>
+      >
+        <ChevronRight size={18} aria-hidden="true" />
+      </button>
 
     </div>
   )
