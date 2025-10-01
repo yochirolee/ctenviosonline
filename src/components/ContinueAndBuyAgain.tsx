@@ -410,17 +410,29 @@ function TilesRow({
   
     return itemWidth > 0 ? itemWidth + gap : fallback
   }
+  const canMove = (dir: -1 | 1) => {
+    const el = railRef.current
+    if (!el) return false
+    const max = Math.max(0, el.scrollWidth - el.clientWidth)
+    const tol = 1
+    return dir < 0 ? el.scrollLeft > tol : el.scrollLeft < (max - tol)
+  }
 
-  const onPrev = () => {
+  const clampScrollTo = (dir: -1 | 1) => {
+    if (!canMove(dir)) return
     const el = railRef.current
     if (!el) return
-    el.scrollBy({ left: -scrollStep(), behavior: 'smooth' })
+    const step = scrollStep()
+    const max = Math.max(0, el.scrollWidth - el.clientWidth)
+    const target = el.scrollLeft + dir * step
+    const clamped = Math.max(0, Math.min(target, max))
+    // si ya estás en el extremo, no hagas nada (evita “blanco” por overshoot)
+    if (Math.abs(clamped - el.scrollLeft) < 1) return
+    el.scrollTo({ left: clamped, behavior: 'smooth' })
   }
-  const onNext = () => {
-    const el = railRef.current
-    if (!el) return
-    el.scrollBy({ left: scrollStep(), behavior: 'smooth' })
-  }
+  
+  const onPrev = () => clampScrollTo(-1)
+  const onNext = () => clampScrollTo(1)
 
   const Rail: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <div className="relative">
@@ -443,17 +455,17 @@ function TilesRow({
 
       {/* Carril */}
       <div
-        ref={railRef}
-        className="
-          flex gap-3 pr-px
-          overflow-x-auto overflow-y-hidden
-          scroll-smooth snap-x snap-mandatory
-          [touch-action:pan-x_pan-y] overscroll-x-contain
-          [-ms-overflow-style:none] [scrollbar-width:none]
-          [&::-webkit-scrollbar]:hidden [&::-webkit-scrollbar]:w-0 [&::-webkit-scrollbar]:h-0
-          [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent
-        "
-      >
+  ref={railRef}
+  className="
+    flex flex-nowrap gap-3
+    overflow-x-auto overflow-y-hidden
+    scroll-smooth snap-x snap-mandatory snap-always
+    [touch-action:pan-x pan-y] overscroll-x-contain
+    [-ms-overflow-style:none] [scrollbar-width:none]
+    [&::-webkit-scrollbar]:hidden [&::-webkit-scrollbar]:w-0 [&::-webkit-scrollbar]:h-0
+    [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-transparent
+  "
+>
         {children}
       </div>
 
