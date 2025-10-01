@@ -333,7 +333,7 @@ export default function ContinueAndBuyAgain({ dict: _dict }: { dict: AppDict }) 
         )}
 
         {/* Comprar de nuevo  */}
-        {showBuyAgain && (
+        {showBuyAgain && (  
           <Panel title={t.buyAgainTitle} bg="bg-blue-200">
             <TilesRow items={buyAgain} locale={locale} fmt={fmt} loading={loading} emptyText={t.empty} t={t} />
             <div className="mt-4">
@@ -395,19 +395,19 @@ function TilesRow({
   const scrollStep = () => {
     const rail = railRef.current
     if (!rail) return 0
-
+  
     // lee el gap real del flex (gap-3 ≈ 12px si rem=16)
     const cs = getComputedStyle(rail)
     const gap =
       parseFloat(cs.columnGap || cs.gap || '0') ||
       12
-
+  
     const firstChild = rail.firstElementChild as HTMLElement | null
     const itemWidth = firstChild?.getBoundingClientRect().width ?? 0
-
+  
     // fallback: ancho visible - gap, por si no se puede medir
     const fallback = Math.max(0, rail.clientWidth - gap)
-
+  
     return itemWidth > 0 ? itemWidth + gap : fallback
   }
 
@@ -429,7 +429,7 @@ function TilesRow({
         type="button"
         aria-label={t.prev}
         onClick={onPrev}
-
+        
         className={`
           ml-1 absolute left-0 top-1/2 -translate-y-1/2 z-10
           rounded-full border bg-white/90 shadow
@@ -439,7 +439,7 @@ function TilesRow({
         `}
       >
         <ChevronLeft size={18} aria-hidden="true" />
-      </button>
+        </button>
 
       {/* Carril */}
       <div
@@ -462,17 +462,17 @@ function TilesRow({
         type="button"
         aria-label={t.next}
         onClick={onNext}
-
+      
         className={`
-          mr-1 absolute right-0 top-1/2 -translate-y-1/2 z-10
+            mr-1 absolute right-0 top-1/2 -translate-y-1/2 z-10
           rounded-full border bg-white/90 shadow
           w-8 h-8 flex items-center justify-center
           disabled:opacity-40 disabled:cursor-not-allowed
           ${items.length <= 1 ? 'hidden' : ''}
           `}
       >
-        <ChevronRight size={18} aria-hidden="true" />
-      </button>
+  <ChevronRight size={18} aria-hidden="true" />
+</button>
 
     </div>
   )
