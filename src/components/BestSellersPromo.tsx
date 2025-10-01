@@ -143,7 +143,7 @@ function OwnerPanel({
   onAdd: (id: number, nameForToast: string) => void
   viewAllLabel: string
 }) {
-  const items = Array.isArray(g.products) ? g.products.slice(0, 6) : []
+  const items = Array.isArray(g.products) ? g.products.slice(0, 4) : []
 
   return (
     /* Anchos fijos responsivos → determinan columnas y permiten centrar última fila */
@@ -172,7 +172,7 @@ function OwnerPanel({
       </div>
 
       {/* Grid interno: 2 cols móvil, 3 cols lg; solo 4 visibles en móvil, 6 en lg */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 items-stretch [&>*:nth-child(n+5)]:hidden lg:[&>*:nth-child(n+5)]:block">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-2 items-stretch [&>*:nth-child(n+5)]:hidden lg:[&>*:nth-child(n+5)]:block">
 
         {items.map((p) => {
           const name =
@@ -248,7 +248,7 @@ function SkeletonGrid() {
             className="w-full md:w-[360px] lg:w-[380px] xl:w-[400px] rounded-2xl border border-emerald-100 bg-emerald-50 p-4"
           >
             <div className="h-5 w-40 bg-emerald-100/60 animate-pulse rounded mb-3 mx-auto" />
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {Array.from({ length: 6 }).map((__, j) => (
                 <div key={j} className="rounded-lg border bg-white overflow-hidden">
                   <div className="aspect-[4/3] bg-gray-100 animate-pulse" />
