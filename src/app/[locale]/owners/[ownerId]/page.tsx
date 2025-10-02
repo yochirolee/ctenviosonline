@@ -82,7 +82,7 @@ export default function OwnerAllPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId, location?.country, location?.province, location?.area_type, location?.municipality, locale])
 
-  async function handleAdd(id: number, _nameForToast: string) {
+  async function handleAdd(id: number) {
     const isLoggedIn = await checkCustomerAuth()
     if (!isLoggedIn) {
       toast.error(t.login_required, { position: 'bottom-center' })
@@ -208,7 +208,7 @@ export default function OwnerAllPage() {
                           {fmt.format(price)}
                         </p>
                         <button
-                          onClick={() => handleAdd(p.id, name)}
+                          onClick={() => handleAdd(p.id)}
                           className="mt-2 w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
                         >
                           {t.addToCart}

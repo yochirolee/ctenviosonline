@@ -69,7 +69,7 @@ export default function OwnersShowcase({ dict: _dict }: { dict: AppDict }) {
     return () => { canceled = true }
   }, [location?.country, location?.province, location?.area_type, location?.municipality, locale])
 
-  const handleAdd = useCallback(async (id: number, _nameForToast: string) => {
+  const handleAdd = useCallback(async (id: number) => {
     const isLoggedIn = await checkCustomerAuth()
     if (!isLoggedIn) {
       toast.error(t.login_required, { position: 'bottom-center' })
