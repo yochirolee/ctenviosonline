@@ -33,7 +33,7 @@ export default function BestSellers({ dict }: { dict: Dict }) {
       dict?.bestsellers?.subtitle ??
       (locale === 'en' ? 'What people loved recently' : 'Lo que más compran últimamente'),
     addToCart: dict?.cart?.addToCart ?? (locale === 'en' ? 'Add to Cart' : 'Agregar al carrito'),
-    added: dict?.cart?.added ?? (locale === 'en' ? 'added to the cart' : 'agregado al carrito'),
+    added: dict?.cart?.added ?? (locale === 'en' ? 'Product added to the cart' : 'Producto agregado al carrito'),
     login_required:
       dict?.cart?.login_required ??
       (locale === 'en'
@@ -106,7 +106,7 @@ export default function BestSellers({ dict }: { dict: Dict }) {
     }
     try {
       await addItem(Number(p.id), 1)
-      toast.success(`${p.name} ${t.added}`, { position: 'bottom-center' })
+      toast.success(`${t.added}`, { position: 'bottom-center' })
     } catch {
       toast.error(
         locale === 'en'

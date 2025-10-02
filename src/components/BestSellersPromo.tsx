@@ -29,7 +29,7 @@ export default function OwnersShowcase({ dict: _dict }: { dict: AppDict }) {
     empty: locale === 'en' ? 'No items available.' : 'No hay productos disponibles.',
     viewAll: locale === 'en' ? 'View all' : 'Ver todos',
     addToCart: locale === 'en' ? 'Add to Cart' : 'Agregar al carrito',
-    added: locale === 'en' ? 'added to the cart' : 'agregado al carrito',
+    added: locale === 'en' ? 'Product added to the cart' : 'Producto agregado al carrito',
     login_required:
       locale === 'en'
         ? 'You must be logged in to add products to your cart.'
@@ -69,7 +69,7 @@ export default function OwnersShowcase({ dict: _dict }: { dict: AppDict }) {
     return () => { canceled = true }
   }, [location?.country, location?.province, location?.area_type, location?.municipality, locale])
 
-  const handleAdd = useCallback(async (id: number, nameForToast: string) => {
+  const handleAdd = useCallback(async (id: number, _nameForToast: string) => {
     const isLoggedIn = await checkCustomerAuth()
     if (!isLoggedIn) {
       toast.error(t.login_required, { position: 'bottom-center' })
@@ -78,7 +78,7 @@ export default function OwnersShowcase({ dict: _dict }: { dict: AppDict }) {
     }
     try {
       await addItem(Number(id), 1)
-      toast.success(`${nameForToast} ${t.added}`, { position: 'bottom-center' })
+      toast.success(`${t.added}`, { position: 'bottom-center' })
     } catch (e: unknown) {
       const err = (e ?? {}) as { code?: string; available?: number }
       if (err.code === 'OUT_OF_STOCK') {

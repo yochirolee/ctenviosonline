@@ -46,7 +46,7 @@ export default function OwnerAllPage() {
       locale === 'en'
         ? 'You must be logged in to add products to your cart.'
         : 'Debes iniciar sesión para agregar productos a tu carrito.',
-    added: locale === 'en' ? 'added to the cart' : 'agregado al carrito',
+    added: locale === 'en' ? 'Product added to the cart' : 'Producto agregado al carrito',
     addToCart: locale === 'en' ? 'Add to Cart' : 'Agregar al carrito',
   }
 
@@ -82,7 +82,7 @@ export default function OwnerAllPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId, location?.country, location?.province, location?.area_type, location?.municipality, locale])
 
-  async function handleAdd(id: number, nameForToast: string) {
+  async function handleAdd(id: number, _nameForToast: string) {
     const isLoggedIn = await checkCustomerAuth()
     if (!isLoggedIn) {
       toast.error(t.login_required, { position: 'bottom-center' })
@@ -91,7 +91,7 @@ export default function OwnerAllPage() {
     }
     try {
       await addItem(Number(id), 1)
-      toast.success(`${nameForToast} ${t.added}`, { position: 'bottom-center' })
+      toast.success(`${t.added}`, { position: 'bottom-center' })
     } catch {
       toast.error(
         locale === 'en'

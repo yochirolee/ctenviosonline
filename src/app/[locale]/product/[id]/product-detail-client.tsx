@@ -39,8 +39,8 @@ export default function ProductDetailClient({
       await addItem(Number(product.id), 1)
       toast.success(
         locale === 'en'
-          ? `${product.name} added to the cart`
-          : `${product.name} agregado al carrito`,
+          ? `Product added to the cart`
+          : `Producto agregado al carrito`,
         { position: 'bottom-center' }
       )
     } catch (e: unknown) {

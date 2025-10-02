@@ -186,7 +186,7 @@
   },
   "cart": {
     "addToCart": "Add to Cart",
-    "added": "added to the cart",
+    "added": "Product added to the cart",
     "search": "Search product...",
     "login_required": "You must be logged in to add products to your cart.",
     "title": "Shopping Cart",

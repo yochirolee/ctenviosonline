@@ -83,7 +83,7 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
     } else {
       try {
         await addItem(Number(p.id), 1)
-        toast.success(`${p.name} ${dict?.cart?.added || (locale === 'en' ? 'added to the cart' : 'agregado al carrito')}`, { position: 'bottom-center' })
+        toast.success(`${dict?.cart?.added || (locale === 'en' ? 'Product added to the cart' : 'Producto agregado al carrito')}`, { position: 'bottom-center' })
       } catch {
         toast.error(locale === 'en' ? 'Error adding to cart' : 'Error agregando al carrito', { position: 'bottom-center' })
       }

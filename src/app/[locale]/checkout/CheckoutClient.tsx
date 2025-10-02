@@ -2350,18 +2350,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                     <Plus className="h-5 w-5 text-emerald-700" />
                   </button>
 
-                  {/* Editar seleccionado */}
-                  {selectedRecipientId && (
-                    <button
-                      type="button"
-                      onClick={openEditRecipient}
-                      className="inline-flex items-center justify-center h-9 w-9 rounded-full border bg-white hover:bg-emerald-50 hover:border-emerald-300 focus:outline-none focus:ring-4 ring-emerald-200 transition"
-                      title={locale === 'en' ? 'Edit recipient' : 'Editar destinatario'}
-                      aria-label={locale === 'en' ? 'Edit recipient' : 'Editar destinatario'}
-                    >
-                      <PencilLine className="h-5 w-5 text-emerald-700" />
-                    </button>
-                  )}
+                  
                 </div>
               </div>
 

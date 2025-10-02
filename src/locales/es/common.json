@@ -186,7 +186,7 @@
   },
   "cart": {
     "addToCart": "Agregar al carrito",
-    "added": "agregado al carrito",
+    "added": "Producto agregado al carrito",
     "search": "Buscar producto...",
     "login_required": "Debes iniciar sesión para agregar productos al carrito.",
     "title": "Carrito de Compras",

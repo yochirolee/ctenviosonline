@@ -26,13 +26,17 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const railRef = useRef<HTMLDivElement>(null)
 
+  // Estado para habilitar/deshabilitar controles
+  const [canPrev, setCanPrev] = useState(false)
+  const [canNext, setCanNext] = useState(false)
+
   const t = {
     title: dict.spotlight?.title ?? (locale === 'en' ? 'Popular right now' : 'Populares ahora'),
     subtitle:
       dict.spotlight?.subtitle ??
       (locale === 'en' ? 'Discover and add instantly' : 'Descubre y agrega al instante'),
     addToCart: dict.spotlight?.addToCart ?? dict.cart?.addToCart ?? (locale === 'en' ? 'Add to Cart' : 'Agregar al carrito'),
-    added: dict.spotlight?.added ?? dict.cart?.added ?? (locale === 'en' ? 'added to the cart' : 'agregado al carrito'),
+    added: dict.cart?.added ?? (locale === 'en' ? 'Product added to the cart' : 'Producto agregado al carrito'),
     login_required:
       dict.spotlight?.login_required ??
       dict.cart?.login_required ??
@@ -73,7 +77,10 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
 
           // PERF: hidrata más en idle (hasta 12) sin bloquear interacción
           const idle = (cb: () => void) => {            
-            if (window.requestIdleCallback) return window.requestIdleCallback(cb)
+            if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+           
+              return window.requestIdleCallback(cb)
+            }
             return setTimeout(cb, 200)
           }
           idle(() => {
@@ -88,44 +95,54 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     }
     load()
     return () => { cancelled = true }
-  }, [loc])
+  }, [loc, locale])
 
   const fmt = useMemo(
     () => new Intl.NumberFormat(locale || 'es', { style: 'currency', currency: 'USD' }),
     [locale]
   )
 
-  // PERF: evita recrear función por render
-  const handleAdd = useCallback(async (p: SimplifiedProduct) => {
-    const isLoggedIn = await checkCustomerAuth()
-    if (!isLoggedIn) {
-      toast.error(t.login_required, { position: 'bottom-center' })
-      router.push(`/${locale}/login`)
-      return
-    }
-    try {
-      await addItem(Number(p.id), 1)
-      toast.success(`${p.name} ${t.added}`, { position: 'bottom-center' })
-    } catch (e: unknown) {
-      const err = (e ?? {}) as { code?: string; available?: number }
-      if (err.code === 'OUT_OF_STOCK') {
-        toast.error(`Sin stock${Number.isFinite(err.available) ? ` (disp: ${err.available})` : ''}`, { position: 'bottom-center' })
-      } else {
-        toast.error(locale === 'en' ? 'At the moment, you can’t add products to the cart.' : 'En este momento no se pueden agregar productos al carrito.', { position: 'bottom-center' })
-      }
-    }
-  }, [addItem, locale, router, t.login_required, t.added])
+  // Actualiza estado de controles según posición del scroll
+  const recomputeControls = useCallback(() => {
+    const el = railRef.current
+    if (!el) { setCanPrev(false); setCanNext(false); return }
+    const max = Math.max(0, el.scrollWidth - el.clientWidth)
+    const x = el.scrollLeft
+    const tol = 1 // tolerancia para evitar falsos positivos
+    setCanPrev(x > tol)
+    setCanNext(x < (max - tol))
+  }, [])
 
-  const scrollBy = (delta: number) => {
+  // PERF: evita recrear función por render y CLAMPEA el objetivo
+  const scrollBy = useCallback((delta: number) => {
     const el = railRef.current
     if (!el) return
-    el.scrollBy({ left: delta, behavior: 'smooth' })
-  }
+    const max = Math.max(0, el.scrollWidth - el.clientWidth)
+    const target = el.scrollLeft + delta
+    const clamped = Math.max(0, Math.min(target, max))
+    // Si ya estás en el extremo, no intentes “pasarte”
+    if (Math.abs(clamped - el.scrollLeft) < 1) return
+    el.scrollTo({ left: clamped, behavior: 'smooth' })
+  }, [])
+
+  // Escucha scroll/resize para habilitar/deshabilitar flechas
+  useEffect(() => {
+    const el = railRef.current
+    if (!el) return
+    recomputeControls()
+    const onScroll = () => recomputeControls()
+    el.addEventListener('scroll', onScroll, { passive: true })
+    const ro = new ResizeObserver(() => recomputeControls())
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+      ro.disconnect()
+    }
+  }, [recomputeControls, visibleCount, items.length])
 
   // PERF: cargar más cuando el usuario se acerca al final (horizontal)
   useEffect(() => {
     if (!sentinelRef.current) return
-    const el = sentinelRef.current
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) {
         if (e.isIntersecting) {
@@ -133,9 +150,19 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
         }
       }
     }, { root: railRef.current, rootMargin: '200px', threshold: 0.01 })
-    io.observe(el)
+    io.observe(sentinelRef.current)
     return () => io.disconnect()
   }, [items.length])
+
+  // Evita “saltos” al hacer scroll vertical rápido en iOS:
+  // limitamos gestos a pan-x y evitamos overscroll horizontal que “arrastre” la página
+  const railClasses = `
+    flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2
+    [-ms-overflow-style:none] [scrollbar-width:none]
+    [&::-webkit-scrollbar]:hidden
+    [content-visibility:auto] [contain-intrinsic-size:360px]
+    [touch-action:pan-x] overscroll-x-contain
+  `
 
   return (
     <section id="populars" className="py-8 px-4 md:px-12 lg:px-20 bg-white">
@@ -148,15 +175,17 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
         <div className="hidden md:flex items-center gap-2">
           <button
             onClick={() => scrollBy(-360)}
-            className="p-2 rounded-full border hover:bg-gray-50"
+            className="p-2 rounded-full border hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label={locale === 'en' ? 'Previous' : 'Anterior'}
+            disabled={!canPrev}
           >
             <ChevronLeft />
           </button>
           <button
             onClick={() => scrollBy(360)}
-            className="p-2 rounded-full border hover:bg-gray-50"
+            className="p-2 rounded-full border hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label={locale === 'en' ? 'Next' : 'Siguiente'}
+            disabled={!canNext}
           >
             <ChevronRight />
           </button>
@@ -184,11 +213,8 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
         <div className="relative">
           <div
             ref={railRef}
-            // PERF: content-visibility reduce trabajo del main thread fuera de viewport
-            className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2
-                       [-ms-overflow-style:none] [scrollbar-width:none]
-                       [&::-webkit-scrollbar]:hidden
-                       [content-visibility:auto] [contain-intrinsic-size:360px]"
+            className={railClasses}
+            onScroll={recomputeControls}
           >
             {items.slice(0, Math.max(visibleCount, 1)).map((p, idx, arr) => (
               <article
@@ -199,7 +225,7 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
                 {/* Imagen click → detalle */}
                 <Link
                   href={`/${locale}/product/${p.id}`}
-                  prefetch={false} // PERF: evita prefetch masivo de 20 páginas
+                  prefetch={false}
                   className="relative aspect-[4/3] bg-white rounded-t-xl overflow-hidden block"
                 >
                   <Image
@@ -208,7 +234,6 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
                     fill
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 224px"
                     className="object-contain p-2"
-                    // PERF: mantener lazy, y baja prioridad de fetch
                     loading="lazy"
                     fetchPriority="low"
                     decoding="async"
@@ -245,12 +270,20 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
 
           {/* Controles móviles */}
           <div className="mt-4 flex justify-center md:hidden gap-3">
-            <button onClick={() => scrollBy(-320)} className="px-3 py-2 rounded border text-sm">
+            <button
+              onClick={() => scrollBy(-320)}
+              className="px-3 py-2 rounded border text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={!canPrev}
+            >
               <span className="inline-flex items-center gap-1">
                 <ChevronLeft size={16} /> {locale === 'en' ? 'Prev' : 'Anterior'}
               </span>
             </button>
-            <button onClick={() => scrollBy(320)} className="px-3 py-2 rounded border text-sm">
+            <button
+              onClick={() => scrollBy(320)}
+              className="px-3 py-2 rounded border text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={!canNext}
+            >
               <span className="inline-flex items-center gap-1">
                 {locale === 'en' ? 'Next' : 'Siguiente'} <ChevronRight size={16} />
               </span>
@@ -260,4 +293,25 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
       )}
     </section>
   )
+
+  // PERF: evita recrear función por render
+  async function handleAdd(p: SimplifiedProduct) {
+    const isLoggedIn = await checkCustomerAuth()
+    if (!isLoggedIn) {
+      toast.error(t.login_required, { position: 'bottom-center' })
+      router.push(`/${locale}/login`)
+      return
+    }
+    try {
+      await addItem(Number(p.id), 1)
+      toast.success(`${t.added}`, { position: 'bottom-center' })
+    } catch (e: unknown) {
+      const err = (e ?? {}) as { code?: string; available?: number }
+      if (err.code === 'OUT_OF_STOCK') {
+        toast.error(`Sin stock${Number.isFinite(err.available) ? ` (disp: ${err.available})` : ''}`, { position: 'bottom-center' })
+      } else {
+        toast.error(locale === 'en' ? 'At the moment, you can’t add products to the cart.' : 'En este momento no se pueden agregar productos al carrito.', { position: 'bottom-center' })
+      }
+    }
+  }
 }

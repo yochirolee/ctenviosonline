@@ -89,8 +89,8 @@ export default function SearchResultsClient({ locale, dict, initialQuery, initia
     try {
       await addItem(Number(p.id), 1)
       toast.success(
-        `${p.name} ${
-          dict?.cart?.added || (locale === 'en' ? 'added to the cart' : 'agregado al carrito')
+        ` ${
+          dict?.cart?.added || (locale === 'en' ? 'Product added to the cart' : 'Producto agregado al carrito')
         }`, { position: 'bottom-center' }
       )
     } catch {
