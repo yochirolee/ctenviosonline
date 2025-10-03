@@ -114,16 +114,24 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
   }, [])
 
   // PERF: evita recrear función por render y CLAMPEA el objetivo
-  const scrollBy = useCallback((delta: number) => {
-    const el = railRef.current
-    if (!el) return
-    const max = Math.max(0, el.scrollWidth - el.clientWidth)
-    const target = el.scrollLeft + delta
-    const clamped = Math.max(0, Math.min(target, max))
-    // Si ya estás en el extremo, no intentes “pasarte”
-    if (Math.abs(clamped - el.scrollLeft) < 1) return
-    el.scrollTo({ left: clamped, behavior: 'smooth' })
-  }, [])
+  const scrollByPage = useCallback((dir: -1 | 1) => {
+       const el = railRef.current
+        if (!el) return
+        const card = el.querySelector<HTMLElement>('[data-card]')
+        const cs = getComputedStyle(el)
+        // gap horizontal del carril (flex gap)
+        let gapPx = parseFloat(cs.columnGap || '0')
+        if (Number.isNaN(gapPx)) gapPx = 0
+        const cardWidth = card ? card.getBoundingClientRect().width : 0
+        const step = cardWidth + gapPx || el.clientWidth // fallback por si acaso
+        const perPage = Math.max(1, Math.floor(el.clientWidth / step))
+        const delta = dir * perPage * step
+        const max = Math.max(0, el.scrollWidth - el.clientWidth)
+        const target = el.scrollLeft + delta
+        const clamped = Math.max(0, Math.min(target, max))
+        if (Math.abs(clamped - el.scrollLeft) < 1) return
+        el.scrollTo({ left: clamped, behavior: 'smooth' })
+      }, [])
 
   // Escucha scroll/resize para habilitar/deshabilitar flechas
   useEffect(() => {
@@ -174,7 +182,7 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
 
         <div className="hidden md:flex items-center gap-2">
           <button
-            onClick={() => scrollBy(-360)}
+            onClick={() => scrollByPage(-1)}
             className="p-2 rounded-full border hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label={locale === 'en' ? 'Previous' : 'Anterior'}
             disabled={!canPrev}
@@ -182,7 +190,7 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
             <ChevronLeft />
           </button>
           <button
-            onClick={() => scrollBy(360)}
+            onClick={() => scrollByPage(1)}
             className="p-2 rounded-full border hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label={locale === 'en' ? 'Next' : 'Siguiente'}
             disabled={!canNext}
@@ -219,7 +227,9 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
             {items.slice(0, Math.max(visibleCount, 1)).map((p, idx, arr) => (
               <article
                 key={p.id}
-                className="w-[calc(50%-0.5rem)] sm:w-56 flex-shrink-0 snap-start rounded-xl border shadow-sm bg-white flex flex-col overflow-hidden"
+                className="w-[calc(50%-0.5rem)] md:w-[calc((100%-3rem)/4)] lg:w-[calc((100%-4rem)/5)] xl:w-[calc((100%-5rem)/6)]
+                flex-shrink-0 snap-start snap-always rounded-xl border shadow-sm bg-white flex flex-col overflow-hidden"
+                data-card
                 ref={idx === arr.length - 1 ? sentinelRef : undefined}
               >
                 {/* Imagen click → detalle */}
@@ -232,7 +242,7 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
                     src={p.imageSrc}
                     alt={p.name}
                     fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 224px"
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, (max-width: 1536px) 18vw, 16vw"
                     className="object-contain p-2"
                     loading="lazy"
                     fetchPriority="low"
@@ -271,7 +281,7 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
           {/* Controles móviles */}
           <div className="mt-4 flex justify-center md:hidden gap-3">
             <button
-              onClick={() => scrollBy(-320)}
+              onClick={() => scrollByPage(-1)}
               className="px-3 py-2 rounded border text-sm disabled:opacity-40 disabled:cursor-not-allowed"
               disabled={!canPrev}
             >
@@ -280,7 +290,7 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
               </span>
             </button>
             <button
-              onClick={() => scrollBy(320)}
+              onClick={() => scrollByPage(1)}
               className="px-3 py-2 rounded border text-sm disabled:opacity-40 disabled:cursor-not-allowed"
               disabled={!canNext}
             >
