@@ -153,7 +153,7 @@ export default function OwnerAllPage() {
         ) : (
           <>
             {/* Mismo layout que CategoryPageClient */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-4">
               {items.map((p) => {
                 const name = p.name
                 const price = p.price
@@ -239,7 +239,7 @@ export default function OwnerAllPage() {
 
 function GridSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-4">
       {Array.from({ length: 8 }).map((_, i) => (
         <div key={i} className="rounded shadow-sm border bg-white overflow-hidden">
           <div className="aspect-[4/3] bg-gray-100 animate-pulse" />
@@ -253,3 +253,4 @@ function GridSkeleton() {
     </div>
   )
 }
+

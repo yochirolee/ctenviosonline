@@ -188,6 +188,7 @@
     "addToCart": "Add to Cart",
     "added": "Product added to the cart",
     "search": "Search product...",
+    "search_in_category": "Search in this category...",
     "login_required": "You must be logged in to add products to your cart.",
     "title": "Shopping Cart",
     "delete": "Remove",

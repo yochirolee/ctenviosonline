@@ -148,6 +148,7 @@ export type Dict = {
     addToCart: string
     added: string
     search: string
+    search_in_category: string
     login_required: string
     title: string
     delete: string

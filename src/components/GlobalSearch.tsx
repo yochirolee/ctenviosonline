@@ -31,6 +31,13 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
   const [results, setResults] = useState<SimplifiedProduct[]>([])
   const [open, setOpen] = useState(false)
 
+  const basePlaceholder =
+    dict?.cart?.search || (locale === 'en' ? 'Search product...' : 'Buscar producto...')
+
+  const [typedPh, setTypedPh] = useState<string>('')         // placeholder “escribiéndose”
+  const phTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+
   useEffect(() => {
     setOpen(false)
     setQ('')
@@ -66,15 +73,55 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
       if (timer.current) clearTimeout(timer.current)
     }
   }, [q, open, location, locale])
+    // Placeholder con efecto de tipeo
+    useEffect(() => {
+      // si el usuario está escribiendo, no animar
+      if (q.trim()) {
+        if (phTimerRef.current) clearInterval(phTimerRef.current)
+        setTypedPh('')
+        return
+      }
+  
+      // respetar "prefers-reduced-motion"
+      const reduce =
+        typeof window !== 'undefined' &&
+        window.matchMedia &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  
+      if (reduce) {
+        setTypedPh(basePlaceholder)
+        return
+      }
+  
+      // reset e inicia desde 0
+      if (phTimerRef.current) clearInterval(phTimerRef.current)
+      setTypedPh('')
+  
+      let i = 0
+      const speedMs = 45 // velocidad de tipeo (ms por letra)
+      phTimerRef.current = setInterval(() => {
+        i += 1
+        setTypedPh(basePlaceholder.slice(0, i))
+        if (i >= basePlaceholder.length && phTimerRef.current) {
+          clearInterval(phTimerRef.current)
+          phTimerRef.current = null
+        }
+      }, speedMs)
+  
+      return () => {
+        if (phTimerRef.current) clearInterval(phTimerRef.current)
+      }
+    }, [basePlaceholder, q])
+  
 
   const handleAdd = async (p: SimplifiedProduct) => {
     const isLoggedIn = await checkCustomerAuth()
     if (!isLoggedIn) {
       toast.error(
         dict?.cart?.login_required ||
-          (locale === 'en'
-            ? 'You must be logged in to add products to your cart.'
-            : 'Debes iniciar sesión para agregar productos.'),
+        (locale === 'en'
+          ? 'You must be logged in to add products to your cart.'
+          : 'Debes iniciar sesión para agregar productos.'),
         { position: 'bottom-center' }
       )
       router.push(`/${locale}/login`)
@@ -110,7 +157,7 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
             <input
               value={q}
               onChange={(e) => { setQ(e.target.value); setOpen(true) }}
-              placeholder={dict?.cart?.search || (locale === 'en' ? 'Search product...' : 'Buscar producto...')}
+              placeholder={typedPh || basePlaceholder}
               className="w-full outline-none text-base md:text-sm"
             />
             {q && (

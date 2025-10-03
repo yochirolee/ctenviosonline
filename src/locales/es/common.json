@@ -188,6 +188,7 @@
     "addToCart": "Agregar al carrito",
     "added": "Producto agregado al carrito",
     "search": "Buscar producto...",
+    "search_in_category": "Buscar en esta categoría...",
     "login_required": "Debes iniciar sesión para agregar productos al carrito.",
     "title": "Carrito de Compras",
     "delete": "Eliminar",

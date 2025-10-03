@@ -4,7 +4,7 @@ import { useCart } from '@/context/CartContext'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react' // + useRef
 import { checkCustomerAuth } from '@/lib/auth'
 import { getProductsByCategory, type DeliveryLocation } from '@/lib/products'
 import { useLocation } from '@/context/LocationContext'
@@ -24,6 +24,7 @@ type Dict = {
     addToCart: string
     added: string
     search: string
+    search_in_category: string
     login_required?: string
   }
   common?: { back: string }
@@ -51,24 +52,32 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
   const { addItem } = useCart()
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
-  const { location } = useLocation() // <-- quitamos clearLocation (no usado)
+  const { location } = useLocation()
+
+  // Placeholder animado (typewriter)
+  const basePlaceholder =
+    dict.cart?.search_in_category || (params.locale === 'en'
+      ? 'Search product in this category...'
+      : 'Buscar producto en esta categoría...')
+  const [typedPh, setTypedPh] = useState<string>('')
+  const phTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Items que se muestran en la UI (inicialmente los que vienen del server)
   const [items, setItems] = useState<Product[]>(products)
   const [loading, setLoading] = useState(false)
 
-  // Cuando cambia la ubicación, recargamos desde el backend con ?country=(...).
+  // Carga según ubicación
   useEffect(() => {
     let cancelled = false
     const load = async () => {
       try {
         setLoading(true)
         const list = await getProductsByCategory(
-                    params.category,
-                    location as DeliveryLocation | undefined,
-                    params.locale === 'en' ? 'en' : 'es' 
-                  )
-        if (!cancelled) setItems(list as Product[]) // <-- sin `any`
+          params.category,
+          location as DeliveryLocation | undefined,
+          params.locale === 'en' ? 'en' : 'es'
+        )
+        if (!cancelled) setItems(list as Product[])
       } catch {
         if (!cancelled) setItems(products)
       } finally {
@@ -78,6 +87,43 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
     load()
     return () => { cancelled = true }
   }, [params.category, params.locale, location?.country, location?.province, location?.municipality, location?.area_type, products])
+
+  // Typewriter del placeholder (se pausa si el usuario escribe)
+  useEffect(() => {
+    if (searchTerm.trim()) {
+      if (phTimerRef.current) clearInterval(phTimerRef.current)
+      setTypedPh('')
+      return
+    }
+
+    const reduce =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    if (reduce) {
+      setTypedPh(basePlaceholder)
+      return
+    }
+
+    if (phTimerRef.current) clearInterval(phTimerRef.current)
+    setTypedPh('')
+
+    let i = 0
+    const speedMs = 45
+    phTimerRef.current = setInterval(() => {
+      i += 1
+      setTypedPh(basePlaceholder.slice(0, i))
+      if (i >= basePlaceholder.length && phTimerRef.current) {
+        clearInterval(phTimerRef.current)
+        phTimerRef.current = null
+      }
+    }, speedMs)
+
+    return () => {
+      if (phTimerRef.current) clearInterval(phTimerRef.current)
+    }
+  }, [basePlaceholder, searchTerm])
 
   const handleAddToCart = async (product: Product) => {
     const isLoggedIn = await checkCustomerAuth()
@@ -148,7 +194,7 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
 
       <input
         type="search"
-        placeholder={dict.cart?.search || 'Search prod...'}
+        placeholder={typedPh || basePlaceholder} 
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         className="mb-4 w-full md:w-1/2 px-3 py-2 border rounded text-base"
@@ -159,7 +205,8 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
       ) : filteredProducts.length === 0 ? (
         <p className="text-gray-500">{dict.categories.noProducts || 'No products found.'}</p>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        // En pantallas grandes mostrar 6 productos
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-4">
           {filteredProducts.map((product) => (
             <article
               key={product.id}
