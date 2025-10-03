@@ -2670,9 +2670,12 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                       alt={item.title}
                       className="w-20 h-20 object-cover rounded-md border"
                     />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {displayTitle(item)}  <span className="text-gray-600">x{item.quantity}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900  flex items-baseline gap-2">
+                        <span className="truncate" title={displayTitle(item)}>
+                          {displayTitle(item)}
+                        </span>
+                        <span className="text-gray-600">x{item.quantity}</span>
                       </p>
                       {Number(item?.weight) > 0 && (
                         <p className="text-xs text-gray-500">

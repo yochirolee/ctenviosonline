@@ -275,18 +275,16 @@ export default function OrdersClient({ locale, dict }: { locale: string; dict: D
                   <div className="text-sm text-gray-600">
                     {o.created_at ? new Date(o.created_at).toLocaleString() : ''}
                   </div>
-                  <div className="text-sm text-gray-600">
-                    {dict.orders.method_label}: {o.payment_method || '—'}
-                  </div>
+                  
                 </div>
                 <div className="text-right">
                   <span
                     className={
                       'text-xs px-2 py-1 rounded ' +
                       (o.status === 'paid'
-                        ? 'bg-green-100 text-green-700'
+                        ?  'bg-yellow-100 text-yellow-700'
                         : o.status === 'pending'
-                          ? 'bg-yellow-100 text-yellow-700'
+                          ? 'bg-yellow-900 text-yellow-900'
                           : o.status === 'delivered'
                             ? 'bg-emerald-100 text-emerald-700'
                             : 'bg-red-100 text-red-700')
@@ -320,8 +318,11 @@ export default function OrdersClient({ locale, dict }: { locale: string; dict: D
                     ) : (
                       <div className="w-14 h-14 rounded border bg-gray-100" />
                     )}
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">
+                    <div className="flex-1 min-w-0">
+                    <div
+                        className="text-sm font-medium truncate"
+                        title={displayProductName(it)}
+                      >
                         {displayProductName(it)|| `${dict.orders.product_fallback} #${it.product_id}`}
                       </div>
                       <div className="text-xs text-gray-600">

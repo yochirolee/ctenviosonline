@@ -381,9 +381,9 @@ export default function OrderDetailClient({
               className={
                 'text-xs px-2 py-1 rounded ' +
                 (order.status === 'paid'
-                  ? 'bg-green-100 text-green-700'
+                  ? 'bg-yellow-100 text-yellow-700'
                   : order.status === 'pending'
-                    ? 'bg-yellow-100 text-yellow-700'
+                    ? 'bg-yellow-900 text-yellow-900'
                     : order.status === 'delivered'
                       ? 'bg-emerald-100 text-emerald-700'
                       : 'bg-red-100 text-red-700')
@@ -629,7 +629,6 @@ export default function OrderDetailClient({
       )}
 
       {/* Entrega */}
-      {/* Entrega */}
       {deliveredFlag && (
         <div className="bg-white border rounded">
           <div className="p-4 border-b font-semibold">{dict.order_detail.delivery_title}</div>
@@ -698,8 +697,8 @@ export default function OrderDetailClient({
                 ) : (
                   <div className="w-12 h-12 rounded border bg-gray-100" />
                 )}
-                <div className="flex-1">
-                  <div className="text-sm font-medium">
+                <div className="flex-1  min-w-0">
+                  <div className="text-sm font-medium line-clamp-2" title={itemTitle(it)}>
                     { itemTitle(it) || `${dict.order_detail.product_fallback} #${it.product_id}`}
                   </div>
                   <div className="text-xs text-gray-600">x{it.quantity}</div>
