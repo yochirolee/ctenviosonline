@@ -161,7 +161,7 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     [-ms-overflow-style:none] [scrollbar-width:none]
     [&::-webkit-scrollbar]:hidden
     [content-visibility:auto] [contain-intrinsic-size:360px]
-    [touch-action:pan-x] overscroll-x-contain
+    [touch-action:pan-x_pan-y] overscroll-x-contain
   `
 
   return (

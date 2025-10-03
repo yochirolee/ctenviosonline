@@ -9,7 +9,7 @@ import { computeAreaType } from '@/lib/cubaAreaType'
 import CardPaymentModal from '@/components/CardPaymentModal'
 import { useLocation } from '@/context/LocationContext'
 import { normalizeCubaProvince, normalizeCubaMunicipality } from '@/lib/cuLocations'
-import { ArrowLeft, CreditCard, Ship, Plane, PencilLine, Plus, X, UserRound } from "lucide-react"
+import { ArrowLeft, CreditCard, Ship, Plane, PencilLine, Plus, X, UserRound, AlertCircle, ShieldCheck } from "lucide-react"
 import { updateRecipient } from '@/lib/recipients'
 import {
   listRecipients,
@@ -374,7 +374,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     [items]
   )
 
- 
+
   const router = useRouter()
   const { locale } = useParams<{ locale: string }>()
   const { location } = useLocation() // <- fuente de verdad para CU/US (banner)
@@ -386,12 +386,12 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
   const displayTitle = useCallback((it: CartLine) => {
     if (locale === 'en') {
       return (it.title_en && it.title_en.trim())
-          || (it.metadata?.title_en && it.metadata.title_en.trim())
-          || it.title
+        || (it.metadata?.title_en && it.metadata.title_en.trim())
+        || it.title
     }
     return it.title
   }, [locale])
-  
+
 
   // ===== (NUEVO) Datos del comprador (perfil) =====
   const [buyer, setBuyer] = useState({
@@ -408,7 +408,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       const flag = sessionStorage.getItem('forceCreateRecipientForCountry') as 'CU' | 'US' | null
       if (!flag) return
       sessionStorage.removeItem('forceCreateRecipientForCountry')
-  
+
       setRecipientModalMode('create')
       if (flag === 'CU') {
         const prov = CU_PROVINCES.includes((location?.province ?? '') as CuProvince)
@@ -416,7 +416,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
           : CU_PROVINCES[0]
         const muns = CU_MUNS_BY_PROVINCE[prov]
         const mun = muns.includes(location?.municipality ?? '') ? (location!.municipality as string) : muns[0]
-  
+
         setRecipientDraft({
           country: 'CU',
           first_name: '', last_name: '',
@@ -438,7 +438,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       setShowRecipientModal(true)
     } catch { /* noop */ }
   }, [location?.province, location?.municipality])
-  
+
 
   // Precargar desde API del customer
   useEffect(() => {
@@ -2037,6 +2037,16 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     return () => { document.body.style.overflow = prev; };
   }, [showRecipientModal]);
 
+  const termsRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (attemptedPay && !acceptedTerms && termsRef.current) {
+      // Lleva al usuario a la sección y enfoca el checkbox
+      termsRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      const cb = document.getElementById('terms-checkbox') as HTMLInputElement | null
+      cb?.focus()
+    }
+  }, [attemptedPay, acceptedTerms])
 
   // ===== UI =====
   return (
@@ -2350,7 +2360,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                     <Plus className="h-5 w-5 text-emerald-700" />
                   </button>
 
-                  
+
                 </div>
               </div>
 
@@ -2531,8 +2541,29 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             </div>
           )}
 
+
+
+          {/* Desglose por owner */}
+          {shippingBreakdown.length > 0 && (
+            <div className="rounded-lg border bg-white p-3 text-sm">
+              <div className="font-medium mb-2">{dict.checkout.shipping_breakdown_title}</div>
+              <ul className="space-y-1">
+                {shippingBreakdown.map((b, i) => (
+                  <li key={i} className="flex justify-between">
+                    <span>
+                      {b.owner_name}{' '}
+                      {b.mode === 'by_weight'
+                        ? `${dict.checkout.shipping_breakdown_weight_pre}${b.weight_lb}${dict.checkout.shipping_breakdown_weight_post}`
+                        : ''}
+                    </span>
+                    <span>{fmt.format(b.shipping_cents / 100)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {/* Estado de cotización */}
-          <div className="pt-2 text-sm text-gray-600">
+          <div className="pt-2 text-sm font-medium text-black-600 rounded-lg border bg-white p-3 text-center">
             {quoting
               ? dict.checkout.quoting
               : (quoteOk === false
@@ -2553,26 +2584,6 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                   ))}
                 </ul>
               )}
-            </div>
-          )}
-
-          {/* Desglose por owner */}
-          {shippingBreakdown.length > 0 && (
-            <div className="rounded-lg border bg-white p-3 text-sm">
-              <div className="font-medium mb-2">{dict.checkout.shipping_breakdown_title}</div>
-              <ul className="space-y-1">
-                {shippingBreakdown.map((b, i) => (
-                  <li key={i} className="flex justify-between">
-                    <span>
-                      {b.owner_name}{' '}
-                      {b.mode === 'by_weight'
-                        ? `${dict.checkout.shipping_breakdown_weight_pre}${b.weight_lb}${dict.checkout.shipping_breakdown_weight_post}`
-                        : ''}
-                    </span>
-                    <span>{fmt.format(b.shipping_cents / 100)}</span>
-                  </li>
-                ))}
-              </ul>
             </div>
           )}
         </div>
@@ -2661,7 +2672,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                     />
                     <div>
                       <p className="text-sm font-medium text-gray-900">
-                      {displayTitle(item)}  <span className="text-gray-600">x{item.quantity}</span>
+                        {displayTitle(item)}  <span className="text-gray-600">x{item.quantity}</span>
                       </p>
                       {Number(item?.weight) > 0 && (
                         <p className="text-xs text-gray-500">
@@ -2714,9 +2725,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                 </span>
                 <span>{fmt.format(cardFeeCents / 100)}</span>
               </div>
-              <p className="text-xs text-gray-500">
-                {dict.checkout.card_fee_note}
-              </p>
+
 
               <div className="flex justify-between text-base font-semibold">
                 <span>{dict.checkout.total_with_card}</span>
@@ -2730,10 +2739,39 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       {/* ===== Términos ===== */}
       <div
         id="terms-container"
-        className={`rounded border bg-white p-4 ${attemptedPay && !acceptedTerms ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'
-          }`}
+        ref={termsRef}
+        className={[
+          "rounded-lg border p-4 shadow-sm focus:outline-none",
+          acceptedTerms
+            ? "bg-emerald-50 border-emerald-300"
+            : attemptedPay
+              ? "bg-red-50 border-red-500 ring-2 ring-red-500 animate-pulse"
+              : "bg-white border-gray-200"
+        ].join(" ")}
+        tabIndex={-1}
+        aria-live="polite"
       >
-        <label className="inline-flex items-start gap-2 text-sm text-gray-700">
+        {/* Cabecera visible */}
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className={acceptedTerms ? "text-emerald-600" : "text-gray-600"} size={18} />
+            <span className="text-sm font-semibold text-gray-900">
+              {locale === "en" ? "Terms & Conditions" : "Términos y Condiciones"}
+            </span>
+          </div>
+          <span
+            className={[
+              "rounded-full px-2 py-0.5 text-[11px] font-medium",
+              acceptedTerms
+                ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                : "bg-yellow-100 text-yellow-800 border border-yellow-300"
+            ].join(" ")}
+          >
+            {locale === "en" ? "Required" : "Obligatorio"}
+          </span>
+        </div>
+
+        <label htmlFor="terms-checkbox" className="inline-flex items-start gap-3 text-sm text-gray-900 cursor-pointer">
           <input
             id="terms-checkbox"
             type="checkbox"
@@ -2744,15 +2782,15 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             }}
             aria-invalid={attemptedPay && !acceptedTerms}
             aria-describedby="terms-error"
-            className="mt-1"
+            className="mt-0.5 h-5 w-5 accent-emerald-600"
           />
-          <span>
+          <span className="leading-5">
             {locale === 'en' ? 'I have read and accept the ' : 'He leído y acepto los '}
             <a
               href={`/${locale}/terms`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-emerald-700 underline"
+              className="text-emerald-700 underline font-medium"
             >
               {locale === 'en' ? 'Terms and Conditions' : 'Términos y Condiciones'}
             </a>
@@ -2761,17 +2799,19 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         </label>
 
         {attemptedPay && !acceptedTerms ? (
-          <p id="terms-error" className="mt-2 text-sm text-red-600">
+          <p id="terms-error" className="mt-3 text-sm text-red-700 flex items-center gap-2">
+            <AlertCircle size={16} />
             {locale === 'en'
               ? 'You must accept the Terms and Conditions to enable payment.'
               : 'Debes aceptar los Términos y Condiciones para habilitar el pago.'}
           </p>
         ) : (
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-2 text-xs text-gray-600">
             {locale === 'en' ? 'Required to continue.' : 'Obligatorio para continuar.'}
           </p>
         )}
       </div>
+
 
 
       {/* ===== 3) Pago ===== */}
