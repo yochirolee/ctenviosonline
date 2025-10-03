@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, usePathname } from 'next/navigation'
 import Image from 'next/image'
+import Link from 'next/link'
 import { Search, X } from 'lucide-react'
 import { useLocation } from '@/context/LocationContext'
 import { useCart } from '@/context/CartContext'
@@ -11,17 +12,13 @@ import { searchProducts, type DeliveryLocation, type SimplifiedProduct } from '@
 import { toast } from 'sonner'
 import type { Dict } from '@/types/Dict'
 
-/** Wrapper: decide si mostrar el buscador global.
- *  Solo usa usePathname (un hook) y nunca cambia el orden de hooks.
- */
 export default function GlobalSearch(props: { dict: Dict }) {
   const pathname = usePathname()
-  const isSearchPage = pathname?.split('/')[2] === 'search' // /es/search o /en/search
+  const isSearchPage = pathname?.split('/')[2] === 'search'
   if (isSearchPage) return null
   return <GlobalSearchInner {...props} />
 }
 
-/** Componente interno con todos los hooks de contexto/estado/efectos */
 function GlobalSearchInner({ dict }: { dict: Dict }) {
   const pathname = usePathname()
   const { locale } = useParams() as { locale: string }
@@ -35,7 +32,6 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    // al navegar, cierra y limpia
     setOpen(false)
     setQ('')
     setResults([])
@@ -46,7 +42,6 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
     [locale]
   )
 
-  // Debounce
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!open) return
@@ -57,11 +52,11 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
       setLoading(true)
       try {
         const rows = await searchProducts(
-                    term,
-                    location as DeliveryLocation | undefined,
-                    { limit: 12 },
-                    locale === 'en' ? 'en' : 'es'
-                  )
+          term,
+          location as DeliveryLocation | undefined,
+          { limit: 12 },
+          locale === 'en' ? 'en' : 'es'
+        )
         setResults(rows)
       } finally {
         setLoading(false)
@@ -77,15 +72,24 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
     if (!isLoggedIn) {
       toast.error(
         dict?.cart?.login_required ||
-          (locale === 'en' ? 'You must be logged in to add products to your cart.' : 'Debes iniciar sesión para agregar productos.'), { position: 'bottom-center' }
+          (locale === 'en'
+            ? 'You must be logged in to add products to your cart.'
+            : 'Debes iniciar sesión para agregar productos.'),
+        { position: 'bottom-center' }
       )
       router.push(`/${locale}/login`)
     } else {
       try {
         await addItem(Number(p.id), 1)
-        toast.success(`${dict?.cart?.added || (locale === 'en' ? 'Product added to the cart' : 'Producto agregado al carrito')}`, { position: 'bottom-center' })
+        toast.success(
+          `${dict?.cart?.added || (locale === 'en' ? 'Product added to the cart' : 'Producto agregado al carrito')}`,
+          { position: 'bottom-center' }
+        )
       } catch {
-        toast.error(locale === 'en' ? 'Error adding to cart' : 'Error agregando al carrito', { position: 'bottom-center' })
+        toast.error(
+          locale === 'en' ? 'Error adding to cart' : 'Error agregando al carrito',
+          { position: 'bottom-center' }
+        )
       }
     }
   }
@@ -110,11 +114,14 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
               className="w-full outline-none text-base md:text-sm"
             />
             {q && (
-              <button onClick={() => { setQ(''); setResults([]) }} className="p-1 text-gray-500 hover:text-gray-700" aria-label="Clear">
+              <button
+                onClick={() => { setQ(''); setResults([]) }}
+                className="p-1 text-gray-500 hover:text-gray-700"
+                aria-label="Clear"
+              >
                 <X className="w-4 h-4" />
               </button>
             )}
-            {/* Botón “Ver todos” */}
             <button
               onClick={onSeeAll}
               className="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
@@ -124,7 +131,6 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
             </button>
           </div>
 
-          {/* Dropdown */}
           {open && (q || loading) && (
             <div className="absolute z-40 mt-2 w-full bg-white border rounded-xl shadow-lg p-2">
               {loading ? (
@@ -139,7 +145,14 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
                 <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[60vh] overflow-auto">
                   {results.map((p) => (
                     <li key={p.id} className="border rounded-lg overflow-hidden bg-white flex">
-                      <div className="w-20 h-20 bg-gray-50 flex-shrink-0 relative">
+                      {/* Imagen clickeable → detalle */}
+                      <Link
+                        href={`/${locale}/product/${p.id}`}
+                        prefetch={false}
+                        className="w-20 h-20 bg-gray-50 flex-shrink-0 relative"
+                        title={p.name}
+                        aria-label={p.name}
+                      >
                         <Image
                           src={p.imageSrc}
                           alt={p.name}
@@ -147,12 +160,20 @@ function GlobalSearchInner({ dict }: { dict: Dict }) {
                           height={80}
                           className="w-full h-full object-cover"
                         />
-                      </div>
-                      <div className="p-2 flex flex-col grow">
-                        <h4 className="text-sm font-semibold text-gray-900 line-clamp-2">{p.name}</h4>
+                      </Link>
+
+                      <div className="p-2 flex flex-col grow min-w-0">
+                        {/* Título clickeable → detalle */}
+                        <Link href={`/${locale}/product/${p.id}`} prefetch={false} className="block">
+                          <h4 className="text-sm font-semibold text-gray-900 line-clamp-2 hover:underline" title={p.name}>
+                            {p.name}
+                          </h4>
+                        </Link>
+
                         {p.description ? (
                           <p className="text-[11px] text-gray-600 line-clamp-1">{p.description}</p>
                         ) : <span className="h-[14px]" />}
+
                         <div className="mt-auto flex items-center gap-2">
                           <span className="text-green-700 font-semibold text-sm">{fmt.format(p.price)}</span>
                           <button

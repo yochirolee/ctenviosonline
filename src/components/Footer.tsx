@@ -76,9 +76,9 @@ const Footer: React.FC<{ dict: Dict; mode?: 'full' | 'legal' }> = ({ dict, mode 
   const nav = dict.nav;
 
   return (
-    <footer className="bg-emerald-900 text-white border-t border-emerald-700/40 shadow-inner shadow-emerald-900/10">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+    <footer className="bg-emerald-900 text-white border-t border-emerald-700/40 shadow-inner shadow-emerald-900/10 [overflow-anchor:none]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 md:py-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Marca */}
           <div>
             <Link href={`/${locale}`} className="flex items-center gap-3">
@@ -103,7 +103,7 @@ const Footer: React.FC<{ dict: Dict; mode?: 'full' | 'legal' }> = ({ dict, mode 
           {/* Enlaces rápidos */}
           {mode === "full" ? (
             <div>
-              <h4 className="text-base sm:text-lg font-semibold mb-3 text-white"> {f.quickLinksTitle} </h4>
+              <h4 className="text-base sm:text-lg font-semibold mb-2 text-white"> {f.quickLinksTitle} </h4>
               <ul className="text-sm space-y-2">
                 {Object.keys(nav).map((key) => (
                   <li key={key}>
@@ -124,7 +124,7 @@ const Footer: React.FC<{ dict: Dict; mode?: 'full' | 'legal' }> = ({ dict, mode 
                   </Link>
                 </li>
               </ul>
-              <div className="mt-3">
+              <div className="mt-2">
                 <Link
                   href={`/${locale}/terms`}
                   className="text-sm text-white/90 hover:text-emerald-300 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 rounded"
@@ -138,8 +138,8 @@ const Footer: React.FC<{ dict: Dict; mode?: 'full' | 'legal' }> = ({ dict, mode 
           )}
 
           {/* Contacto */}
-          <div id="contact">
-            <h4 className="text-base sm:text-lg font-semibold mb-3 text-white">{f.contactTitle}</h4>
+          <div id="contact" className="[overflow-anchor:none]">
+            <h4 className="text-base sm:text-lg font-semibold mb-2 text-white">{f.contactTitle}</h4>
             <div className="flex flex-col gap-2 text-sm">
               <a
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(footerDetails.Address)}`}
@@ -167,7 +167,7 @@ const Footer: React.FC<{ dict: Dict; mode?: 'full' | 'legal' }> = ({ dict, mode 
             </div>
 
             {/* Socials */}
-            <div className="mt-5 flex items-center gap-3">
+            <div className="mt-4 flex items-center gap-3">
               {Object.keys(footerDetails.socials).map((platformName) => {
                 const url = footerDetails.socials[platformName as keyof typeof footerDetails.socials];
                 return (
@@ -188,7 +188,7 @@ const Footer: React.FC<{ dict: Dict; mode?: 'full' | 'legal' }> = ({ dict, mode 
         </div>
 
         {/* Legal */}
-        <div className="mt-8 pt-6 border-t border-emerald-800/40 text-center text-white/80 text-xs">
+        <div className="mt-4 pt-6 border-t border-emerald-700/40 text-center text-white/80 text-xs">
           &copy; {new Date().getFullYear()} {siteDetails.siteName2}. {f.copyright} {f.madeby}
         </div>
       </div>
