@@ -99,11 +99,11 @@ export default function OwnersShowcase({ dict: _dict }: { dict: AppDict }) {
 
   return (
     <section className="bg-white">
-      <div className="px-4 md:px-12 lg:px-20 pt-4 pb-2">
-        <h2 className="text-lg md:text-xl font-bold text-gray-900">{t.title}</h2>
+      <div className="px-4 md:px-12 lg:px-12 pt-4 pb-3">
+        <h2 className="text-lg md:text-xl font-bold text-gray-900 text-center">{t.title}</h2>
       </div>
 
-      <div className="px-4 md:px-12 lg:px-20 pb-6">
+      <div className="px-4 md:px-12 lg:px-12 pb-6">
         {loading ? (
           <SkeletonGrid />
         ) : groups.length === 0 ? (
@@ -111,7 +111,7 @@ export default function OwnersShowcase({ dict: _dict }: { dict: AppDict }) {
         ) : (
           /* Contenedor centrado: móvil 1 col, tablet 2 col, desktop 3 col si hay espacio */
           <div className="mx-auto max-w-screen-2xl">
-            <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+            <div className="flex flex-wrap justify-center gap-4 md:gap-4 lg:gap-4 xl:gap-6">
               {groups.map((g) => (
                 <OwnerPanel
                   key={g.owner_id}
@@ -149,9 +149,12 @@ function OwnerPanel({
     /* Anchos fijos responsivos → determinan columnas y permiten centrar última fila */
     <div className="
       w-full
-      md:w-[360px]
-      lg:w-[380px]
-      xl:w-[400px]
+      md:w-[320px]
+      lg:w-[296px]
+      min-[1120px]:w-[328px]  
+      min-[1190px]:w-[344px]  
+      xl:w-[360px]
+      2xl:w-[400px]
       rounded-2xl border border-emerald-100 bg-emerald-50 p-4
       shadow-[0_1px_0_rgba(16,185,129,0.1)]
     ">
@@ -245,7 +248,13 @@ function SkeletonGrid() {
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="w-full md:w-[360px] lg:w-[380px] xl:w-[400px] rounded-2xl border border-emerald-100 bg-emerald-50 p-4"
+            className="w-full
+              md:w-[320px] lg:w-[296px]
+              min-[1120px]:w-[328px]
+              min-[1190px]:w-[344px]
+              xl:w-[360px]
+              2xl:w-[400px]
+             rounded-2xl border border-emerald-100 bg-emerald-50 p-4"
           >
             <div className="h-5 w-40 bg-emerald-100/60 animate-pulse rounded mb-3 mx-auto" />
             <div className="grid grid-cols-2 gap-3">
