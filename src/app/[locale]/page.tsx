@@ -1,12 +1,10 @@
 import { getDictionary } from '@/lib/dictionaries'
 import HeroSection from '../../components/HeroSection'
-//import AboutSection from '../../components/AboutSection'
-//import FAQSection from '../../components/FAQSection'
 import Footer from '../../components/Footer'
 import type { Dict } from '@/types/Dict'
 import ProductsSpotlight from '@/components/ProductsSpotlight'
 import BestSellers from '@/components/BestSellers'
-import BestSellersPromo from '@/components/BestSellersPromo'
+//import BestSellersPromo from '@/components/BestSellersPromo'
 import ContinueAndBuyAgain from '@/components/ContinueAndBuyAgain'
 
 export default async function Home({
@@ -20,7 +18,7 @@ export default async function Home({
   return (
     <div className="flex flex-col min-h-screen">      
       <HeroSection dict={dict} />
-      <BestSellersPromo dict={dict} />
+      {/* <BestSellersPromo dict={dict} /> */}
       <ProductsSpotlight dict={dict} />
       <BestSellers dict={dict} />
       <ContinueAndBuyAgain dict={dict} />      

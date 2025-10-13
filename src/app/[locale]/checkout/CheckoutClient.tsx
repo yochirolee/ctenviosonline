@@ -159,8 +159,6 @@ function setupMobileCrashCapture(): void {
   });
 }
 
-
-// ---- Polyfill CustomEvent (por si algún WebView iOS falla) ----
 // ---- Polyfill + helper para CustomEvent en iOS WebViews ----
 (function () {
   if (typeof window === 'undefined') return;
@@ -210,32 +208,56 @@ function isInAppBrowserUA(ua: string) {
 }
 
 // ===== helpers =====
-function buildQuoteErrorMsg({
-  province,
-  municipality,
-  unavailable,
-}: {
-  province?: string
-  municipality?: string
-  unavailable?: Array<{ owner_id?: number | null; owner_name?: string }>
-}) {
+function buildQuoteErrorMsg(
+  {
+    province,
+    municipality,
+    unavailable,
+  }: {
+    province?: string
+    municipality?: string
+    unavailable?: Array<{ owner_id?: number | null; owner_name?: string }>
+  },
+  locale: string = 'es'
+) {
   const loc = [municipality, province].filter(Boolean).join(', ')
   const names = (unavailable || []).map(u => (u?.owner_name || '').trim()).filter(Boolean)
-  if (names.length === 1) {
+
+  const t = (single: boolean) => {
+    if (locale === 'en') {
+      if (single) {
+        return loc
+          ? (name: string) => `Items from provider ${name} cannot be delivered to ${loc}. Change the destination or remove those items to continue.`
+          : (name: string) => `Items from provider ${name} cannot be delivered to the selected destination. Change the destination or remove those items to continue.`
+      }
+      return loc
+        ? (list: string) => `Items from providers ${list} cannot be delivered to ${loc}. Change the destination or remove those items to continue.`
+        : (list: string) => `Items from providers ${list} cannot be delivered to the selected destination. Change the destination or remove those items to continue.`
+    }
+    // es (default)
+    if (single) {
+      return loc
+        ? (name: string) => `Los productos del proveedor ${name} no pueden entregarse en ${loc}. Cambia la localidad o elimina esos productos para continuar.`
+        : (name: string) => `Los productos del proveedor ${name} no pueden entregarse en la localidad seleccionada. Cambia la localidad o elimina esos productos para continuar.`
+    }
     return loc
-      ? `Los productos del proveedor ${names[0]} no pueden entregarse en ${loc}. Cambia la localidad o elimina esos productos para continuar.`
-      : `Los productos del proveedor ${names[0]} no pueden entregarse en la localidad seleccionada. Cambia la localidad o elimina esos productos para continuar.`
+      ? (list: string) => `Los productos de los proveedores ${list} no pueden entregarse en ${loc}. Cambia la localidad o elimina esos productos para continuar.`
+      : (list: string) => `Los productos de los proveedores ${list} no pueden entregarse en la localidad seleccionada. Cambia la localidad o elimina esos productos para continuar.`
   }
-  if (names.length > 1) {
-    const list = names.join(', ')
+
+  if (names.length === 1) return t(true)(names[0])
+  if (names.length > 1) return t(false)(names.join(', '))
+
+  if (locale === 'en') {
     return loc
-      ? `Los productos de los proveedores ${list} no pueden entregarse en ${loc}. Cambia la localidad o elimina esos productos para continuar.`
-      : `Los productos de los proveedores ${list} no pueden entregarse en la localidad seleccionada. Cambia la localidad o elimina esos productos para continuar.`
+      ? `Some cart items cannot be delivered to ${loc}. Change the destination or remove those items to continue.`
+      : `Some cart items cannot be delivered to the selected destination. Change the destination or remove those items to continue.`
   }
   return loc
     ? `Algunos productos del carrito no pueden entregarse en ${loc}. Cambia la localidad o elimina esos productos para continuar.`
     : `Algunos productos del carrito no pueden entregarse en la localidad seleccionada. Cambia la localidad o elimina esos productos para continuar.`
 }
+
 
 const LS_CU_TRANSPORT = 'checkout_cu_transport';
 
@@ -282,13 +304,15 @@ type ShippingQuoteInputUS = {
 
 type ShippingQuoteInput = ShippingQuoteInputCU | ShippingQuoteInputUS;
 
-function buildAvailabilityErrorMsg(unavailable: UnavailableLine[], locLabel?: string) {
+function buildAvailabilityErrorMsg(unavailable: UnavailableLine[], locLabel?: string, locale: string = 'es') {
   if (!Array.isArray(unavailable) || unavailable.length === 0) {
-    return 'Hay productos sin disponibilidad. Modifica el carrito para continuar.'
+    return locale === 'en'
+      ? 'Some items are unavailable. Update your cart to continue.'
+      : 'Hay productos sin disponibilidad. Modifica el carrito para continuar.'
   }
   const byOwner: Record<string, { title: string; requested?: number; available?: number }[]> = {}
   for (const u of unavailable) {
-    const key = (u.owner_name || 'Proveedor').trim()
+    const key = (u.owner_name || (locale === 'en' ? 'Provider' : 'Proveedor')).trim()
     if (!byOwner[key]) byOwner[key] = []
     byOwner[key].push({ title: u.title, requested: u.requested, available: u.available })
   }
@@ -297,11 +321,14 @@ function buildAvailabilityErrorMsg(unavailable: UnavailableLine[], locLabel?: st
       const rq = Number.isFinite(l.requested) ? Number(l.requested) : undefined
       const av = Number.isFinite(l.available) ? Number(l.available) : undefined
       const q = (typeof rq === 'number' && typeof av === 'number')
-        ? ` (pediste ${rq}, quedan ${av})` : ''
+        ? (locale === 'en' ? ` (you requested ${rq}, left ${av})` : ` (pediste ${rq}, quedan ${av})`)
+        : ''
       return `• ${l.title}${q}`
     }).join('\n')
-    const locText = locLabel ? ` en ${locLabel}` : ''
-    return `Los productos de ${owner} no pueden entregarse${locText}:\n${prods}`
+    const locText = locLabel ? (locale === 'en' ? ` in ${locLabel}` : ` en ${locLabel}`) : ''
+    return locale === 'en'
+      ? `Items from ${owner} cannot be delivered${locText}:\n${prods}`
+      : `Los productos de ${owner} no pueden entregarse${locText}:\n${prods}`
   })
   return parts.join('\n\n')
 }
@@ -1090,11 +1117,15 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             : []
           setQuoteOk(false)
           const errMsg =
-            buildQuoteErrorMsg({
-              province: provinceArg,
-              municipality: municipalityArg,
-              unavailable: u,
-            }) + (serverMsg ? `\n${serverMsg}` : '')
+            buildQuoteErrorMsg(
+              {
+                province: provinceArg,
+                municipality: municipalityArg,
+                unavailable: u,
+              },
+              locale
+            ) + (serverMsg ? `\n${serverMsg}` : '')
+
           setQuoteError(errMsg)
           setUnavailableOwners(u)
           setShippingQuoteCents(0)
@@ -1108,11 +1139,15 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
             : []
           setQuoteOk(false)
           const errMsg =
-            buildQuoteErrorMsg({
-              province: provinceArg,
-              municipality: municipalityArg,
-              unavailable: u,
-            }) + (serverMsg ? `\n${serverMsg}` : '')
+            buildQuoteErrorMsg(
+              {
+                province: provinceArg,
+                municipality: municipalityArg,
+                unavailable: u,
+              },
+              locale
+            ) + (serverMsg ? `\n${serverMsg}` : '')
+
           setQuoteError(errMsg)
           setUnavailableOwners(u)
           setShippingQuoteCents(0)
@@ -1240,13 +1275,18 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       return
     }
     if (quoting || (readyToQuote && quoteOk !== true)) {
-      toast.error(quoteError || 'Hay productos que no se pueden entregar a esa dirección.', { position: 'bottom-center' })
+      toast.error(quoteError || (locale === 'en'
+        ? 'There are items that cannot be delivered to that address.'
+        : 'Hay productos que no se pueden entregar a esa dirección.'
+      ), { position: 'bottom-center' })
+      
       return
     }
 
     const token = localStorage.getItem('token')
     if (!token) {
-      toast.error('Inicia sesión para continuar')
+      toast.error(locale === 'en' ? 'Log in to continue' : 'Inicia sesión para continuar')
+
       return
     }
 
@@ -1268,7 +1308,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                 ? [location?.municipality, location?.province].filter(Boolean).join(', ')
                 : [formData.city, formData.state, formData.zip].filter(Boolean).join(', ')))
 
-        toast.error(buildAvailabilityErrorMsg(Array.isArray(vdata?.unavailable) ? (vdata.unavailable as UnavailableLine[]) : [], locLabel), { position: 'bottom-center' })
+        toast.error(buildAvailabilityErrorMsg(Array.isArray(vdata?.unavailable) ? (vdata.unavailable as UnavailableLine[]) : [], locLabel,
+          locale), { position: 'bottom-center' })
         return
       }
     } catch {
@@ -1355,7 +1396,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       setDirectSession({ id: String((data as Record<string, unknown>).sessionId), amount: Number((data as Record<string, unknown>).amount || 0) })
       setShowCardModal(true)
     } catch (e: unknown) {
-      toast.error(getErrorMessage(e, 'Error iniciando el pago directo.'))
+      toast.error(getErrorMessage(e, locale === 'en' ? 'Error starting direct payment.' : 'Error iniciando el pago directo.'))
     } finally {
       setStartingDirect(false)
     }
@@ -1372,7 +1413,8 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     if (!directSession) return
     const token = localStorage.getItem('token')
     if (!token) {
-      toast.error('Inicia sesión para continuar')
+      toast.error(locale === 'en' ? 'Log in to continue' : 'Inicia sesión para continuar')
+
       return
     }
 
@@ -1397,12 +1439,12 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       if (!r.ok || !data?.ok || (data as Record<string, unknown>).paid !== true) {
         const msg = (typeof data === 'object' && data && typeof (data as Record<string, unknown>).message === 'string')
           ? String((data as Record<string, unknown>).message)
-          : 'El pago fue rechazado.'
+          : (locale === 'en' ? 'The payment was rejected.' : 'El pago fue rechazado.')
         toast.error(msg)
         return
       }
 
-      toast.success('¡Pago aprobado! Creando orden…')
+      toast.success(locale === 'en' ? 'Payment approved! Creating order…' : '¡Pago aprobado! Creando orden…')
       setShowCardModal(false)
 
       await clearCart()
@@ -1410,11 +1452,12 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       const sid = (typeof rec.sessionId === 'string' || typeof rec.sessionId === 'number') ? rec.sessionId : directSession.id
       window.location.assign(`/${locale}/checkout/success?sessionId=${sid}`)
     } catch (e: unknown) {
-      toast.error(getErrorMessage(e, 'Error procesando el pago.'))
+      toast.error(getErrorMessage(e, locale === 'en' ? 'Error processing the payment.' : 'Error procesando el pago.'), { position: 'bottom-center' })
     } finally {
       setCardPaying(false)
     }
   }
+
 
   const goToRecipientSelect = () => {
     const el = document.getElementById('recipient_select') as HTMLSelectElement | null
@@ -2109,20 +2152,13 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
 
       {/* ===== Billing (Buyer) ===== */}
-      <h2 className="text-2xl font-bold">
-        {locale === 'en' ? 'Billing information' : 'Datos de facturación'}
-      </h2>
+
 
       <div className="rounded-xl border bg-white shadow-sm">
         <div className="border-b px-4 py-3 sm:px-6">
           <h3 className="text-base font-semibold text-gray-800">
-            {locale === 'en' ? 'Billing contact (will receive the receipt)' : 'Contacto de facturación (recibe el comprobante)'}
+            {locale === 'en' ? 'Contact' : 'Contacto'}
           </h3>
-          <p className="mt-0.5 text-xs text-gray-500">
-            {locale === 'en'
-              ? 'Prefilled from your profile.'
-              : 'Precargado desde tu perfil.'}
-          </p>
         </div>
 
         {/* Cuerpo de la card (como en Shipping) */}
@@ -2272,8 +2308,6 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
 
 
       {/* ===== 1) Datos de envío ===== */}
-      <h2 className="text-2xl font-bold">{dict.checkout.shipping}</h2>
-
       <div className="rounded-xl border bg-white shadow-sm">
         {/* Cabecera visual */}
         <div className="border-b px-4 py-3 sm:px-6">
@@ -2540,9 +2574,6 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
               </fieldset>
             </div>
           )}
-
-
-
           {/* Desglose por owner */}
           {shippingBreakdown.length > 0 && (
             <div className="rounded-lg border bg-white p-3 text-sm">
@@ -2590,7 +2621,6 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       </div>
 
       {/* ===== 2) Resumen ===== */}
-      <h1 className="text-2xl font-bold">{dict.checkout.title}</h1>
       <div className="rounded-xl border bg-white shadow-sm">
         <div className="border-b px-4 py-3 sm:px-6">
           <h3 className="text-base font-semibold text-gray-800">{dict.checkout.title}</h3>
