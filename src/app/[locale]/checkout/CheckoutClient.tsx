@@ -23,6 +23,8 @@ import {
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 const CARD_FEE_PCT = Number(process.env.NEXT_PUBLIC_CARD_FEE_PCT ?? '3')
 const FEE_RATE = Number.isFinite(CARD_FEE_PCT) ? CARD_FEE_PCT / 100 : 0
+const THREE_DS_ENABLED =
+  (process.env.NEXT_PUBLIC_3DS_ENABLED ?? 'true').toLowerCase() !== 'false';
 
 // --- Estados Unidos ---
 const US_STATES = [
@@ -221,13 +223,6 @@ function loadThreeDSScript(): Promise<void> {
 
     document.head.appendChild(s);
   });
-}
-
-// ---- Captura de errores en móvil (verás toasts + logs en consola) ----
-declare global {
-  interface Window {
-    __crashHooked?: boolean;
-  }
 }
 
 function setupMobileCrashCapture(): void {
@@ -1572,12 +1567,14 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       }
 
       setDirectSession({ id: String((data as Record<string, unknown>).sessionId), amount: Number((data as Record<string, unknown>).amount || 0) })
-      try {
-        await fetch(`${API_URL}/payments-direct/bmspay/3ds/creds`, {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } catch { /* noop: el backend ya reintenta y cachea */ }
+      if (THREE_DS_ENABLED) {
+        try {
+          await fetch(`${API_URL}/payments-direct/bmspay/3ds/creds`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch { /* noop: el backend ya reintenta y cachea */ }
+      }
       setShowCardModal(true)
     } catch (e: unknown) {
       toast.error(getErrorMessage(e, locale === 'en' ? 'Error starting direct payment.' : 'Error iniciando el pago directo.'))
@@ -1602,6 +1599,61 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     }
 
     setCardPaying(true)
+
+    // ⬇️ PÉGALO DENTRO DE handleSubmitCard, justo después de setCardPaying(true)
+    if (!THREE_DS_ENABLED) {
+      try {
+        const r = await fetch(`${API_URL}/payments-direct/bmspay/sale`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            sessionId: directSession.id,
+            amount: directSession.amount,
+            cardNumber: p.cardNumber.replace(/\s+/g, ''),
+            expMonth: p.expMonth,
+            expYear: p.expYear,
+            cvn: p.cvn,
+            zipCode: p.zipCode,
+            nameOnCard: p.nameOnCard,
+            // 3DS desactivado → enviamos “como no 3DS”
+            secureData: null,
+            secureTransactionId: null,
+            threeDSStatus: 'U' as ThreeDSStatus,
+            eci: undefined,
+          }),
+        });
+
+        type SaleResp = { ok: boolean; paid: boolean; sessionId?: string | number; message?: string };
+        const data = (await r.json().catch(() => null)) as SaleResp | null;
+
+        if (!r.ok || !data || data.ok !== true || data.paid !== true) {
+          const msg = (data && typeof data.message === 'string')
+            ? data.message
+            : (locale === 'en' ? 'The payment was rejected.' : 'El pago fue rechazado.');
+          toast.error(msg);
+          return;
+        }
+
+        // === Éxito ===
+        toast.success(locale === 'en' ? 'Payment approved! Creating order…' : '¡Pago aprobado! Creando orden…');
+        setShowCardModal(false);
+
+        await clearCart();
+        const sid =
+          (typeof data.sessionId === 'string' || typeof data.sessionId === 'number')
+            ? String(data.sessionId)
+            : String(directSession.id);
+
+        window.location.assign(`/${locale}/checkout/success?sessionId=${sid}`);
+      } catch (e) {
+        console.error('[PAY NO-3DS] ERROR', e);
+        toast.error(locale === 'en' ? 'We couldn’t process your payment. Please try again.' : 'No pudimos procesar el pago. Intenta de nuevo.');
+      } finally {
+        setCardPaying(false);
+      }
+      return; // ⬅️ muy importante: salimos de la función
+    }
+
 
     let secureData: string | null = null
     let secureTransactionId: string | null = null
@@ -1688,9 +1740,11 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       }
 
       // 2) Librería
-      await loadThreeDSScript()
-      if (!window.ThreeDS) {
-        throw new Error(locale === 'en' ? '3DS library missing.' : 'No se pudo cargar la librería 3DS.')
+      if (THREE_DS_ENABLED) {
+        await loadThreeDSScript();
+        if (!window.ThreeDS) {
+          throw new Error(locale === 'en' ? '3DS library missing.' : 'No se pudo cargar la librería 3DS.')
+        }
       }
 
       // 3) Form oculto
