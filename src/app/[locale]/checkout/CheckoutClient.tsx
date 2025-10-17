@@ -174,8 +174,9 @@ declare global {
   }
 }
 
-const THREE_DS_SCRIPT = process.env.NEXT_PUBLIC_3DS_SCRIPT_URL
-  ?? 'https://cdn.3dsintegrator.com/threeds.2.2.20231219.min.js';
+const THREE_DS_SCRIPT =
+  process.env.NEXT_PUBLIC_3DS_SCRIPT_URL?.trim() ||
+  'https://cdn.3dsintegrator.com/threeds.2.2.20231219.min.js';
 
 const THREE_DS_ENDPOINT = process.env.NEXT_PUBLIC_3DS_ENDPOINT
   ?? 'https://api-sandbox.3dsintegrator.com/v2.2'; // prod: https://api.3dsintegrator.com/v2.2
@@ -185,13 +186,11 @@ function loadThreeDSScript(): Promise<void> {
     if (typeof window === 'undefined') { reject(new Error('no-window')); return; }
 
     // Usa ENV o fallback conocido
-    const src =
-      process.env.NEXT_PUBLIC_3DS_SCRIPT_URL?.trim() ||
-      'https://cdn.3dsintegrator.com/threeds.2.2.20231219.min.js';
+    const src = THREE_DS_SCRIPT;
 
     // ¿ya cargado?
     const existing = document.querySelector<HTMLScriptElement>('script[data-3ds-lib="1"]');
-    if (existing && (window as any).ThreeDS) { resolve(); return; }
+    if (existing && window.ThreeDS) { resolve(); return; }
 
     const s = document.createElement('script');
     s.src = src;
@@ -207,13 +206,16 @@ function loadThreeDSScript(): Promise<void> {
 
     s.onload = () => {
       clearTimeout(t);
-      if ((window as any).ThreeDS) return resolve();
+      if (window.ThreeDS) return resolve();
       reject(new Error('3DS library loaded pero window.ThreeDS no está presente'));
     };
 
-    s.onerror = (e) => {
+    s.onerror = (e: Event | string) => {
       clearTimeout(t);
-      const detail = (e && (e as any).message) ? (e as any).message : '';
+      const detail =
+        typeof e === 'string'
+          ? e
+          : (e instanceof ErrorEvent ? e.message : '');
       reject(new Error(`No se pudo cargar la librería 3DS (${src}) ${detail ? '→ ' + detail : ''}`));
     };
 
@@ -1715,7 +1717,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       document.body.appendChild(form);
 
       // 4) Instancia tipada
-      const ThreeDSCtor = window.ThreeDS as ThreeDSConstructor;
+      const ThreeDSCtor = window.ThreeDS!;
       const tds: ThreeDSInstance = new ThreeDSCtor(
         FORM_ID,
         credJson.apiKey,
@@ -1731,7 +1733,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       );
 
       // 5) verify() con tolerancia a “not enrolled”
-      let verifyOk = false;
+
       try {
         await new Promise<void>((resolve, reject) => {
           tds.verify(
@@ -1741,7 +1743,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
               lastEci = res?.eci;
               secureData = res?.authenticationValue || res?.cavv || null;
               secureTransactionId = res?.dsTransId || null;
-              verifyOk = true;
+
               resolve();
             },
             (err: ThreeDSError) => {
@@ -1754,18 +1756,17 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
           );
         });
       } catch (e) {
-        // ⬇️ Si es el caso típico de “not enrolled”, continuamos sin 3DS
         if (isNotEnrolled3DSError(e)) {
-          lastStatus = 'U';         // “Unable / Not enrolled”
+          lastStatus = 'U';
           lastEci = undefined;
           secureData = null;
           secureTransactionId = null;
-          verifyOk = false;         // no hubo verificación exitosa, pero seguimos
+
         } else {
-          // error real (timeout/red, etc.) → propaga para mostrar mensaje friendly
           throw e;
         }
       }
+
 
       // 6) Reglas por estado (incluye fallback ‘U’)
       if (lastStatus === 'Y') {
