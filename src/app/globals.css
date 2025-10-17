@@ -140,3 +140,13 @@
   }
 }
 .no-anchor { overflow-anchor: none; }
+
+#uniqueThreeDSiframe {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  border: 0 !important;
+  z-index: 2147483647 !important;
+  background: #fff !important;
+}

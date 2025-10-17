@@ -115,6 +115,112 @@ export const CU_MUNS_BY_PROVINCE: Record<CuProvince, readonly string[]> = {
   'Isla de la Juventud': ['Isla de la Juventud'],
 };
 
+// ===== 3DS: tipos y helper para cargar script =====
+type ThreeDSStatus = 'Y' | 'A' | 'N' | 'R' | 'U' | 'C' | string;
+
+interface ThreeDSVerificationResult {
+  status?: ThreeDSStatus;
+  eci?: string;
+  authenticationValue?: string; // CAVV
+  cavv?: string;
+  dsTransId?: string;
+}
+
+interface ThreeDSError {
+  error?: string;
+  message?: string;
+  code?: string | number;
+}
+
+interface ThreeDSVerifyOptions {
+  amount: number;
+}
+
+interface ThreeDSInstance {
+  threeDsTransactionId: string | null;
+  verify: (
+    resolve: (resp: ThreeDSVerificationResult) => void,
+    reject: (err: ThreeDSError) => void,
+    opts: ThreeDSVerifyOptions
+  ) => void;
+}
+
+interface ThreeDSOptions {
+  endpoint?: string;
+  autoSubmit?: boolean;
+  showChallenge?: boolean;
+  forcedTimeout?: string | number;
+  verbose?: boolean;
+  iframeId?: string;
+  // callbacks opcionales si NO usas verify()
+  resolve?: (resp: ThreeDSVerificationResult) => void;
+  reject?: (err: ThreeDSError) => void;
+}
+
+type ThreeDSConstructor = new (
+  formId: string,
+  apiKey: string,
+  token: string | null,
+  options?: ThreeDSOptions,
+  cb?: (result: ThreeDSVerificationResult) => void
+) => ThreeDSInstance;
+
+declare global {
+  interface Window {
+    ThreeDS?: ThreeDSConstructor;
+    __last3DSStatus?: ThreeDSStatus;
+    __last3DSEci?: string;
+    __crashHooked?: boolean;
+  }
+}
+
+const THREE_DS_SCRIPT = process.env.NEXT_PUBLIC_3DS_SCRIPT_URL
+  ?? 'https://cdn.3dsintegrator.com/threeds.2.2.20231219.min.js';
+
+const THREE_DS_ENDPOINT = process.env.NEXT_PUBLIC_3DS_ENDPOINT
+  ?? 'https://api-sandbox.3dsintegrator.com/v2.2'; // prod: https://api.3dsintegrator.com/v2.2
+
+function loadThreeDSScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') { reject(new Error('no-window')); return; }
+
+    // Usa ENV o fallback conocido
+    const src =
+      process.env.NEXT_PUBLIC_3DS_SCRIPT_URL?.trim() ||
+      'https://cdn.3dsintegrator.com/threeds.2.2.20231219.min.js';
+
+    // ¿ya cargado?
+    const existing = document.querySelector<HTMLScriptElement>('script[data-3ds-lib="1"]');
+    if (existing && (window as any).ThreeDS) { resolve(); return; }
+
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.defer = true;
+    s.dataset['3dsLib'] = '1';
+
+    // timeout defensivo (p.ej. bloqueadores)
+    const t = setTimeout(() => {
+      s.remove();
+      reject(new Error(`Timeout cargando 3DS (${src})`));
+    }, 15000);
+
+    s.onload = () => {
+      clearTimeout(t);
+      if ((window as any).ThreeDS) return resolve();
+      reject(new Error('3DS library loaded pero window.ThreeDS no está presente'));
+    };
+
+    s.onerror = (e) => {
+      clearTimeout(t);
+      const detail = (e && (e as any).message) ? (e as any).message : '';
+      reject(new Error(`No se pudo cargar la librería 3DS (${src}) ${detail ? '→ ' + detail : ''}`));
+    };
+
+    document.head.appendChild(s);
+  });
+}
+
 // ---- Captura de errores en móvil (verás toasts + logs en consola) ----
 declare global {
   interface Window {
@@ -338,6 +444,76 @@ function getErrorMessage(err: unknown, fallback = "Error en el proceso de checko
   if (typeof err === 'string') return err
   return fallback
 }
+
+type FriendlyKey =
+  | '3ds_start'
+  | '3ds_verify'
+  | '3ds_not_supported'
+  | 'issuer_reject'
+  | 'network'
+  | 'token'
+  | 'card_rejected'
+  | 'unknown';
+
+function friendlyPayError(key: FriendlyKey, locale: string): string {
+  const es: Record<FriendlyKey, string> = {
+    '3ds_start': 'No pudimos iniciar la verificación segura. Intenta de nuevo o prueba otra tarjeta.',
+    '3ds_verify': 'No pudimos completar la verificación segura. Intenta de nuevo o prueba otra tarjeta.',
+    '3ds_not_supported': 'Tu banco no soporta la verificación 3-D Secure para esta tarjeta. Prueba otra tarjeta.',
+    'issuer_reject': 'Tu banco rechazó la autenticación. Revisa con tu banco o prueba otra tarjeta.',
+    'network': 'Problema de conexión. Intenta de nuevo.',
+    'token': 'No pudimos preparar el pago. Intenta de nuevo.',
+    'card_rejected': 'El pago fue rechazado. Prueba otra tarjeta.',
+    'unknown': 'No pudimos procesar el pago. Intenta de nuevo.'
+  };
+
+  const en: Record<FriendlyKey, string> = {
+    '3ds_start': 'We couldn’t start secure verification. Please try again or use another card.',
+    '3ds_verify': 'We couldn’t complete secure verification. Please try again or use another card.',
+    '3ds_not_supported': 'Your bank doesn’t support 3-D Secure for this card. Please try another card.',
+    'issuer_reject': 'Your bank rejected the authentication. Please contact them or try another card.',
+    'network': 'Network issue. Please try again.',
+    'token': 'We couldn’t prepare your payment. Please try again.',
+    'card_rejected': 'The payment was declined. Try a different card.',
+    'unknown': 'We couldn’t process your payment. Please try again.'
+  };
+
+  return (locale === 'en' ? en : es)[key];
+}
+
+function toFriendlyKey(err: unknown): FriendlyKey {
+  const toText = (v: unknown): string => {
+    if (typeof v === 'string') return v;
+    if (v instanceof Error) return v.message;
+    try { return String(v ?? ''); } catch { return ''; }
+  };
+  const msg = toText(err).toLowerCase();
+
+  if (msg.includes('network') || msg.includes('timeout') || msg.includes('failed to fetch')) return 'network';
+  if (msg.includes('token') || msg.includes('creds') || msg.includes('credential') || msg.includes('api key')) return 'token';
+  if (msg.includes('3ds library') || msg.includes('inicializar 3ds') || msg.includes('could not initialize 3ds')) return '3ds_start';
+  if (msg.includes('not enroll') || msg.includes('no enrol') || msg.includes('not enrolled')) return '3ds_not_supported';
+  if (msg.includes('issuer') || msg.includes('rechaz') || msg.includes('denied')) return 'issuer_reject';
+  if (msg.includes('verify')) return '3ds_verify';
+  if (msg.includes('declin') || msg.includes('rechaz') || msg.includes('denied')) return 'card_rejected';
+  return 'unknown';
+}
+
+function isNotEnrolled3DSError(err: unknown): boolean {
+  const msg = (() => {
+    if (typeof err === 'string') return err.toLowerCase();
+    if (err instanceof Error) return String(err.message || '').toLowerCase();
+    try { return String(err ?? '').toLowerCase(); } catch { return ''; }
+  })();
+
+  // señales típicas del caso “not enrolled” con esta lib:
+  // - 400 en authenticate/browser
+  // - mensaje genérico “3DS verify error” inmediatamente tras authenticate
+  return msg.includes('/authenticate/browser') || msg.includes('verify error') || msg.includes('400');
+}
+
+
+
 
 const isRecipientDuplicate = (e: unknown): boolean => {
   if (typeof e !== 'object' || e === null) return false
@@ -1279,7 +1455,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
         ? 'There are items that cannot be delivered to that address.'
         : 'Hay productos que no se pueden entregar a esa dirección.'
       ), { position: 'bottom-center' })
-      
+
       return
     }
 
@@ -1394,6 +1570,12 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
       }
 
       setDirectSession({ id: String((data as Record<string, unknown>).sessionId), amount: Number((data as Record<string, unknown>).amount || 0) })
+      try {
+        await fetch(`${API_URL}/payments-direct/bmspay/3ds/creds`, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch { /* noop: el backend ya reintenta y cachea */ }
       setShowCardModal(true)
     } catch (e: unknown) {
       toast.error(getErrorMessage(e, locale === 'en' ? 'Error starting direct payment.' : 'Error iniciando el pago directo.'))
@@ -1414,12 +1596,197 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     const token = localStorage.getItem('token')
     if (!token) {
       toast.error(locale === 'en' ? 'Log in to continue' : 'Inicia sesión para continuar')
-
       return
     }
 
     setCardPaying(true)
+
+    let secureData: string | null = null
+    let secureTransactionId: string | null = null
+    let lastStatus: ThreeDSStatus | undefined
+    let lastEci: string | undefined
+
+    // ===== Overlay a pantalla completa (sin casteo peligroso) =====
+    let overlay = document.getElementById('threeDS-overlay') as HTMLDivElement | null
+    if (overlay) overlay.remove()
+    overlay = document.createElement('div')
+    overlay.id = 'threeDS-overlay'
+    overlay.style.position = 'fixed'
+    overlay.style.inset = '0'
+    overlay.style.zIndex = String(2147483647)
+    overlay.style.background = 'rgba(0,0,0,0.35)'
+    overlay.style.display = 'none'
+    document.body.appendChild(overlay)
+
+    const seenIframes = new WeakSet<HTMLIFrameElement>()
+    const promoteIframe = (ifr: HTMLIFrameElement) => {
+      if (seenIframes.has(ifr)) return
+      seenIframes.add(ifr)
+      try {
+        overlay!.style.display = 'block'
+        ifr.remove()
+        overlay!.appendChild(ifr)
+        ifr.style.position = 'absolute'
+        ifr.style.top = '50%'
+        ifr.style.left = '50%'
+        ifr.style.transform = 'translate(-50%, -50%)'
+        ifr.style.width = '100vw'
+        ifr.style.height = '100vh'
+        ifr.style.maxWidth = '100vw'
+        ifr.style.maxHeight = '100vh'
+        ifr.style.border = '0'
+        ifr.style.zIndex = String(2147483647)
+        ifr.style.background = '#fff'
+        ifr.setAttribute('allow', 'fullscreen *; payment *; clipboard-read *; clipboard-write *')
+        ifr.setAttribute('allowfullscreen', 'true')
+        console.debug('[3DS] iframe promovido a overlay')
+      } catch (e) {
+        console.warn('[3DS] no se pudo promover iframe', e)
+      }
+    }
+
+    const looks3DS = (ifr: HTMLIFrameElement) => {
+      const src = (ifr.getAttribute('src') || '').toLowerCase()
+      return /3ds|threeds|acs|challenge|secure/.test(src)
+    }
+
+    const mo = new MutationObserver((mut) => {
+      for (const m of mut) {
+        for (const n of Array.from(m.addedNodes)) {
+          if (n instanceof HTMLIFrameElement) {
+            if (looks3DS(n)) promoteIframe(n)
+          } else if (n instanceof HTMLElement) {
+            const ifrs = n.querySelectorAll('iframe')
+            for (const x of Array.from(ifrs)) {
+              if (looks3DS(x)) promoteIframe(x)
+            }
+          }
+        }
+      }
+    })
+    mo.observe(document.documentElement, { childList: true, subtree: true })
+
+    const onMsg = (e: MessageEvent) => {
+      if (!e || !e.data) return
+      if (typeof e.data === 'string' && /3ds|acs|challenge/i.test(e.data)) {
+        console.debug('[3DS][postMessage]', e.origin, e.data)
+      }
+    }
+    try { window.addEventListener('message', onMsg) } catch { }
+
     try {
+      // 1) Credenciales 3DS
+      const credRes = await fetch(`${API_URL}/payments-direct/bmspay/3ds/creds`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const credJson = await credRes.json().catch(() => null) as { ok?: boolean; apiKey?: string; token?: string } | null
+      if (!credRes.ok || !credJson?.ok || !credJson.apiKey || !credJson.token) {
+        throw new Error('token');
+      }
+
+      // 2) Librería
+      await loadThreeDSScript()
+      if (!window.ThreeDS) {
+        throw new Error(locale === 'en' ? '3DS library missing.' : 'No se pudo cargar la librería 3DS.')
+      }
+
+      // 3) Form oculto
+      const FORM_ID = 'billing-form-3ds';
+      let form = document.getElementById(FORM_ID) as HTMLFormElement | null;
+      if (form) form.remove();
+      form = document.createElement('form');
+      form.id = FORM_ID;
+      form.style.position = 'absolute';
+      form.style.left = '-9999px';
+      form.style.top = '-9999px';
+      const mk = (name: string, value: string, attr?: [string, string]) => {
+        const i = document.createElement('input');
+        i.type = 'text';
+        i.name = name;
+        i.value = value;
+        if (attr) i.setAttribute(attr[0], attr[1]);
+        form!.appendChild(i);
+      };
+      mk('x_amount', String(directSession.amount), ['data-threeds', 'amount']);
+      mk('x_card_num', p.cardNumber.replace(/\s+/g, ''), ['data-threeds', 'pan']);
+      mk('x_exp_month', p.expMonth, ['data-threeds', 'month']);
+      mk('x_exp_year', p.expYear, ['data-threeds', 'year']);
+      document.body.appendChild(form);
+
+      // 4) Instancia tipada
+      const ThreeDSCtor = window.ThreeDS as ThreeDSConstructor;
+      const tds: ThreeDSInstance = new ThreeDSCtor(
+        FORM_ID,
+        credJson.apiKey,
+        credJson.token,
+        {
+          endpoint: THREE_DS_ENDPOINT,
+          autoSubmit: false,
+          showChallenge: true,
+          iframeId: 'uniqueThreeDSiframe',
+          forcedTimeout: '180',
+          verbose: process.env.NODE_ENV !== 'production',
+        }
+      );
+
+      // 5) verify() con tolerancia a “not enrolled”
+      let verifyOk = false;
+      try {
+        await new Promise<void>((resolve, reject) => {
+          tds.verify(
+            (res: ThreeDSVerificationResult) => {
+              console.debug('[3DS][success]', res);
+              lastStatus = res?.status;
+              lastEci = res?.eci;
+              secureData = res?.authenticationValue || res?.cavv || null;
+              secureTransactionId = res?.dsTransId || null;
+              verifyOk = true;
+              resolve();
+            },
+            (err: ThreeDSError) => {
+              const msg = String(err?.error || err?.message || '');
+              if (/subscribe again/i.test(msg)) return resolve();
+              console.debug('[3DS][error]', err);
+              reject(new Error(msg || '3DS verify error'));
+            },
+            { amount: Number(directSession.amount.toFixed(2)) }
+          );
+        });
+      } catch (e) {
+        // ⬇️ Si es el caso típico de “not enrolled”, continuamos sin 3DS
+        if (isNotEnrolled3DSError(e)) {
+          lastStatus = 'U';         // “Unable / Not enrolled”
+          lastEci = undefined;
+          secureData = null;
+          secureTransactionId = null;
+          verifyOk = false;         // no hubo verificación exitosa, pero seguimos
+        } else {
+          // error real (timeout/red, etc.) → propaga para mostrar mensaje friendly
+          throw e;
+        }
+      }
+
+      // 6) Reglas por estado (incluye fallback ‘U’)
+      if (lastStatus === 'Y') {
+        if (!secureData) throw new Error('3ds_verify');
+      } else if (lastStatus === 'A') {
+        // fricción baja: seguimos sin CAVV
+      } else if (lastStatus === 'N' || lastStatus === 'R') {
+        throw new Error('issuer_reject');
+      } else if (lastStatus === 'U' || lastStatus === 'C' || typeof lastStatus === 'undefined') {
+        // U/C o desconocido: seguimos SIN datos 3DS
+        secureData = null;
+        secureTransactionId = null;
+        // opcional: puedes fijar un ECI "no 3DS" si tu gateway lo usa,
+        // pero BMS no lo requiere en este flujo directo.
+      } else {
+        // cualquier otro valor raro → tratar como no soportado
+        secureData = null;
+        secureTransactionId = null;
+      }
+
+      // 7) Cobro backend
       const r = await fetch(`${API_URL}/payments-direct/bmspay/sale`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -1432,29 +1799,43 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
           cvn: p.cvn,
           zipCode: p.zipCode,
           nameOnCard: p.nameOnCard,
+          secureData,
+          secureTransactionId,
+          threeDSStatus: (lastStatus ?? 'U'),
+          eci: lastEci,
         }),
       })
-      const data = await r.json().catch(() => null)
+      type SaleResp = { ok: boolean; paid: boolean; sessionId?: string | number; message?: string };
 
-      if (!r.ok || !data?.ok || (data as Record<string, unknown>).paid !== true) {
-        const msg = (typeof data === 'object' && data && typeof (data as Record<string, unknown>).message === 'string')
-          ? String((data as Record<string, unknown>).message)
-          : (locale === 'en' ? 'The payment was rejected.' : 'El pago fue rechazado.')
-        toast.error(msg)
-        return
+      const data = (await r.json().catch(() => null)) as SaleResp | null;
+
+      if (!r.ok || !data || data.ok !== true || data.paid !== true) {
+        const msg = (data && typeof data.message === 'string')
+          ? data.message
+          : (locale === 'en' ? 'The payment was rejected.' : 'El pago fue rechazado.');
+        toast.error(msg);
+        return;
       }
+
 
       toast.success(locale === 'en' ? 'Payment approved! Creating order…' : '¡Pago aprobado! Creando orden…')
       setShowCardModal(false)
 
       await clearCart()
-      const rec = data as Record<string, unknown>
-      const sid = (typeof rec.sessionId === 'string' || typeof rec.sessionId === 'number') ? rec.sessionId : directSession.id
+      const sid =
+        (typeof data.sessionId === 'string' || typeof data.sessionId === 'number')
+          ? String(data.sessionId)
+          : String(directSession.id)
       window.location.assign(`/${locale}/checkout/success?sessionId=${sid}`)
-    } catch (e: unknown) {
-      toast.error(getErrorMessage(e, locale === 'en' ? 'Error processing the payment.' : 'Error procesando el pago.'), { position: 'bottom-center' })
+    } catch (e) {
+      console.error('[3DS] ERROR', e)
+      const key = toFriendlyKey(e)
+      toast.error(friendlyPayError(key, locale), { position: 'bottom-center' })
     } finally {
       setCardPaying(false)
+      mo.disconnect()
+      try { window.removeEventListener('message', onMsg) } catch { }
+      try { overlay?.remove() } catch { }
     }
   }
 
