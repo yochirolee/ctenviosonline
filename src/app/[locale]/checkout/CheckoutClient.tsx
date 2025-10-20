@@ -573,6 +573,19 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     () => (items as unknown as CartLine[]) ?? [],
     [items]
   )
+  // Huella del carrito: id, cantidad, owner, peso (ordenado para evitar cambios solo por el orden)
+  const cartFingerprint = useMemo(() => {
+    return cartItems
+      .map((it) => {
+        const id = String(it.id);
+        const qty = Number(it.quantity) || 0;
+        const owner = String(it.owner_name ?? "");
+        const weight = Number(it.weight) || 0;
+        return `${id}:${qty}:${owner}:${weight}`;
+      })
+      .sort()
+      .join("|");
+  }, [cartItems]);
 
 
   const router = useRouter()
@@ -1359,6 +1372,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     recipientLoc,
     selectedRecipientId,
     transport,
+    cartFingerprint,
   ])
 
 
