@@ -1375,7 +1375,6 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     cartFingerprint,
   ])
 
-
   const grandTotalCents = subtotalCents + taxCents + shippingQuoteCents
   const cardFeeCents = Math.round(grandTotalCents * FEE_RATE)
   const totalWithCardFeeCents = grandTotalCents + cardFeeCents
