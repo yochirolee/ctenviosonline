@@ -2527,6 +2527,15 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
     }
   }, [attemptedPay, acceptedTerms])
 
+  const AIR_AVAILABLE = false; // ponlo en true cuando actives Avión
+  const comingSoon = locale === 'en' ? 'Coming soon' : 'Próximamente';
+  useEffect(() => {
+    if (!AIR_AVAILABLE && transport === 'air') {
+      setTransport('sea');
+    }
+  }, [AIR_AVAILABLE, transport, setTransport]);
+
+
   // ===== UI =====
   return (
     <div className="py-10 px-4 max-w-4xl mx-auto space-y-8">
@@ -2968,7 +2977,7 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                   </div>
                 </label>
 
-                {/* Card: Avión */}
+                {/* Card: Avión (desactivado) 
                 <label
                   className={[
                     "flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition",
@@ -3006,7 +3015,65 @@ export default function CheckoutPage({ dict }: { dict: Dict }) {
                         : 'Estimado 7–14 días naturales'}
                     </div>
                   </div>
+                </label> */}
+
+                {/* Card: Avión (temporal) */}
+                <label
+                  className={[
+                    "flex items-start gap-3 rounded-xl border p-3 transition",
+                    AIR_AVAILABLE
+                      ? "cursor-pointer " + (transport === 'air'
+                        ? "border-emerald-500 ring-2 ring-emerald-300 bg-emerald-50"
+                        : "border-gray-200 hover:border-emerald-300")
+                      : "border-gray-200 opacity-60 cursor-not-allowed"
+                  ].join(" ")}
+                  aria-disabled={!AIR_AVAILABLE}
+                  onClick={(e) => {
+                    if (!AIR_AVAILABLE) e.preventDefault();
+                  }}
+                  title={!AIR_AVAILABLE ? comingSoon : undefined}
+                >
+                  <input
+                    type="radio"
+                    name="cu_transport"
+                    className="sr-only"
+                    checked={transport === 'air'}
+                    onChange={() => {
+                      if (AIR_AVAILABLE) setTransport('air');
+                    }}
+                    aria-checked={transport === 'air'}
+                    disabled={!AIR_AVAILABLE}
+                    tabIndex={AIR_AVAILABLE ? 0 : -1}
+                  />
+                  <div className="mt-0.5 shrink-0">
+                    <div className={[
+                      "rounded-full p-2 border",
+                      transport === 'air' ? "border-emerald-500 bg-white" : "border-gray-300 bg-white"
+                    ].join(" ")}>
+                      <Plane className="h-5 w-5" aria-hidden />
+                    </div>
+                  </div>
+                  <div className="text-sm">
+                    <div className="font-medium text-gray-900 flex items-center flex-wrap gap-2">
+                      {locale === 'en' ? 'Air' : 'Avión'}
+                      {!AIR_AVAILABLE ? (
+                        <span className="ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">
+                          {comingSoon}
+                        </span>
+                      ) : (
+                        <span className="ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">
+                          {locale === 'en' ? 'Faster' : 'Más rápido'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-gray-600">
+                      {locale === 'en'
+                        ? 'Estimated 7–14 calendar days'
+                        : 'Estimado 7–14 días naturales'}
+                    </div>
+                  </div>
                 </label>
+
               </fieldset>
             </div>
           )}
