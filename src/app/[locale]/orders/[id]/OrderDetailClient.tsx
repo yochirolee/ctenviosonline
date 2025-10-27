@@ -215,7 +215,7 @@ function parseVariantOptions(
 
 // Devuelve un NUEVO item con option1/2/3 pobladas desde la mejor fuente
 function normalizeItemVariant(it: Item): Item {
-  let { option1, option2, option3 } = it
+  const { option1, option2, option3 } = it
 
   // 1) si ya vienen en campos sueltos, estamos bien
   if (option1 || option2 || option3) return it
@@ -402,8 +402,8 @@ function variantTextFor(it: Item): string {
   if (it.metadata?.variant_options && typeof it.metadata.variant_options === 'object') {
     const obj = it.metadata.variant_options as Record<string, string>
     const kv = Object.entries(obj)
-      .filter(([_, v]) => !!v)
-      .map(([k, v]) => `${k}: ${v}`)
+   .filter(([, v]) => !!v)
+   .map(([k, v]) => `${k}: ${v}`)
     if (kv.length) return kv.join(' · ')
   }
 
