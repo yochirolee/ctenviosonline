@@ -26,6 +26,30 @@ export type ProductMetadata = {
   [k: string]: unknown
 }
 
+/* ---------- Tipos para variantes/opciones (detalle) ---------- */
+export type ProductOption = {
+  id: number
+  position: 1 | 2 | 3
+  name: string
+  values: string[]
+}
+
+export type Variant = {
+  id: number
+  product_id: number
+  option1?: string | null
+  option2?: string | null
+  option3?: string | null
+  stock_qty: number
+  archived: boolean
+  image_url?: string | null
+  sku?: string | null
+  weight?: number | null
+  price_with_margin_cents?: number | null
+  display_total_usd?: number | null
+}
+
+/* ---------- Shapes que devuelve el backend ---------- */
 type ProductFromAPI = {
   id: number | string
   // ES
@@ -38,7 +62,7 @@ type ProductFromAPI = {
   price: string | number                // base (no usar para mostrar)
   image_url?: string | null
 
-  // campos de precio calculado (si el backend los expone)
+  // precios calculados
   price_with_margin_cents?: number | null
   price_with_margin_usd?: number | string | null
 
@@ -46,6 +70,11 @@ type ProductFromAPI = {
   display_total_cents?: number | null
 
   metadata?: ProductMetadata | null
+}
+
+type ProductDetailFromAPI = ProductFromAPI & {
+  options?: ProductOption[] | null
+  variants?: Variant[] | null
 }
 
 type BestSellerFromAPI = ProductFromAPI & {
@@ -59,7 +88,7 @@ type SearchResponse = {
   has_more?: boolean
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
+const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string
 
 /** Helper para construir los query params de ubicación (country/province/area_type). */
 function buildLocParams(loc?: DeliveryLocation) {
@@ -72,38 +101,41 @@ function buildLocParams(loc?: DeliveryLocation) {
   return sp
 }
 
+/** Mapea un producto del API al modelo simple usado en listados y detalle básico. */
 function mapApiProduct(p: ProductFromAPI, locale: 'en' | 'es' = 'es'): SimplifiedProduct {
-  // Preferimos el total listo para UI si el backend lo envía (owner / by-owners),
-  // si no, caemos al precio con margen; si no, al base.
+  // Precio listo para UI: display_total_usd > price_with_margin_cents > price_with_margin_usd > price
+  const priceUsdRaw =
+    p.display_total_usd ?? p.price_with_margin_cents ?? p.price_with_margin_usd ?? p.price
+
   const priceUsd =
-    p.display_total_usd != null
-      ? Number(p.display_total_usd)
-      : p.price_with_margin_cents != null
-      ? Number(p.price_with_margin_cents) / 100
-      : p.price_with_margin_usd != null
-      ? Number(p.price_with_margin_usd)
-      : Number(p.price)
+    typeof priceUsdRaw === 'number'
+      ? priceUsdRaw
+      : Number(priceUsdRaw)
+
+  const normalizedPrice =
+    p.price_with_margin_cents != null && typeof p.price_with_margin_cents === 'number'
+      ? p.price_with_margin_cents / 100
+      : Number.isFinite(priceUsd) ? Number(priceUsd) : 0
 
   const name =
     locale === 'en'
-      ? (p.title_en && p.title_en.trim()) || (p.title && p.title.trim()) || ''
-      : (p.title && p.title.trim()) || (p.title_en && p.title_en.trim()) || ''
+      ? (p.title_en?.trim() || p.title?.trim() || '')
+      : (p.title?.trim() || p.title_en?.trim() || '')
 
   const description =
     locale === 'en'
-      ? ((p.description_en && p.description_en.trim()) || (p.description && p.description.trim()) || '')
-      : ((p.description && p.description.trim()) || (p.description_en && p.description_en.trim()) || '')
+      ? (p.description_en?.trim() || p.description?.trim() || '')
+      : (p.description?.trim() || p.description_en?.trim() || '')
 
   return {
     id: Number(p.id),
     name,
-    price: Number.isFinite(priceUsd) ? priceUsd : 0,
+    price: normalizedPrice,
     imageSrc: p.image_url || '/product.webp',
     variant_id: String(p.id),
     description,
   }
 }
-
 
 /** Categorías (incluye nombre e imagen por si quieres mostrarlos en grillas/nav). */
 export async function getCategories(): Promise<
@@ -226,7 +258,11 @@ export async function searchProductsPaged(
   }
 }
 
-// === Detalle de producto por ID ===
+/* ===========================
+   DETALLE por ID (dos helpers)
+   =========================== */
+
+/** Detalle básico (mapea al modelo simple que ya usa tu UI actual). */
 export async function getProductById(
   id: number,
   locale: 'en' | 'es' = 'es'
@@ -240,6 +276,41 @@ export async function getProductById(
     return null
   }
 }
+
+/** Detalle completo con opciones/variantes (por si luego lo necesitas en la UI). */
+export type ProductDetail = SimplifiedProduct & {
+  options: ProductOption[]
+  variants: Variant[]
+  priceWithMarginCents?: number | null
+}
+
+export async function getProductDetailById(
+  id: number,
+  locale: 'en' | 'es' = 'es'
+): Promise<ProductDetail | null> {
+  try {
+    const res = await fetch(`${API_URL}/products/${id}`, { cache: 'no-store' })
+    if (!res.ok) return null
+    const raw: ProductDetailFromAPI = await res.json()
+
+    const base = mapApiProduct(raw, locale)
+    const options: ProductOption[] = Array.isArray(raw.options) ? raw.options : []
+    const variants: Variant[] = Array.isArray(raw.variants) ? raw.variants : []
+
+    return {
+      ...base,
+      options,
+      variants,
+      priceWithMarginCents: raw.price_with_margin_cents ?? null,
+    }
+  } catch {
+    return null
+  }
+}
+
+/* ===========================
+   Listado por owner (agrupados)
+   =========================== */
 
 export type OwnerGroup = {
   owner_id: number
@@ -271,12 +342,15 @@ export async function getByOwners(
   if (opts?.per_owner) params.set('per_owner', String(opts.per_owner))
   if (opts?.owner_ids?.length) params.set('owner_ids', opts.owner_ids.join(','))
 
-  const r = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/products/by-owners?${params.toString()}`, { cache: 'no-store' })
-  const json = await r.json().catch(() => ({ owners: [] }))
-  return Array.isArray(json?.owners) ? json.owners as OwnerGroup[] : []
+  const r = await fetch(`${API_URL}/products/by-owners?${params.toString()}`, { cache: 'no-store' })
+  const json = await r.json().catch(() => ({ owners: [] as OwnerGroup[] }))
+  return Array.isArray(json?.owners) ? (json.owners as OwnerGroup[]) : []
 }
 
-// --- Tipado de la respuesta del backend /products/owner/:owner_id ---
+/* ===========================
+   Productos por owner (paginado)
+   =========================== */
+
 type OwnerListResponse = {
   owner?: { id: number; name: string | null }
   items: ProductFromAPI[]
@@ -315,4 +389,3 @@ export async function getProductsByOwnerPaged(
     has_more: Boolean(data.has_more),
   }
 }
-

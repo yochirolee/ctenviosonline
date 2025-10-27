@@ -15,6 +15,45 @@ const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
 
 type Owner = { id: number; name: string; email?: string | null }
 
+// ---- Variants types (sin any) ----
+type ProductOption = {
+  id: number
+  product_id?: number
+  position: 1 | 2 | 3
+  name: string
+  values: string[]
+}
+
+type Variant = {
+  id: number
+  product_id: number
+  option1?: string | null
+  option2?: string | null
+  option3?: string | null
+  stock_qty: number
+  archived: boolean
+  image_url?: string | null
+  sku?: string | null
+  weight?: number | null
+  price_cents?: number | null // <-- NUEVO
+  price_with_margin_cents?: number
+  display_total_usd?: number
+}
+
+
+type NewVariantInput = {
+  option1?: string | null
+  option2?: string | null
+  option3?: string | null
+  price_cents?: number | null
+  weight?: number | null
+  image_url?: string | null
+  sku?: string | null
+  stock_qty: number
+  archived?: boolean
+  metadata?: Record<string, unknown> | null
+}
+
 // --- Tipos para metadata de producto (evitar any) ---
 type ProductMeta = {
   taxable?: boolean
@@ -61,6 +100,26 @@ export default function AdminProductsPage() {
     duty_usd: undefined,
     keywords_text: '',
   })
+
+  // Opciones (hasta 3) y Variantes
+  const [opt1Name, setOpt1Name] = useState<string>('')
+  const [opt2Name, setOpt2Name] = useState<string>('')
+  const [opt3Name, setOpt3Name] = useState<string>('')
+
+  const [opt1Values, setOpt1Values] = useState<string>('') // coma separada
+  const [opt2Values, setOpt2Values] = useState<string>('')
+  const [opt3Values, setOpt3Values] = useState<string>('')
+
+  const [optionsLoaded, setOptionsLoaded] = useState<boolean>(false)
+  const [options, setOptions] = useState<ProductOption[]>([])
+  const [variants, setVariants] = useState<Variant[]>([])
+
+  // Crear variante rápida
+  const [newVar, setNewVar] = useState<NewVariantInput>({
+    option1: null, option2: null, option3: null,
+    stock_qty: 0, price_cents: null, weight: null, image_url: null, sku: null
+  })
+
 
   // filtros / paginación
   const [q, setQ] = useState('')
@@ -122,6 +181,153 @@ export default function AdminProductsPage() {
     if (!Number.isFinite(n as number)) return undefined
     return Math.round((n as number) * 100)
   }
+
+  // --- Helpers de dinero/preview variantes (sin any) ---
+  const centsToDollars = (cents: number | null | undefined): number | undefined =>
+    typeof cents === 'number' && Number.isFinite(cents) ? Math.max(0, cents) / 100 : undefined
+
+  const formatUSD = (n?: number): string => (typeof n === 'number' && Number.isFinite(n) ? n.toFixed(2) : '0.00')
+
+  type VariantPreviewInputs = {
+    productBaseUSD: number
+    dutyUSD: number
+    marginPct: number
+    taxPct: number
+    taxable: boolean
+    variantPriceUSD?: number // override base por variante (si viene en centavos)
+  }
+
+  /**
+   * Calcula totales de preview para una variante.
+   * Regla: si la variante tiene price_cents, ese es el "base" que sustituye al precio base del producto.
+   */
+  function computeVariantTotals(inp: VariantPreviewInputs) {
+    const base = typeof inp.variantPriceUSD === 'number' ? inp.variantPriceUSD : inp.productBaseUSD
+    const cost = base + inp.dutyUSD
+    const gain = cost * (inp.marginPct / 100)
+    const subtotal = cost + gain
+    const tax = inp.taxable ? subtotal * (inp.taxPct / 100) : 0
+    const total = subtotal + tax
+    return { base, cost, gain, subtotal, tax, total }
+  }
+
+
+  // ===== Admin Variants API helpers (tipados) =====
+  async function fetchProductOptions(productId: number) {
+    const res = await fetch(`${API_URL}/admin/products/${productId}/options`, {
+      headers: authHeaders(),
+      cache: 'no-store',
+    })
+    if (!res.ok) throw new Error('options error')
+    // el backend devuelve { options: [...] } o directamente [...]
+    const json = await res.json()
+    return (Array.isArray(json) ? json : (json.options ?? [])) as ProductOption[]
+  }
+
+  async function fetchProductVariants(productId: number) {
+    const res = await fetch(`${API_URL}/admin/products/${productId}/variants`, {
+      headers: authHeaders(),
+      cache: 'no-store',
+    })
+    if (!res.ok) throw new Error('variants error')
+    const json = await res.json()
+    return (Array.isArray(json) ? json : (json.variants ?? [])) as Variant[]
+  }
+
+
+  async function saveOptions(productId: number, opts: ProductOption[]) {
+    const body = {
+      options: opts.map(o => ({
+        position: o.position,
+        name: o.name,
+        values: o.values
+      }))
+    }
+    const res = await fetch(`${API_URL}/admin/products/${productId}/options`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) throw new Error('save options error')
+  }
+
+  async function createVariant(productId: number, payload: NewVariantInput) {
+    const res = await fetch(`${API_URL}/admin/products/${productId}/variants`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) throw new Error('create variant error')
+    return (await res.json()) as Variant
+  }
+
+  async function updateVariant(variantId: number, payload: Partial<NewVariantInput> & { archived?: boolean; stock_qty?: number }) {
+    const res = await fetch(`${API_URL}/admin/variants/${variantId}`, {
+      method: 'PUT',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) throw new Error('update variant error')
+    return (await res.json()) as Variant
+  }
+
+  function sameCombo(a?: { option1?: string | null, option2?: string | null, option3?: string | null },
+    b?: { option1?: string | null, option2?: string | null, option3?: string | null }) {
+    return (a?.option1 || null) === (b?.option1 || null)
+      && (a?.option2 || null) === (b?.option2 || null)
+      && (a?.option3 || null) === (b?.option3 || null)
+  }
+
+  function findVariantByOptions(list: Variant[], combo: { option1?: string | null, option2?: string | null, option3?: string | null }) {
+    return list.find(v => sameCombo(v, combo)) || null
+  }
+
+
+  async function deleteVariant(variantId: number) {
+    const res = await fetch(`${API_URL}/admin/variants/${variantId}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    })
+    if (!res.ok) throw new Error('delete variant error')
+  }
+
+  // Cargar opciones/variantes para un producto en edición
+  const loadOptionsAndVariants = useCallback(async (productId: number) => {
+    try {
+      const [opts, vars] = await Promise.all([
+        fetchProductOptions(productId),
+        fetchProductVariants(productId),
+      ])
+
+      setOptions(opts)
+      setVariants(vars)
+
+      // precargar campos en inputs de "Opciones"
+      const o1 = opts.find(o => o.position === 1)
+      const o2 = opts.find(o => o.position === 2)
+      const o3 = opts.find(o => o.position === 3)
+      setOpt1Name(o1?.name ?? '')
+      setOpt2Name(o2?.name ?? '')
+      setOpt3Name(o3?.name ?? '')
+      setOpt1Values((o1?.values ?? []).join(', '))
+      setOpt2Values((o2?.values ?? []).join(', '))
+      setOpt3Values((o3?.values ?? []).join(', '))
+
+      // ✅ preselección por defecto para que no queden null
+      setNewVar(s => ({
+        ...s,
+        option1: s.option1 ?? (o1?.values?.[0] ?? null),
+        option2: s.option2 ?? (o2?.values?.[0] ?? null),
+        option3: s.option3 ?? (o3?.values?.[0] ?? null),
+      }))
+
+      setOptionsLoaded(true)
+    } catch {
+      setOptions([]); setVariants([]); setOptionsLoaded(true)
+    }
+  }, [])
+
+
 
   // valores form para validar/preview
   const meta: ProductMeta = form.metadata ?? {}
@@ -244,10 +450,15 @@ export default function AdminProductsPage() {
   }
 
   const onEdit = (p: Product) => {
-    const px = p as ProductLike
+       const px = p as (ProductLike & {
+         duty_cents?: number | null
+         keywords?: string[] | null
+       })
+
     const m = (px.metadata ?? {}) as ProductMeta & { archived?: boolean }
-    const dutyUsd = typeof px.duty_cents === 'number' ? px.duty_cents / 100 : undefined;
-    const kwText = Array.isArray(px.keywords) ? px.keywords.join(', ') : '';
+    const dutyUsd = typeof px.duty_cents === 'number' ? px.duty_cents / 100 : undefined
+    const kwText = Array.isArray(px.keywords) ? px.keywords.join(', ') : ''
+
     setEditing(p)
     setForm({
       title: p.title,
@@ -271,6 +482,8 @@ export default function AdminProductsPage() {
       keywords_text: kwText,
     })
 
+    // Cargar opciones/variantes del producto
+    void loadOptionsAndVariants(p.id)
   }
 
   const onDelete = async (id: number) => {
@@ -289,6 +502,28 @@ export default function AdminProductsPage() {
     }, [value, delay])
     return v
   }
+
+  useEffect(() => {
+    if (!editing) return;
+    const matched = findVariantByOptions(variants, {
+      option1: newVar.option1 ?? null,
+      option2: newVar.option2 ?? null,
+      option3: newVar.option3 ?? null,
+    })
+    if (matched) {
+      // Precarga campos con lo guardado
+      setNewVar(s => ({
+        ...s,
+        stock_qty: matched.stock_qty ?? 0,
+        price_cents: matched.price_cents ?? null,
+        weight: matched.weight ?? null,
+        image_url: matched.image_url ?? null,
+        sku: matched.sku ?? null,
+      }))
+    }
+    // Si no hay variante, NO tocamos los campos para que el usuario pueda crearla
+  }, [editing, variants, newVar.option1, newVar.option2, newVar.option3])
+
 
   return (
     <AdminGuard>
@@ -418,7 +653,7 @@ export default function AdminProductsPage() {
                 Se mostrará en la tienda (listado y detalle).
               </p>
             </div>
-            
+
 
             <div>
               <label htmlFor="p-desc-en" className="block text-sm font-medium text-gray-700">Description (EN)</label>
@@ -451,7 +686,7 @@ export default function AdminProductsPage() {
               />
             </div>
 
-                       
+
             <div>
               <label htmlFor="p-stock" className="block text-sm font-medium text-gray-700">Stock</label>
               <input
@@ -509,7 +744,7 @@ export default function AdminProductsPage() {
               <p className="text-xs text-gray-500 mt-1">Se usarán en el buscador global además del título/descr en ES/EN.</p>
             </div>
 
-           {/* Owner real (owner_id) */}
+            {/* Owner real (owner_id) */}
             <div>
               <label htmlFor="p-owner" className="block text-sm font-medium text-gray-700">Owner</label>
               <select
@@ -574,6 +809,326 @@ export default function AdminProductsPage() {
               </div>
             </fieldset>
 
+            {editing && (
+              <div className="mt-4 space-y-4">
+                <h3 className="font-semibold">Variantes</h3>
+
+                {/* ----- Opciones (hasta 3) ----- */}
+                <div className="border rounded p-3 space-y-3">
+                  <div className="text-sm text-gray-600">Define hasta 3 opciones (ej. Talla, Color). Los valores se separan por coma.</div>
+
+                  {/* Opción 1 */}
+                  <div className="grid grid-cols-1 gap-2">
+                    <div>
+                      <label className="block text-sm text-gray-700">Opción 1 - Nombre</label>
+                      <input className="input w-full" placeholder="Talla" value={opt1Name} onChange={e => setOpt1Name(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700">Valores (coma)</label>
+                      <input className="input w-full" placeholder="S, M, L" value={opt1Values} onChange={e => setOpt1Values(e.target.value)} />
+                    </div>
+                  </div>
+
+                  {/* Opción 2 */}
+                  <div className="grid grid-cols-1 gap-2">
+                    <div>
+                      <label className="block text-sm text-gray-700">Opción 2 - Nombre</label>
+                      <input className="input w-full" placeholder="Color" value={opt2Name} onChange={e => setOpt2Name(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700">Valores (coma)</label>
+                      <input className="input w-full" placeholder="Negro, Blanco" value={opt2Values} onChange={e => setOpt2Values(e.target.value)} />
+                    </div>
+                  </div>
+
+                  {/* Opción 3 */}
+                  <div className="grid grid-cols-1 gap-2">
+                    <div>
+                      <label className="block text-sm text-gray-700">Opción 3 - Nombre</label>
+                      <input className="input w-full" placeholder="Material" value={opt3Name} onChange={e => setOpt3Name(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700">Valores (coma)</label>
+                      <input className="input w-full" placeholder="Algodón, Seda" value={opt3Values} onChange={e => setOpt3Values(e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      className="px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                      onClick={async () => {
+                        if (!editing) return
+                        const opts: ProductOption[] = []
+                        if (opt1Name.trim()) opts.push({ id: 0, position: 1, name: opt1Name.trim(), values: opt1Values.split(',').map(s => s.trim()).filter(Boolean) })
+                        if (opt2Name.trim()) opts.push({ id: 0, position: 2, name: opt2Name.trim(), values: opt2Values.split(',').map(s => s.trim()).filter(Boolean) })
+                        if (opt3Name.trim()) opts.push({ id: 0, position: 3, name: opt3Name.trim(), values: opt3Values.split(',').map(s => s.trim()).filter(Boolean) })
+
+                        try {
+                          await saveOptions(editing.id, opts)
+                          toast.success('Opciones guardadas')
+
+                          // Recargar desde admin y preseleccionar
+                          await loadOptionsAndVariants(editing.id)
+
+                          const o1 = opts.find(o => o.position === 1)
+                          const o2 = opts.find(o => o.position === 2)
+                          const o3 = opts.find(o => o.position === 3)
+                          setNewVar(s => ({
+                            ...s,
+                            option1: o1?.values?.[0] ?? null,
+                            option2: o2?.values?.[0] ?? null,
+                            option3: o3?.values?.[0] ?? null,
+                          }))
+                        } catch {
+                          toast.error('No se pudieron guardar las opciones')
+                        }
+                      }}
+                    >
+                      Guardar opciones
+                    </button>
+                  </div>
+                </div>
+
+                {/* ----- Crear variante ----- */}
+                <div className="border rounded p-3 space-y-3">
+                  <div className="grid grid-cols-1 gap-3">
+                    {/* Selects según opciones guardadas */}
+                    {options.find(o => o.position === 1) && (
+                      <div>
+                        <label className="block text-sm text-gray-700">{options.find(o => o.position === 1)?.name}</label>
+                        <select className="input w-full" value={newVar.option1 ?? ''} onChange={e => setNewVar(s => ({ ...s, option1: e.target.value || null }))}>
+                          <option value="">(Selecciona)</option>
+                          {options.find(o => o.position === 1)?.values.map(v => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                      </div>
+                    )}
+                    {options.find(o => o.position === 2) && (
+                      <div>
+                        <label className="block text-sm text-gray-700">{options.find(o => o.position === 2)?.name}</label>
+                        <select className="input w-full" value={newVar.option2 ?? ''} onChange={e => setNewVar(s => ({ ...s, option2: e.target.value || null }))}>
+                          <option value="">(Selecciona)</option>
+                          {options.find(o => o.position === 2)?.values.map(v => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                      </div>
+                    )}
+                    {options.find(o => o.position === 3) && (
+                      <div>
+                        <label className="block text-sm text-gray-700">{options.find(o => o.position === 3)?.name}</label>
+                        <select className="input w-full" value={newVar.option3 ?? ''} onChange={e => setNewVar(s => ({ ...s, option3: e.target.value || null }))}>
+                          <option value="">(Selecciona)</option>
+                          {options.find(o => o.position === 3)?.values.map(v => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    <div>
+                      <label className="block text-sm text-gray-700">Stock</label>
+                      <input className="input w-full" type="number" min={0}
+                        value={Number.isFinite(newVar.stock_qty) ? String(newVar.stock_qty) : '0'}
+                        onChange={e => setNewVar(s => ({ ...s, stock_qty: Math.max(0, Number(e.target.value || 0)) }))} />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700">Precio (centavos, opcional)</label>
+                      <input
+                        className="input w-full"
+                        type="number"
+                        min={0}
+                        value={newVar.price_cents ?? ''}
+                        onChange={e =>
+                          setNewVar(s => ({
+                            ...s,
+                            price_cents: e.target.value === '' ? null : Math.max(0, Math.floor(Number(e.target.value))),
+                          }))
+                        }
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Equivale a <strong>${formatUSD(centsToDollars(newVar.price_cents))}</strong> USD.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm text-gray-700">Peso (opcional)</label>
+                      <input className="input w-full" type="number" step="0.01"
+                        value={newVar.weight ?? ''}
+                        onChange={e => setNewVar(s => ({ ...s, weight: e.target.value === '' ? null : Number(e.target.value) }))} />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700">SKU / Imagen URL</label>
+                      <div className="grid grid-cols-1 gap-2">
+                        <input className="input w-full" placeholder="SKU" value={newVar.sku ?? ''} onChange={e => setNewVar(s => ({ ...s, sku: e.target.value || null }))} />
+                        <input className="input w-full" placeholder="https://..." value={newVar.image_url ?? ''} onChange={e => setNewVar(s => ({ ...s, image_url: e.target.value || null }))} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* --- Preview variante --- */}
+                  {(() => {
+                    const variantUSD = centsToDollars(newVar.price_cents)
+                    const totals = computeVariantTotals({
+                      productBaseUSD: baseUSD,
+                      dutyUSD,
+                      marginPct,
+                      taxPct,
+                      taxable,
+                      variantPriceUSD: variantUSD,
+                    })
+                    return (
+                      <div className="rounded-md border bg-gray-50 p-3 text-sm">
+                        <div className="font-medium text-gray-800 mb-1">Preview de esta variante</div>
+                        <div className="space-y-0.5 text-gray-700">
+                          <div>Base: ${formatUSD(totals.base)}</div>
+                          <div>+ Arancel: ${formatUSD(dutyUSD)}</div>
+                          <div>+ Ganancia ({marginPct}%): ${formatUSD(totals.gain)}</div>
+                          <div>Subtotal: ${formatUSD(totals.subtotal)}</div>
+                          <div>{taxable ? `+ Tax (${taxPct}%): $${formatUSD(totals.tax)}` : 'Exento de impuestos'}</div>
+                          <div className="font-semibold">Total estimado: ${formatUSD(totals.total)}</div>
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+
+                  <div className="pt-1">
+                    <button
+                      className="px-3 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                      onClick={async () => {
+                        if (!editing) return
+
+                        const matched = findVariantByOptions(variants, {
+                          option1: newVar.option1 ?? null,
+                          option2: newVar.option2 ?? null,
+                          option3: newVar.option3 ?? null,
+                        })
+
+                        try {
+                          if (matched) {
+                            const updated = await updateVariant(matched.id, {
+                              stock_qty: newVar.stock_qty,
+                              price_cents: newVar.price_cents ?? null,
+                              weight: newVar.weight ?? null,
+                              image_url: newVar.image_url ?? null,
+                              sku: newVar.sku ?? null,
+                            })
+                            setVariants(arr => arr.map(v => v.id === matched.id ? {
+                              ...v,
+                              stock_qty: updated.stock_qty ?? newVar.stock_qty,
+                              price_cents: (updated as unknown as { price_cents: number | null })?.price_cents ?? newVar.price_cents ?? null,
+                              weight: (updated as unknown as { weight: number | null })?.weight ?? newVar.weight ?? null,
+                              image_url: (updated as unknown as { image_url: string | null })?.image_url ?? newVar.image_url ?? null,
+                              sku: (updated as unknown as { sku: string | null })?.sku ?? newVar.sku ?? null,
+                            } : v))
+                            toast.success('Variante actualizada')
+                          } else {
+                            const created = await createVariant(editing.id, newVar)
+                            setVariants(v => [...v, created])
+                            toast.success('Variante creada')
+                          }
+                        } catch {
+                          toast.error('No se pudo guardar la variante')
+                        }
+                      }}
+                    >
+                      {findVariantByOptions(variants, { option1: newVar.option1 ?? null, option2: newVar.option2 ?? null, option3: newVar.option3 ?? null })
+                        ? 'Guardar cambios'
+                        : 'Agregar variante'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* ----- Lista de variantes ----- */}
+                <div className="border rounded">
+                  <div className="p-2 text-sm text-gray-700 border-b bg-gray-50 flex items-center justify-between">
+                    <span>Total variantes: {variants.length}</span>
+                    {!optionsLoaded && <span className="text-gray-400">Cargando…</span>}
+                  </div>
+                  <div className="divide-y">
+                    {variants.map(v => (
+                      <div key={v.id} className="p-3 flex flex-col gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 truncate">
+                            {[v.option1, v.option2, v.option3].filter(Boolean).join(' / ') || 'Sin opciones'}
+                          </div>
+                          
+                          {(() => {
+                            const variantUSD = centsToDollars(v.price_cents)
+                            const totals = computeVariantTotals({
+                              productBaseUSD: baseUSD,
+                              dutyUSD,
+                              marginPct,
+                              taxPct,
+                              taxable,
+                              variantPriceUSD: variantUSD,
+                            })
+                            const totalFromBackend =
+                              typeof v.display_total_usd === 'number' && Number.isFinite(v.display_total_usd)
+                                ? v.display_total_usd
+                                : undefined
+
+                            return (
+                              <div className="text-sm text-gray-600">
+                                Precio (centavos): {v.price_cents ?? '—'}
+                                {' · '}Precio base USD: ${formatUSD(variantUSD)}
+                                {' · '}Peso: {v.weight ?? '—'}
+                                {' · '}Imagen: {v.image_url ? 'sí' : '—'}
+                                {' · '}
+                                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
+                                  Total estimado: ${formatUSD(totalFromBackend ?? totals.total)}
+                                </span>
+                                {v.image_url && <img src={v.image_url} alt="var" className="w-10 h-10 rounded object-cover mt-1" />}
+                              </div>
+                            )
+                          })()}
+
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            className="px-2 py-1 rounded bg-gray-200"
+                            onClick={async () => {
+                              try {
+                                const n = prompt('Nuevo stock', String(v.stock_qty))
+                                if (n == null) return
+                                const updated = await updateVariant(v.id, { stock_qty: Math.max(0, Number(n)) })
+                                setVariants(arr => arr.map(x => x.id === v.id ? { ...x, stock_qty: updated.stock_qty } : x))
+                                toast.success('Stock actualizado')
+                              } catch { toast.error('No se pudo actualizar') }
+                            }}
+                          >Stock</button>
+
+                          <button
+                            className={`px-2 py-1 rounded ${v.archived ? 'bg-emerald-600 text-white' : 'bg-yellow-600 text-white'}`}
+                            onClick={async () => {
+                              try {
+                                const updated = await updateVariant(v.id, { archived: !v.archived })
+                                setVariants(arr => arr.map(x => x.id === v.id ? { ...x, archived: updated.archived } : x))
+                                toast.success(updated.archived ? 'Archivada' : 'Activada')
+                              } catch { toast.error('No se pudo actualizar') }
+                            }}
+                          >
+                            {v.archived ? 'Activar' : 'Archivar'}
+                          </button>
+
+                          <button
+                            className="px-2 py-1 rounded bg-red-600 text-white"
+                            onClick={async () => {
+                              if (!confirm('¿Eliminar variante? Si está en órdenes, se archivará.')) return
+                              try {
+                                await deleteVariant(v.id)
+                                setVariants(arr => arr.filter(x => x.id !== v.id))
+                                toast.success('Variante eliminada/archivada')
+                              } catch { toast.error('No se pudo eliminar') }
+                            }}
+                          >Borrar</button>
+                        </div>
+                      </div>
+                    ))}
+                    {variants.length === 0 && <div className="p-3 text-sm text-gray-500">No hay variantes</div>}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="text-sm text-gray-600">
               Preview: Precio+Arancel+ganancia ${subtotalUSD.toFixed(2)} · {taxable ? `Tax ${taxPct}% = $${estTax.toFixed(2)}` : 'exento'} · Total estimado ${estTotal.toFixed(2)}
             </div>
@@ -632,7 +1187,7 @@ export default function AdminProductsPage() {
                           const taxPct = Number(m.tax_pct || 0)
                           const taxable = m.taxable !== false
                           const dutyUsd = typeof px.duty_cents === 'number' ? px.duty_cents / 100 : 0
-                          
+
                           const cost = base + dutyUsd
                           const subtotal = cost * (1 + marginPct / 100)
                           const estTax = taxable ? subtotal * (taxPct / 100) : 0

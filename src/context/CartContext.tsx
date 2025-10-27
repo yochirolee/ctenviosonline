@@ -36,6 +36,7 @@ type LineItem = {
   owner_name?: string | null
   /** disponibilidad reportada por el backend para esta línea */
   available?: number | null
+  variant_id?: number | null
 }
 
 interface CartContextType {
@@ -44,7 +45,7 @@ interface CartContextType {
   isCartOpen: boolean
   setIsCartOpen: React.Dispatch<React.SetStateAction<boolean>>
   /** unitPrice se ignora (el backend calcula). Se deja por compatibilidad. */
-  addItem: (productId: number, quantity?: number, unitPrice?: number) => Promise<void>
+  addItem: (productId: number, quantity?: number, variantId?: number | null) => Promise<void>
   removeItem: (itemId: number) => Promise<void>
   clearCart: () => Promise<void>
   loading: boolean
@@ -112,6 +113,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           owner_id?: number | null
           owner_name?: string | null
           available_stock?: number | null
+          variant_id?: number | null
         }>
       }
 
@@ -139,6 +141,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             owner_name: it.owner_name ?? null,
             // si el backend manda string, lo convertimos igual
             available: it.available_stock == null ? null : Number(it.available_stock),
+            variant_id: it.variant_id == null ? null : Number(it.variant_id),
           }
         })
 
@@ -151,14 +154,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const addItem = async (productId: number, quantity = 1, _unitPrice?: number) => {
-    // _unitPrice se IGNORA: el backend calcula precio/tax en /cart/add
-    void _unitPrice;
+  const addItem = async (productId: number, quantity = 1, variantId?: number | null) => {
+    // El backend calcula precios/tax; aquí solo mandamos ids y cantidad
+    const payload: Record<string, unknown> = {
+      product_id: productId,
+      quantity,
+    }
+    // solo envía variant_id si viene
+    if (variantId != null) payload.variant_id = variantId
+  
     const res = await fetch(`${API_URL}/cart/add`, {
       method: 'POST',
       headers: authHeaders(),
-      body: JSON.stringify({ product_id: productId, quantity }),
+      body: JSON.stringify(payload),
     })
+  
     if (res.status === 409) {
       const payload = await res.json().catch(() => null)
       const err = new Error('OUT_OF_STOCK') as Error & {
@@ -171,10 +181,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       err.title = payload?.title
       throw err
     }
-    
+  
     if (!res.ok) throw new Error('No se pudo agregar al carrito')
     await fetchCart()
   }
+  
 
   const removeItem = async (itemId: number) => {
     const res = await fetch(`${API_URL}/cart/remove/${itemId}`, {

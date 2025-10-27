@@ -308,14 +308,20 @@ export async function updateOrderStatus(id: number, status: string): Promise<Ord
 
 /* ========== Order detail (ADMIN) ========== */
 export type AdminOrderItem = {
-  product_id: number | null
+  product_id?: number | null
+  variant_id?: number | null
   product_name?: string | null
   image_url?: string | null
   source_url?: string | null
   external_id?: string | null
   quantity: number
   unit_price: number
+  variant_label?: string | null
+  option1?: string | null
+  option2?: string | null
+  option3?: string | null
 }
+
 
 export type AdminOrderDetail = {
   order: {

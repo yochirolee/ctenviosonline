@@ -146,7 +146,8 @@ export default function AdminOrderDetailPage() {
   }
 
   const { order, items } = data as AdminOrderDetail
-  const itemsList: AdminOrderItem[] = items
+  const itemsList: AdminOrderItem[] = items ?? []
+  
 
   const md: OrderMetadata = (order.metadata ?? {}) as OrderMetadata
   const shipping = md.shipping ?? null
@@ -484,37 +485,53 @@ export default function AdminOrderDetailPage() {
             <>
               <ul className="divide-y">
                 {itemsList.map((it, idx) => (
-                  <li key={`${idx}-${it.product_id ?? it.external_id ?? 'encargo'}`} className="p-4 flex items-center gap-3">
-                    {it.image_url ? (
-                      <img
-                        src={it.image_url}
-                        alt={it.product_name || `Prod ${it.product_id ?? ''}`}
-                        className="w-12 h-12 object-contain bg-white rounded border p-0.5"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded border bg-gray-100" />
-                    )}
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">
-                        {it.product_name || `Producto #${it.product_id ?? ''}`}
-                        {it.source_url && (
-                          <a
-                            href={it.source_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="ml-2 text-xs text-green-700 underline"
-                            title="Ver en origen"
-                          >
-                            Ver en origen
-                          </a>
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-600">x{it.quantity}</div>
+                  <li
+                  key={`${it.product_id ?? 'encargo'}-${it.variant_id ?? 'no-var'}-${idx}`}
+                  className="p-4 flex items-center gap-3"
+                >
+                  {it.image_url ? (
+                    <img
+                      src={it.image_url}
+                      alt={it.product_name || `Prod ${it.product_id ?? ''}`}
+                      className="w-12 h-12 object-contain bg-white rounded border p-0.5"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded border bg-gray-100" />
+                  )}
+                
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      {it.product_name || `Producto #${it.product_id ?? ''}`}
+                      {it.source_url && (
+                        <a
+                          href={it.source_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ml-2 text-xs text-green-700 underline"
+                          title="Ver en origen"
+                        >
+                          Ver en origen
+                        </a>
+                      )}
                     </div>
-                    <div className="text-sm font-semibold">
-                      {fmt.format(Number(it.unit_price) * Number(it.quantity))}
+                
+                    {/* Variante si existe */}
+                    {it.variant_label?.trim() ? (
+                      <div className="text-xs text-gray-500"> {it.variant_label}</div>
+                    ) : null}
+                
+                    {/* Cantidad y unitario */}
+                    <div className="text-xs text-gray-600">
+                      x{it.quantity} · {fmt.format(Number(it.unit_price))}
                     </div>
-                  </li>
+                  </div>
+                
+                  {/* Subtotal por ítem */}
+                  <div className="text-sm font-semibold">
+                    {fmt.format(Number(it.unit_price) * Number(it.quantity))}
+                  </div>
+                </li>
+                
                 ))}
               </ul>
 
