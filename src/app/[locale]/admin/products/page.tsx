@@ -66,6 +66,7 @@ type ProductForm = Partial<Omit<Product, 'metadata'>> & {
   metadata?: ProductMeta
   duty_usd?: number | undefined   // input de UI (se convierte a cents en el backend)
   keywords_text?: string | undefined // caja de texto separada por comas
+  link?: string | null 
 }
 // headers con token para endpoints admin
 const authHeaders = (): HeadersInit => {
@@ -99,6 +100,7 @@ export default function AdminProductsPage() {
     description_en: '',
     duty_usd: undefined,
     keywords_text: '',
+    link: null,
   })
 
   // Opciones (hasta 3) y Variantes
@@ -392,6 +394,7 @@ export default function AdminProductsPage() {
       description_en?: string | null;
       duty_usd?: number | undefined;
       keywords?: string[] | undefined;
+      link?: string | null;
     } = {
       title: String(form.title || '').trim(),
       title_en: form.title_en ? String(form.title_en).trim() : undefined,
@@ -409,6 +412,10 @@ export default function AdminProductsPage() {
         .split(',')
         .map(s => s.trim().toLowerCase())
         .filter(s => s.length > 0),
+        link:
+    form.link == null || form.link.trim() === ''
+      ? null
+      : form.link.trim(),
     };
 
 
@@ -432,6 +439,7 @@ export default function AdminProductsPage() {
         metadata: { taxable: true, tax_pct: undefined, margin_pct: undefined, price_cents: undefined },
         stock_qty: 0,
         owner_id: null,
+        link: null,
       })
       await load()
       setEditing(null)
@@ -450,10 +458,10 @@ export default function AdminProductsPage() {
   }
 
   const onEdit = (p: Product) => {
-       const px = p as (ProductLike & {
-         duty_cents?: number | null
-         keywords?: string[] | null
-       })
+    const px = p as (ProductLike & {
+      duty_cents?: number | null
+      keywords?: string[] | null
+    })
 
     const m = (px.metadata ?? {}) as ProductMeta & { archived?: boolean }
     const dutyUsd = typeof px.duty_cents === 'number' ? px.duty_cents / 100 : undefined
@@ -480,6 +488,7 @@ export default function AdminProductsPage() {
       owner_id: px.owner_id ?? null,
       duty_usd: dutyUsd,
       keywords_text: kwText,
+      link: (px as Product & { link?: string | null }).link ?? null,
     })
 
     // Cargar opciones/variantes del producto
@@ -743,6 +752,30 @@ export default function AdminProductsPage() {
               />
               <p className="text-xs text-gray-500 mt-1">Se usarán en el buscador global además del título/descr en ES/EN.</p>
             </div>
+
+            <div>
+              <label htmlFor="p-amazon-url" className="block text-sm font-medium text-gray-700">
+                URL de Amazon (opcional)
+              </label>
+              <input
+                id="p-amazon-url"
+                className="input"
+                type="url"
+                placeholder="https://amzn.to/..."
+                value={form.link ?? ''}
+                onChange={e =>
+                  setForm(s => ({
+                    ...s,
+                    link: e.target.value.trim() === '' ? null : e.target.value.trim(),
+                  }))
+                }
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Si este campo tiene valor, el producto se comportará como enlace externo a Amazon (no se podrá agregar al carrito).
+              </p>
+            </div>
+
+
 
             {/* Owner real (owner_id) */}
             <div>
@@ -1050,7 +1083,7 @@ export default function AdminProductsPage() {
                           <div className="font-medium text-gray-900 truncate">
                             {[v.option1, v.option2, v.option3].filter(Boolean).join(' / ') || 'Sin opciones'}
                           </div>
-                          
+
                           {(() => {
                             const variantUSD = centsToDollars(v.price_cents)
                             const totals = computeVariantTotals({
@@ -1155,6 +1188,7 @@ export default function AdminProductsPage() {
                       metadata: { taxable: true, tax_pct: undefined, margin_pct: undefined, price_cents: undefined },
                       stock_qty: 0,
                       owner_id: form.owner_id ?? null,
+                      link: null,
                     })
                   }}
                   className="px-3 py-2 rounded bg-gray-200"

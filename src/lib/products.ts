@@ -14,6 +14,7 @@ export type SimplifiedProduct = {
   imageSrc: string
   variant_id: string
   description?: string
+  link?: string | null
 }
 
 export type ProductMetadata = {
@@ -70,6 +71,7 @@ type ProductFromAPI = {
   display_total_cents?: number | null
 
   metadata?: ProductMetadata | null
+  link?: string | null 
 }
 
 type ProductDetailFromAPI = ProductFromAPI & {
@@ -127,6 +129,10 @@ function mapApiProduct(p: ProductFromAPI, locale: 'en' | 'es' = 'es'): Simplifie
       ? (p.description_en?.trim() || p.description?.trim() || '')
       : (p.description?.trim() || p.description_en?.trim() || '')
 
+      const rawLink = p.link
+      const normalizedLink =
+        typeof rawLink === 'string' && rawLink.trim() !== '' ? rawLink.trim() : null    
+
   return {
     id: Number(p.id),
     name,
@@ -134,6 +140,7 @@ function mapApiProduct(p: ProductFromAPI, locale: 'en' | 'es' = 'es'): Simplifie
     imageSrc: p.image_url || '/product.webp',
     variant_id: String(p.id),
     description,
+    link: normalizedLink,
   }
 }
 

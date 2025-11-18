@@ -50,7 +50,7 @@ export default function HeroCategories({ dict }: Props) {
 
   return (
     <section id="hero" className="py-8 px-4 md:px-12 lg:px-20 bg-white scroll-mt-24">
-   
+      
       <div className="mb-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900
                       flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-h-[48px]">
         <div>
@@ -84,8 +84,9 @@ export default function HeroCategories({ dict }: Props) {
         <h1 className="text-3xl font-bold text-gray-800">{dict.categories.title}</h1>
         <p className="text-gray-600 text-sm mt-1">{dict.categories.subtitle}</p>
       </div>
-
+      
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      
         {cats.map((cat, idx) => (
           <Link
             key={cat.slug}

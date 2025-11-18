@@ -12,19 +12,23 @@ import type { Dict } from '@/types/Dict'
 import Image from 'next/image'
 import Link from 'next/link'
 
+type SpotlightProduct = SimplifiedProduct & {
+  link?: string | null
+}
+
 export default function ProductsSpotlight({ dict }: { dict: Dict }) {
   const { locale } = useParams() as { locale: string }
   const { location } = useLocation()
   const { addItem } = useCart()
   const router = useRouter()
 
-  const [items, setItems] = useState<SimplifiedProduct[]>([])
+  const [items, setItems] = useState<SpotlightProduct[]>([])
   const [loading, setLoading] = useState(true)
 
   // PERF: render progresivo (pocas al inicio, luego más)
   const [visibleCount, setVisibleCount] = useState<number>(0)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
-  const railRef = useRef<HTMLDivElement>(null)
+  const railRef = useRef<HTMLDivElement | null>(null)
 
   // Estado para habilitar/deshabilitar controles
   const [canPrev, setCanPrev] = useState(false)
@@ -51,11 +55,11 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     () =>
       location
         ? ({
-            country: location.country,
-            province: location.province,
-            municipality: location.municipality,
-            area_type: location.area_type,
-          } as DeliveryLocation)
+          country: location.country,
+          province: location.province,
+          municipality: location.municipality,
+          area_type: location.area_type,
+        } as DeliveryLocation)
         : undefined,
     [location?.country, location?.province, location?.municipality, location?.area_type]
   )
@@ -68,18 +72,16 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
         const list = await getProducts(loc, locale === 'en' ? 'en' : 'es')
         if (!cancelled) {
           const trimmed = (list ?? []).slice(0, 20)
-          setItems(trimmed)
+          setItems(trimmed as SpotlightProduct[])
 
-          // PERF: decide cuántas mostrar de entrada según viewport (muy simple y conservador)
+          // decide cuántas mostrar de entrada
           const w = typeof window !== 'undefined' ? window.innerWidth : 768
-          const initial = w < 640 ? 4 : 8 // 2 filas móviles ~ 4 items visibles, en desktop 8
+          const initial = w < 640 ? 4 : 8
           setVisibleCount(Math.min(initial, trimmed.length))
 
-          // PERF: hidrata más en idle (hasta 12) sin bloquear interacción
-          const idle = (cb: () => void) => {            
+          const idle = (cb: () => void) => {
             if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-           
-              return window.requestIdleCallback(cb)
+              return (window as any).requestIdleCallback(cb)
             }
             return setTimeout(cb, 200)
           }
@@ -94,7 +96,9 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
       }
     }
     load()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [loc, locale])
 
   const fmt = useMemo(
@@ -105,35 +109,36 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
   // Actualiza estado de controles según posición del scroll
   const recomputeControls = useCallback(() => {
     const el = railRef.current
-    if (!el) { setCanPrev(false); setCanNext(false); return }
+    if (!el) {
+      setCanPrev(false)
+      setCanNext(false)
+      return
+    }
     const max = Math.max(0, el.scrollWidth - el.clientWidth)
     const x = el.scrollLeft
-    const tol = 1 // tolerancia para evitar falsos positivos
+    const tol = 1
     setCanPrev(x > tol)
-    setCanNext(x < (max - tol))
+    setCanNext(x < max - tol)
   }, [])
 
-  // PERF: evita recrear función por render y CLAMPEA el objetivo
   const scrollByPage = useCallback((dir: -1 | 1) => {
-       const el = railRef.current
-        if (!el) return
-        const card = el.querySelector<HTMLElement>('[data-card]')
-        const cs = getComputedStyle(el)
-        // gap horizontal del carril (flex gap)
-        let gapPx = parseFloat(cs.columnGap || '0')
-        if (Number.isNaN(gapPx)) gapPx = 0
-        const cardWidth = card ? card.getBoundingClientRect().width : 0
-        const step = cardWidth + gapPx || el.clientWidth // fallback por si acaso
-        const perPage = Math.max(1, Math.floor(el.clientWidth / step))
-        const delta = dir * perPage * step
-        const max = Math.max(0, el.scrollWidth - el.clientWidth)
-        const target = el.scrollLeft + delta
-        const clamped = Math.max(0, Math.min(target, max))
-        if (Math.abs(clamped - el.scrollLeft) < 1) return
-        el.scrollTo({ left: clamped, behavior: 'smooth' })
-      }, [])
+    const el = railRef.current
+    if (!el) return
+    const card = el.querySelector<HTMLElement>('[data-card]')
+    const cs = getComputedStyle(el)
+    let gapPx = parseFloat(cs.columnGap || '0')
+    if (Number.isNaN(gapPx)) gapPx = 0
+    const cardWidth = card ? card.getBoundingClientRect().width : 0
+    const step = cardWidth + gapPx || el.clientWidth
+    const perPage = Math.max(1, Math.floor(el.clientWidth / step))
+    const delta = dir * perPage * step
+    const max = Math.max(0, el.scrollWidth - el.clientWidth)
+    const target = el.scrollLeft + delta
+    const clamped = Math.max(0, Math.min(target, max))
+    if (Math.abs(clamped - el.scrollLeft) < 1) return
+    el.scrollTo({ left: clamped, behavior: 'smooth' })
+  }, [])
 
-  // Escucha scroll/resize para habilitar/deshabilitar flechas
   useEffect(() => {
     const el = railRef.current
     if (!el) return
@@ -148,22 +153,22 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     }
   }, [recomputeControls, visibleCount, items.length])
 
-  // PERF: cargar más cuando el usuario se acerca al final (horizontal)
   useEffect(() => {
     if (!sentinelRef.current) return
-    const io = new IntersectionObserver((entries) => {
-      for (const e of entries) {
-        if (e.isIntersecting) {
-          setVisibleCount(v => Math.min(v + 6, items.length))
+    const io = new IntersectionObserver(
+      entries => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            setVisibleCount(v => Math.min(v + 6, items.length))
+          }
         }
-      }
-    }, { root: railRef.current, rootMargin: '200px', threshold: 0.01 })
+      },
+      { root: railRef.current, rootMargin: '200px', threshold: 0.01 }
+    )
     io.observe(sentinelRef.current)
     return () => io.disconnect()
   }, [items.length])
 
-  // Evita “saltos” al hacer scroll vertical rápido en iOS:
-  // limitamos gestos a pan-x y evitamos overscroll horizontal que “arrastre” la página
   const railClasses = `
     flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2
     [-ms-overflow-style:none] [scrollbar-width:none]
@@ -219,63 +224,112 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
         </p>
       ) : (
         <div className="relative">
-          <div
-            ref={railRef}
-            className={railClasses}
-            onScroll={recomputeControls}
-          >
-            {items.slice(0, Math.max(visibleCount, 1)).map((p, idx, arr) => (
-              <article
-                key={p.id}
-                className="w-[calc(50%-0.5rem)] md:w-[calc((100%-3rem)/4)] lg:w-[calc((100%-4rem)/5)] xl:w-[calc((100%-5rem)/6)]
-                flex-shrink-0 snap-start snap-always rounded-xl border shadow-sm bg-white flex flex-col overflow-hidden"
-                data-card
-                ref={idx === arr.length - 1 ? sentinelRef : undefined}
-              >
-                {/* Imagen click → detalle */}
-                <Link
-                  href={`/${locale}/product/${p.id}`}
-                  prefetch={false}
-                  className="relative aspect-[4/3] bg-white rounded-t-xl overflow-hidden block"
+          <div ref={railRef} className={railClasses} onScroll={recomputeControls}>
+            {items.slice(0, Math.max(visibleCount, 1)).map((p, idx, arr) => {
+              const hasExternalLink = !!p.link && p.link.trim() !== ''
+              const href = hasExternalLink ? p.link!.trim() : `/${locale}/product/${p.id}`
+
+              return (
+                <article
+                  key={p.id}
+                  className="w-[calc(50%-0.5rem)] md:w-[calc((100%-3rem)/4)] lg:w-[calc((100%-4rem)/5)] xl:w-[calc((100%-5rem)/6)]
+                  flex-shrink-0 snap-start snap-always rounded-xl border shadow-sm bg-white flex flex-col overflow-hidden"
+                  data-card
+                  ref={idx === arr.length - 1 ? sentinelRef : undefined}
                 >
-                  <Image
-                    src={p.imageSrc}
-                    alt={p.name}
-                    fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, (max-width: 1536px) 18vw, 16vw"
-                    className="object-contain p-2"
-                    loading="lazy"
-                    fetchPriority="low"
-                    decoding="async"
-                    draggable={false}
-                  />
-                </Link>
-
-                <div className="p-3 flex-1 flex flex-col">
-                  <Link href={`/${locale}/product/${p.id}`} prefetch={false}>
-                    <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 hover:underline">
-                      {p.name}
-                    </h3>
-                  </Link>
-
-                  {p.description ? (
-                    <p className="text-xs text-gray-600 mt-1 line-clamp-3">{p.description}</p>
+                  {/* Imagen → detalle o enlace externo */}
+                  {hasExternalLink ? (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="relative aspect-[4/3] bg-white rounded-t-xl overflow-hidden block"
+                    >
+                      <Image
+                        src={p.imageSrc}
+                        alt={p.name}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, (max-width: 1536px) 18vw, 16vw"
+                        className="object-contain p-2"
+                        loading="lazy"
+                        fetchPriority="low"
+                        decoding="async"
+                        draggable={false}
+                      />
+                    </a>
                   ) : (
-                    <span className="mt-1" />
+                    <Link
+                      href={href}
+                      prefetch={false}
+                      className="relative aspect-[4/3] bg-white rounded-t-xl overflow-hidden block"
+                    >
+                      <Image
+                        src={p.imageSrc}
+                        alt={p.name}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, (max-width: 1536px) 18vw, 16vw"
+                        className="object-contain p-2"
+                        loading="lazy"
+                        fetchPriority="low"
+                        decoding="async"
+                        draggable={false}
+                      />
+                    </Link>
                   )}
 
-                  <div className="mt-auto">
-                    <div className="text-green-700 font-semibold text-sm">{fmt.format(p.price)}</div>
-                    <button
-                      onClick={() => handleAdd(p)}
-                      className="mt-3 w-full bg-green-600 text-white text-sm py-2 rounded hover:bg-green-700 transition"
-                    >
-                      {t.addToCart}
-                    </button>
+                  <div className="p-3 flex-1 flex flex-col">
+                    {hasExternalLink ? (
+                      <a href={href} target="_blank" rel="noopener noreferrer">
+                        <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 hover:underline">
+                          {p.name}
+                        </h3>
+                      </a>
+                    ) : (
+                      <Link href={href} prefetch={false}>
+                        <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 hover:underline">
+                          {p.name}
+                        </h3>
+                      </Link>
+                    )}
+
+                    {p.description ? (
+                      <p className="text-xs text-gray-600 mt-1 line-clamp-3">{p.description}</p>
+                    ) : (
+                      <span className="mt-1" />
+                    )}
+
+                    <p className="mt-1 text-[11px] text-gray-500 leading-tight text-left">
+                      {locale === 'en'
+                        ? 'As an Amazon Associate, we earn from qualifying purchases.'
+                        : 'Como afiliados de Amazon, ganamos comisiones por compras calificadas.'}
+                    </p>
+
+                    <div className="mt-auto">
+                      <div className="text-green-700 font-semibold text-sm">{fmt.format(p.price)}</div>
+
+                      {/* Botón: carrito normal o "View on Amazon" */}
+                      {hasExternalLink ? (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-3 w-full inline-flex items-center justify-center bg-amber-600 hover:bg-amber-700 text-white text-sm py-2 rounded transition"
+                        >
+                          {locale === 'en' ? 'View on Amazon' : 'Ver en Amazon'}
+                        </a>
+                      ) : (
+                        <button
+                          onClick={() => handleAdd(p)}
+                          className="mt-3 w-full bg-green-600 text-white text-sm py-2 rounded hover:bg-green-700 transition"
+                        >
+                          {t.addToCart}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              )
+            })}
           </div>
 
           {/* Controles móviles */}
@@ -304,7 +358,7 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     </section>
   )
 
-  // PERF: evita recrear función por render
+  // misma lógica de agregar al carrito que antes
   async function handleAdd(p: SimplifiedProduct) {
     const isLoggedIn = await checkCustomerAuth()
     if (!isLoggedIn) {
@@ -318,9 +372,17 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     } catch (e: unknown) {
       const err = (e ?? {}) as { code?: string; available?: number }
       if (err.code === 'OUT_OF_STOCK') {
-        toast.error(`Sin stock${Number.isFinite(err.available) ? ` (disp: ${err.available})` : ''}`, { position: 'bottom-center' })
+        toast.error(
+          `Sin stock${Number.isFinite(err.available) ? ` (disp: ${err.available})` : ''}`,
+          { position: 'bottom-center' }
+        )
       } else {
-        toast.error(locale === 'en' ? 'At the moment, you can’t add products to the cart.' : 'En este momento no se pueden agregar productos al carrito.', { position: 'bottom-center' })
+        toast.error(
+          locale === 'en'
+            ? 'At the moment, you can’t add products to the cart.'
+            : 'En este momento no se pueden agregar productos al carrito.',
+          { position: 'bottom-center' }
+        )
       }
     }
   }

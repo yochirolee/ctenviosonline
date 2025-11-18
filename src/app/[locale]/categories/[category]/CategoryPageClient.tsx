@@ -17,6 +17,7 @@ type Product = {
   imageSrc: string
   quantity?: number
   description?: string
+  link?: string | null
 }
 
 type Dict = {
@@ -194,7 +195,7 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
 
       <input
         type="search"
-        placeholder={typedPh || basePlaceholder} 
+        placeholder={typedPh || basePlaceholder}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         className="mb-4 w-full md:w-1/2 px-3 py-2 border rounded text-base"
@@ -207,57 +208,114 @@ export default function CategoryPageClient({ params, dict, products }: Props) {
       ) : (
         // En pantallas grandes mostrar 6 productos
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-4">
-          {filteredProducts.map((product) => (
-            <article
-              key={product.id}
-              className="rounded shadow-sm border bg-white flex flex-col overflow-hidden"
-            >
-              {/* Imagen click → detalle, con ratio fijo y sin recorte */}
-              <Link
-                href={`/${params.locale}/product/${product.id}`}
-                className="relative aspect-[4/3] bg-gray-50 block"
+          {filteredProducts.map((product) => {
+            const hasExternalLink = !!product.link && product.link.trim() !== ''
+            const href = hasExternalLink
+              ? product.link!.trim()
+              : `/${params.locale}/product/${product.id}`
+
+            return (
+              <article
+                key={product.id}
+                className="rounded shadow-sm border bg-white flex flex-col overflow-hidden"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={product.imageSrc}
-                  alt={product.name}
-                  className="absolute inset-0 w-full h-full object-contain p-2"
-                  loading="lazy"
-                />
-              </Link>
-
-              {/* Contenido */}
-              <div className="p-2 flex-1 flex flex-col">
-                <Link href={`/${params.locale}/product/${product.id}`}>
-                  <h2 className="text-sm text-center font-semibold text-gray-800 line-clamp-2 hover:underline">
-                    {product.name}
-                  </h2>
-                </Link>
-
-                {/* Descripción breve */}
-                {product.description ? (
-                  <p className="text-xs text-gray-600 line-clamp-3 mt-1 text-center px-1">
-                    {product.description}
-                  </p>
+                {/* Imagen: si tiene link externo, usamos <a>; si no, <Link> interno */}
+                {hasExternalLink ? (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative aspect-[4/3] bg-gray-50 block"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={product.imageSrc}
+                      alt={product.name}
+                      className="absolute inset-0 w-full h-full object-contain p-2"
+                      loading="lazy"
+                    />
+                  </a>
                 ) : (
-                  <span className="mt-1" />
+                  <Link
+                    href={href}
+                    className="relative aspect-[4/3] bg-gray-50 block"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={product.imageSrc}
+                      alt={product.name}
+                      className="absolute inset-0 w-full h-full object-contain p-2"
+                      loading="lazy"
+                    />
+                  </Link>
                 )}
 
-                {/* Footer pegado abajo: precio + botón */}
-                <div className="mt-auto pt-2">
-                  <p className="text-green-700 text-center font-semibold text-sm">
-                    {fmt.format(product.price)}
-                  </p>
-                  <button
-                    onClick={() => handleAddToCart(product)}
-                    className="mt-2 w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
-                  >
-                    {dict.cart?.addToCart || 'Add to cart'}
-                  </button>
+                {/* Contenido */}
+                <div className="p-2 flex-1 flex flex-col">
+                  {/* Título: mismo criterio, externo vs interno */}
+                  {hasExternalLink ? (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <h2 className="text-sm text-center font-semibold text-gray-800 line-clamp-2 hover:underline">
+                        {product.name}
+                      </h2>
+                    </a>
+                  ) : (
+                    <Link href={href}>
+                      <h2 className="text-sm text-center font-semibold text-gray-800 line-clamp-2 hover:underline">
+                        {product.name}
+                      </h2>
+                    </Link>
+                  )}
+
+                  {/* Descripción breve */}
+                  {product.description ? (
+                    <p className="text-xs text-gray-600 line-clamp-3 mt-1 text-center px-1">
+                      {product.description}
+                    </p>
+                  ) : (
+                    <span className="mt-1" />
+                  )}
+
+                  {hasExternalLink ? (<p className="mt-1 text-[11px] text-gray-500 leading-tight text-center">
+                    {params.locale === 'en'
+                      ? 'As an Amazon Associate, we earn from qualifying purchases.'
+                      : 'Como afiliados de Amazon, ganamos comisiones por compras calificadas.'}
+                  </p>) : null}
+
+                  {/* Footer pegado abajo: precio + botón */}
+                  <div className="mt-auto pt-2">
+                    <p className="text-green-700 text-center font-semibold text-sm">
+                      {fmt.format(product.price)}
+                    </p>
+
+                    {hasExternalLink ? (
+                      // Si tiene link externo, en lugar de "Agregar al carrito" mandamos a Amazon
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex w-full items-center justify-center bg-amber-600 text-white py-2 rounded hover:bg-amber-700 transition text-sm"
+                      >
+                        {params.locale === 'en' ? 'View on Amazon' : 'Ver en Amazon'}
+                      </a>
+                    ) : (
+                      <button
+                        onClick={() => handleAddToCart(product)}
+                        className="mt-2 w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+                      >
+                        {dict.cart?.addToCart || 'Add to cart'}
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            )
+          })}
+
 
         </div>
       )}

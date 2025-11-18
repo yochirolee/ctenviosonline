@@ -12,7 +12,10 @@ import type { Dict } from '@/types/Dict'
 import Link from 'next/link'
 import Image from 'next/image'
 
-type BestItem = SimplifiedProduct & { sold_qty?: number }
+type BestItem = SimplifiedProduct & {
+  sold_qty?: number
+  link?: string | null
+}
 
 export default function BestSellers({ dict }: { dict: Dict }) {
   const { locale } = useParams() as { locale: string }
@@ -42,16 +45,15 @@ export default function BestSellers({ dict }: { dict: Dict }) {
     empty: locale === 'en' ? 'No best sellers yet.' : 'Aún no hay más vendidos.',
   }
 
-  // PERF: estabiliza dependencias para no refetchear por cambios de referencia
   const loc = useMemo(
     () =>
       location
         ? ({
-            country: location.country,
-            province: location.province,
-            municipality: location.municipality,
-            area_type: location.area_type,
-          } as DeliveryLocation)
+          country: location.country,
+          province: location.province,
+          municipality: location.municipality,
+          area_type: location.area_type,
+        } as DeliveryLocation)
         : undefined,
     [location?.country, location?.province, location?.municipality, location?.area_type]
   )
@@ -62,25 +64,29 @@ export default function BestSellers({ dict }: { dict: Dict }) {
       try {
         setLoading(true)
         const list = await getBestSellers(
-                    loc,
-                  { limit: 12, days: 60 },
-                  locale === 'en' ? 'en' : 'es'
-                )
+          loc,
+          { limit: 12, days: 60 },
+          locale === 'en' ? 'en' : 'es'
+        )
         if (!cancelled) {
           const data = list ?? []
-          setItems(data)
+          setItems(data as BestItem[])
 
-          // pinta pocas primero, según viewport
           const w = typeof window !== 'undefined' ? window.innerWidth : 768
           const initial = w < 640 ? 4 : 8
           setVisibleCount(Math.min(initial, data.length))
 
-          // hidrata más en idle (hasta 12)
           const idle = (cb: () => void) => {
-            if (typeof window !== 'undefined' && window.requestIdleCallback) return window.requestIdleCallback(cb)
+            if (typeof window !== 'undefined' && window.requestIdleCallback) {
+              return window.requestIdleCallback(cb)
+            }
             return setTimeout(cb, 200)
           }
-          idle(() => setVisibleCount(v => Math.min(Math.max(v, initial), Math.min(12, data.length))))
+          idle(() =>
+            setVisibleCount(v =>
+              Math.min(Math.max(v, initial), Math.min(12, data.length))
+            )
+          )
         }
       } catch {
         if (!cancelled) setItems([])
@@ -89,7 +95,9 @@ export default function BestSellers({ dict }: { dict: Dict }) {
       }
     }
     load()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [loc, locale])
 
   const fmt = useMemo(
@@ -97,37 +105,43 @@ export default function BestSellers({ dict }: { dict: Dict }) {
     [locale]
   )
 
-  const handleAdd = useCallback(async (p: BestItem) => {
-    const isLoggedIn = await checkCustomerAuth()
-    if (!isLoggedIn) {
-      toast.error(t.login_required, { position: 'bottom-center' })
-      router.push(`/${locale}/login`)
-      return
-    }
-    try {
-      await addItem(Number(p.id), 1)
-      toast.success(`${t.added}`, { position: 'bottom-center' })
-    } catch {
-      toast.error(
-        locale === 'en'
-          ? 'At the moment, you can’t add products to the cart.'
-          : 'En este momento no se pueden agregar productos al carrito.',
-        { position: 'bottom-center' }
-      )
-    }
-  }, [addItem, locale, router, t.added, t.login_required])
+  const handleAdd = useCallback(
+    async (p: BestItem) => {
+      const isLoggedIn = await checkCustomerAuth()
+      if (!isLoggedIn) {
+        toast.error(t.login_required, { position: 'bottom-center' })
+        router.push(`/${locale}/login`)
+        return
+      }
+      try {
+        await addItem(Number(p.id), 1)
+        toast.success(`${t.added}`, { position: 'bottom-center' })
+      } catch {
+        toast.error(
+          locale === 'en'
+            ? 'At the moment, you can’t add products to the cart.'
+            : 'En este momento no se pueden agregar productos al carrito.',
+          { position: 'bottom-center' }
+        )
+      }
+    },
+    [addItem, locale, router, t.added, t.login_required]
+  )
 
   // Cargar más cuando el usuario llega al final del grid
   useEffect(() => {
     if (!lastCardRef.current) return
     const el = lastCardRef.current
-    const io = new IntersectionObserver((entries) => {
-      for (const e of entries) {
-        if (e.isIntersecting) {
-          setVisibleCount(v => Math.min(v + 6, items.length))
+    const io = new IntersectionObserver(
+      entries => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            setVisibleCount(v => Math.min(v + 6, items.length))
+          }
         }
-      }
-    }, { root: null, rootMargin: '200px', threshold: 0.01 })
+      },
+      { root: null, rootMargin: '200px', threshold: 0.01 }
+    )
     io.observe(el)
     return () => io.disconnect()
   }, [items.length, visibleCount])
@@ -161,61 +175,131 @@ export default function BestSellers({ dict }: { dict: Dict }) {
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-4
                      [content-visibility:auto] [contain-intrinsic-size:720px]"
         >
-          {items.slice(0, Math.max(visibleCount, 1)).map((p, idx, arr) => (
-            <article
-              key={p.id}
-              ref={idx === arr.length - 1 ? lastCardRef : undefined}
-              className="border rounded-xl overflow-hidden shadow-sm bg-white flex flex-col"
-            >
-              <Link
-                href={`/${locale}/product/${p.id}`}
-                prefetch={false} // PERF: evita prefetch de muchas rutas
-                className="relative bg-white aspect-[4/3] block"
+          {items.slice(0, Math.max(visibleCount, 1)).map((p, idx, arr) => {
+            const hasExternalLink = !!p.link && p.link.trim() !== ''
+            const href = hasExternalLink ? p.link!.trim() : `/${locale}/product/${p.id}`
+
+            return (
+              <article
+                key={p.id}
+                ref={idx === arr.length - 1 ? lastCardRef : undefined}
+                className="border rounded-xl overflow-hidden shadow-sm bg-white flex flex-col"
               >
-                <Image
-                  src={p.imageSrc}
-                  alt={p.name}
-                  fill
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
-                  className="object-contain p-2"
-                  loading="lazy"
-                  fetchPriority="low"
-                  decoding="async"
-                  draggable={false}
-                />
-                {(() => {
-                  const sold = Number(p.sold_qty ?? 0)
-                  return sold > 0 ? (
-                    <span className="absolute top-2 left-2 text-[11px] bg-orange-500 text-white px-2 py-0.5 rounded-full">
-                      {locale === 'en' ? `Sold ${sold}+` : `Vendidos ${sold}+`}
-                    </span>
-                  ) : null
-                })()}
-              </Link>
-
-              <div className="p-3 flex-1 flex flex-col">
-                <Link href={`/${locale}/product/${p.id}`} prefetch={false}>
-                  <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 hover:underline">
-                    {p.name}
-                  </h3>
-                </Link>
-
-                {p.description ? (
-                  <p className="text-xs text-gray-600 mt-1 line-clamp-3">{p.description}</p>
-                ) : <span className="mt-1" />}
-
-                <div className="mt-auto">
-                  <div className="text-green-700 font-semibold text-sm">{fmt.format(p.price)}</div>
-                  <button
-                    onClick={() => handleAdd(p)}
-                    className="mt-3 w-full bg-green-600 text-white text-sm py-2 rounded hover:bg-green-700 transition"
+                {/* Imagen → detalle o enlace externo */}
+                {hasExternalLink ? (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative bg-white aspect-[4/3] block"
                   >
-                    {t.addToCart}
-                  </button>
+                    <Image
+                      src={p.imageSrc}
+                      alt={p.name}
+                      fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
+                      className="object-contain p-2"
+                      loading="lazy"
+                      fetchPriority="low"
+                      decoding="async"
+                      draggable={false}
+                    />
+                    {(() => {
+                      const sold = Number(p.sold_qty ?? 0)
+                      return sold > 0 ? (
+                        <span className="absolute top-2 left-2 text-[11px] bg-orange-500 text-white px-2 py-0.5 rounded-full">
+                          {locale === 'en' ? `Sold ${sold}+` : `Vendidos ${sold}+`}
+                        </span>
+                      ) : null
+                    })()}
+                  </a>
+                ) : (
+                  <Link
+                    href={href}
+                    prefetch={false}
+                    className="relative bg-white aspect-[4/3] block"
+                  >
+                    <Image
+                      src={p.imageSrc}
+                      alt={p.name}
+                      fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
+                      className="object-contain p-2"
+                      loading="lazy"
+                      fetchPriority="low"
+                      decoding="async"
+                      draggable={false}
+                    />
+                    {(() => {
+                      const sold = Number(p.sold_qty ?? 0)
+                      return sold > 0 ? (
+                        <span className="absolute top-2 left-2 text-[11px] bg-orange-500 text-white px-2 py-0.5 rounded-full">
+                          {locale === 'en' ? `Sold ${sold}+` : `Vendidos ${sold}+`}
+                        </span>
+                      ) : null
+                    })()}
+                  </Link>
+                )}
+
+                <div className="p-3 flex-1 flex flex-col">
+                  {hasExternalLink ? (
+                    <a href={href} target="_blank" rel="noopener noreferrer">
+                      <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 hover:underline">
+                        {p.name}
+                      </h3>
+                    </a>
+                  ) : (
+                    <Link href={href} prefetch={false}>
+                      <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 hover:underline">
+                        {p.name}
+                      </h3>
+                    </Link>
+                  )}
+
+                  {p.description ? (
+                    <p className="text-xs text-gray-600 mt-1 line-clamp-3">{p.description}</p>
+                  ) : (
+                    <span className="mt-1" />
+                  )}
+
+                  <p className="mt-1 text-[11px] text-gray-500 leading-tight text-left">
+                    {locale === 'en'
+                      ? 'As an Amazon Associate, we earn from qualifying purchases.'
+                      : 'Como afiliados de Amazon, ganamos comisiones por compras calificadas.'}
+                  </p>
+
+                  <div className="mt-auto">
+                    <div className="text-green-700 font-semibold text-sm">
+                      {fmt.format(p.price)}
+                    </div>
+
+                    {hasExternalLink ? (
+                      <>
+
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-3 w-full inline-flex items-center justify-center bg-amber-600 hover:bg-amber-700 text-white text-sm py-2 rounded transition"
+                        >
+                          {locale === 'en' ? 'View on Amazon' : 'Ver en Amazon'}
+                        </a>
+
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => handleAdd(p)}
+                        className="mt-3 w-full bg-green-600 text-white text-sm py-2 rounded hover:bg-green-700 transition"
+                      >
+                        {t.addToCart}
+                      </button>
+                    )}
+
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            )
+          })}
         </div>
       )}
     </section>
