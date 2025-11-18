@@ -25,12 +25,10 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
   const [items, setItems] = useState<SpotlightProduct[]>([])
   const [loading, setLoading] = useState(true)
 
-  // PERF: render progresivo (pocas al inicio, luego más)
   const [visibleCount, setVisibleCount] = useState<number>(0)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const railRef = useRef<HTMLDivElement | null>(null)
 
-  // Estado para habilitar/deshabilitar controles
   const [canPrev, setCanPrev] = useState(false)
   const [canNext, setCanNext] = useState(false)
 
@@ -39,8 +37,13 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     subtitle:
       dict.spotlight?.subtitle ??
       (locale === 'en' ? 'Discover and add instantly' : 'Descubre y agrega al instante'),
-    addToCart: dict.spotlight?.addToCart ?? dict.cart?.addToCart ?? (locale === 'en' ? 'Add to Cart' : 'Agregar al carrito'),
-    added: dict.cart?.added ?? (locale === 'en' ? 'Product added to the cart' : 'Producto agregado al carrito'),
+    addToCart:
+      dict.spotlight?.addToCart ??
+      dict.cart?.addToCart ??
+      (locale === 'en' ? 'Add to Cart' : 'Agregar al carrito'),
+    added:
+      dict.cart?.added ??
+      (locale === 'en' ? 'Product added to the cart' : 'Producto agregado al carrito'),
     login_required:
       dict.spotlight?.login_required ??
       dict.cart?.login_required ??
@@ -50,16 +53,15 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     viewAll: dict.spotlight?.viewAll ?? (locale === 'en' ? 'View all' : 'Ver todo'),
   }
 
-  // Memoiza la ubicación para usarla como única dependencia en el efecto
   const loc = useMemo(
     () =>
       location
         ? ({
-          country: location.country,
-          province: location.province,
-          municipality: location.municipality,
-          area_type: location.area_type,
-        } as DeliveryLocation)
+            country: location.country,
+            province: location.province,
+            municipality: location.municipality,
+            area_type: location.area_type,
+          } as DeliveryLocation)
         : undefined,
     [location?.country, location?.province, location?.municipality, location?.area_type]
   )
@@ -74,17 +76,23 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
           const trimmed = (list ?? []).slice(0, 20)
           setItems(trimmed as SpotlightProduct[])
 
-          // decide cuántas mostrar de entrada
           const w = typeof window !== 'undefined' ? window.innerWidth : 768
           const initial = w < 640 ? 4 : 8
           setVisibleCount(Math.min(initial, trimmed.length))
 
           const idle = (cb: () => void) => {
-            if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-              return (window as any).requestIdleCallback(cb)
+            if (
+              typeof window !== 'undefined' &&
+              'requestIdleCallback' in window
+            ) {
+              ;(window as unknown as { requestIdleCallback: (fn: () => void) => number }).requestIdleCallback(
+                cb
+              )
+            } else {
+              setTimeout(cb, 200)
             }
-            return setTimeout(cb, 200)
           }
+
           idle(() => {
             setVisibleCount(v => Math.min(Math.max(v, 8), Math.min(12, trimmed.length)))
           })
@@ -106,7 +114,6 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     [locale]
   )
 
-  // Actualiza estado de controles según posición del scroll
   const recomputeControls = useCallback(() => {
     const el = railRef.current
     if (!el) {
@@ -237,7 +244,6 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
                   data-card
                   ref={idx === arr.length - 1 ? sentinelRef : undefined}
                 >
-                  {/* Imagen → detalle o enlace externo */}
                   {hasExternalLink ? (
                     <a
                       href={href}
@@ -298,16 +304,19 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
                       <span className="mt-1" />
                     )}
 
-                    <p className="mt-1 text-[11px] text-gray-500 leading-tight text-left">
-                      {locale === 'en'
-                        ? 'As an Amazon Associate, we earn from qualifying purchases.'
-                        : 'Como afiliados de Amazon, ganamos comisiones por compras calificadas.'}
-                    </p>
+                    {hasExternalLink && (
+                      <p className="mt-1 text-[11px] text-gray-500 leading-tight text-left">
+                        {locale === 'en'
+                          ? 'As an Amazon Associate, we earn from qualifying purchases.'
+                          : 'Como afiliados de Amazon, ganamos comisiones por compras calificadas.'}
+                      </p>
+                    )}
 
                     <div className="mt-auto">
-                      <div className="text-green-700 font-semibold text-sm">{fmt.format(p.price)}</div>
+                      <div className="text-green-700 font-semibold text-sm">
+                        {fmt.format(p.price)}
+                      </div>
 
-                      {/* Botón: carrito normal o "View on Amazon" */}
                       {hasExternalLink ? (
                         <a
                           href={href}
@@ -332,7 +341,6 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
             })}
           </div>
 
-          {/* Controles móviles */}
           <div className="mt-4 flex justify-center md:hidden gap-3">
             <button
               onClick={() => scrollByPage(-1)}
@@ -358,7 +366,6 @@ export default function ProductsSpotlight({ dict }: { dict: Dict }) {
     </section>
   )
 
-  // misma lógica de agregar al carrito que antes
   async function handleAdd(p: SimplifiedProduct) {
     const isLoggedIn = await checkCustomerAuth()
     if (!isLoggedIn) {
